@@ -1,5 +1,8 @@
 import plotly.graph_objects as go
 import plotly.io as pio
+from app.utils.logger import Logger
+
+logger = Logger("controller/build_chart", log_file="build-chart.log")
 
 class PlotlyChart:
     def __init__(self,
@@ -27,21 +30,29 @@ class PlotlyChart:
         min_x, max_x = 0, 0
         min_y, max_y = 0, 0
 
+
         for chart in self.chart_info:
+
             x_local_vars = {}
             x_global_vars = {
                 "np": np,
             }
-            exec(chart.x_data, x_global_vars, x_local_vars)
-            x = x_local_vars['x']
+            try:
+                exec(chart.x_data, x_global_vars, x_local_vars)
+                x = x_local_vars['x']
+            except Exception as e:
+                logger.info(f"Error in exec x_data: {e}")
 
             y_local_vars = {}
             y_global_vars = {
                 "np": np,
                 "x": x
             }
-            exec(chart.y_data, y_global_vars, y_local_vars)
-            y = y_local_vars['y']
+            try:
+                exec(chart.y_data, y_global_vars, y_local_vars)
+                y = y_local_vars['y']
+            except Exception as e:
+                logger.info(f"Error in exec y_data: {e}")
 
             fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=chart.label))
 
