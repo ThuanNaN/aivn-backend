@@ -1,18 +1,21 @@
 import os
 from dotenv import load_dotenv
 import motor.motor_asyncio
+from app.utils.logger import Logger
 load_dotenv()
-mongo_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGODB_URI'), uuidRepresentation="standard")
+logger = Logger("core/database", log_file="database.log")
 
 try:
+    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGODB_URI'), uuidRepresentation="standard")
     conn = mongo_client.admin.command('ping')
-    print("Connected to MongoDB")
+    logger.info("Connected to MongoDB")
 except Exception as e:
-    print(e)
+    logger.error(f"An error occurred while trying to connect to MongoDB: {e}")
+
 
 try:
     mongo_db = mongo_client[os.getenv('MONGODB_DB')]
-    print("Connected to Database")
+    logger.info("Connected to Database")
 except Exception as e:
-    print(f"An error occurred while trying to access the database: {e}")
+    logger.error(f"An error occurred while trying to connect to Database: {e}")
     exit(1)
