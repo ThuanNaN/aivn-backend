@@ -24,7 +24,7 @@ async def create_problem(problem: ProblemSchema):
     try:
         new_problem = await add_problem(problem_dict)
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"Error when add problem: {e}")
         return ErrorResponseModel(error="An error occurred.",
                                   message="Problem was not added.",
                                   code=400)
@@ -38,7 +38,7 @@ async def get_problems():
     try:
         problems = await retrieve_problems()
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"Error when retrieve problems: {e}")
         return ErrorResponseModel(error="An error occurred.",
                                   message="Problems were not retrieved.",
                                   code=400)
