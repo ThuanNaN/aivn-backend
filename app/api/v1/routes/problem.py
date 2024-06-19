@@ -1,3 +1,4 @@
+from app.utils.logger import Logger
 from fastapi import APIRouter, Body
 from app.api.v1.controllers.problem import (
     add_problem,
@@ -14,12 +15,19 @@ from app.schemas.problem import (
 )
 
 router = APIRouter()
+logger = Logger("routes/problem", log_file="problem.log")
 
 
 @router.post("/problem", description="Add a new problem")
 async def create_problem(problem: ProblemSchema):
     problem_dict = problem.model_dump()
-    new_problem = await add_problem(problem_dict)
+    try:
+        new_problem = await add_problem(problem_dict)
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Problem was not added.",
+                                  code=400)
     return ResponseModel(data=[new_problem],
                          message="Problem added successfully.",
                          code=200)
@@ -27,7 +35,13 @@ async def create_problem(problem: ProblemSchema):
 
 @router.get("/problems", description="Retrieve all problems")
 async def get_problems():
-    problems = await retrieve_problems()
+    try:
+        problems = await retrieve_problems()
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Problems were not retrieved.",
+                                  code=400)
     if problems:
         return ResponseModel(data=problems,
                              message="Problems retrieved successfully.",
