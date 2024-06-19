@@ -41,7 +41,7 @@ class PlotlyChart:
                 exec(chart.x_data, x_global_vars, x_local_vars)
                 x = x_local_vars['x']
             except Exception as e:
-                logger.info(f"Error in exec x_data: {e}")
+                logger.error(f"Error in exec x_data: {e}")
 
             y_local_vars = {}
             y_global_vars = {
@@ -52,7 +52,7 @@ class PlotlyChart:
                 exec(chart.y_data, y_global_vars, y_local_vars)
                 y = y_local_vars['y']
             except Exception as e:
-                logger.info(f"Error in exec y_data: {e}")
+                logger.error(f"Error in exec y_data: {e}")
 
             fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=chart.label))
 
