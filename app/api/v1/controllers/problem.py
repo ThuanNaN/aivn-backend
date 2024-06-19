@@ -59,11 +59,7 @@ async def update_problem(id: str, data: dict):
 
 # Delete a problem from the database
 async def delete_problem(id: str):
-    try:
-        problem = await problem_collection
-        if problem:
-            await problem_collection.delete_one({"_id": ObjectId(id)})
-            return True
-    except Exception as e:
-        print(f"An error occurred while trying to delete a problem: {e}")
-        return False
+    problem = await problem_collection
+    if problem:
+        await problem_collection.delete_one({"_id": ObjectId(id)})
+        return True
