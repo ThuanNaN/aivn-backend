@@ -22,7 +22,7 @@ logger = Logger("routes/problem", log_file="problem.log")
 async def create_problem(problem: ProblemSchema):
     problem_dict = problem.model_dump()
     new_problem = await add_problem(problem_dict)
-    return ResponseModel(data=problem,
+    return ResponseModel(data=new_problem,
                          message="Problem added successfully.",
                          code=200)
 
