@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -32,7 +32,7 @@ class UpdateProblemSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: any
+    data: Union[dict, List[dict]]
     message: str
     code: int
 

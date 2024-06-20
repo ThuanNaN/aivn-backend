@@ -31,7 +31,7 @@ async def create_problem(problem: ProblemSchema):
 async def get_problems():
     problems = await retrieve_problems()
     if problems:
-        return ResponseModel(data=[problems],
+        return ResponseModel(data=problems,
                              message="Problems retrieved successfully.",
                              code=200)
     return ResponseModel(data=[],
