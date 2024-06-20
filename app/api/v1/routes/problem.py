@@ -22,7 +22,7 @@ logger = Logger("routes/problem", log_file="problem.log")
 async def create_problem(problem: ProblemSchema):
     problem_dict = problem.model_dump()
     new_problem = await add_problem(problem_dict)
-    return ResponseModel(data=[new_problem],
+    return ResponseModel(data=problem,
                          message="Problem added successfully.",
                          code=200)
 
@@ -31,7 +31,7 @@ async def create_problem(problem: ProblemSchema):
 async def get_problems():
     problems = await retrieve_problems()
     if problems:
-        return ResponseModel(data=problems,
+        return ResponseModel(data=[problems],
                              message="Problems retrieved successfully.",
                              code=200)
     return ResponseModel(data=[],
@@ -43,7 +43,7 @@ async def get_problems():
 async def get_problem(id):
     problem = await retrieve_problem(id)
     if problem:
-        return ResponseModel(data=[problem],
+        return ResponseModel(data=problem,
                             message="Problem retrieved successfully.",
                             code=200)
     return ErrorResponseModel(error="An error occurred.",

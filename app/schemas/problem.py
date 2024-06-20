@@ -32,7 +32,7 @@ class UpdateProblemSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: list
+    data: any
     message: str
     code: int
 
