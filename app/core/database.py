@@ -21,6 +21,3 @@ try:
 except Exception as e:
     logger.error(f"An error occurred while trying to connect to Database: {e}")
     exit(1)
-
-logger.info(f"URI: {os.getenv('MONGODB_URI')}")
-logger.info(f"Database: {os.getenv('MONGODB_DB')}")
