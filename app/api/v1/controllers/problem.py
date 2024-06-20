@@ -42,6 +42,7 @@ async def retrieve_problems():
             problems.append(problem_helper(problem))
         return problems
     except Exception as e:
+        print(f"Error when retrieve problems: {e}")
         logger.error(f"Error when retrieve problems: {e}")
 
 
