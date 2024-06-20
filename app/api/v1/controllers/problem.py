@@ -42,7 +42,6 @@ async def retrieve_problems():
             problems.append(problem_helper(problem))
         return problems
     except Exception as e:
-        print(f"Error when retrieve problems: {e}")
         logger.error(f"Error when retrieve problems: {e}")
 
 
@@ -76,7 +75,7 @@ async def update_problem(id: str, data: dict):
 # Delete a problem from the database
 async def delete_problem(id: str):
     try:
-        problem = await problem_collection
+        problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if problem:
             await problem_collection.delete_one({"_id": ObjectId(id)})
             return True
