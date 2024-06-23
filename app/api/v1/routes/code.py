@@ -29,6 +29,12 @@ async def run_code(code_inputs: CodeSchema):
                                               private_testcases,
                                               return_testcase=False)
 
+    if isinstance(public_testcases_results, Exception):
+        return ErrorResponseModel(
+            error="An error occurred.",
+            message=str(public_testcases_results),
+            code=500)
+
     return ResponseModel(
         data={
             "public_testcases_results": public_testcases_results,
