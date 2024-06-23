@@ -40,7 +40,7 @@ async def get_problems():
 
 
 @router.get("/problem/{id}", description="Retrieve a problem with a matching ID")
-async def get_problem(id):
+async def get_problem(id: str):
     problem = await retrieve_problem(id)
     if problem:
         return ResponseModel(data=problem,

@@ -1,9 +1,10 @@
 from typing import List, Optional, Union
 from datetime import datetime
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
+from uuid import UUID, uuid4
 
 class TestCase(BaseModel):
+    testcase_id: UUID = Field(default_factory=uuid4)
     input: str
     expected_output: str
 
