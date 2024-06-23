@@ -26,7 +26,8 @@ async def run_code(code_inputs: CodeSchema = Body(...)):
                                              return_testcase=True)
     
     private_testcases_results = test_py_funct(code_inputs.code, 
-                                              private_testcases)
+                                              private_testcases,
+                                              return_testcase=False)
 
     return ResponseModel(
         data={
