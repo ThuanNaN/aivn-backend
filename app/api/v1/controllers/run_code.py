@@ -4,12 +4,15 @@ from app.utils.logger import Logger
 logger = Logger("controllers/run_code", log_file="run_code.log")
 
 
-def buld_py_funct(py_func: str) -> callable:
-    locals = {}
-    globals = {}
-    exec(py_func, globals, locals)
-    func = next(iter(locals.values()))
-    return func
+def buld_py_funct(py_func: str):
+    try:
+        locals = {}
+        globals = {}
+        exec(py_func, globals, locals)
+        func = next(iter(locals.values()))
+        return func
+    except Exception as e:
+        return e
 
 
 def text2var(str_input: str) -> dict:
@@ -55,6 +58,10 @@ def test_py_funct(py_func: str,
                   return_testcase: bool = False
                   ) -> List[dict]:
     func = buld_py_funct(py_func)
+
+    if isinstance(func, Exception):
+        return func
+    
     testcase_outputs = []
     for case in test_case:
         testcase_outputs.append(run_testcase(func, case, return_testcase))
