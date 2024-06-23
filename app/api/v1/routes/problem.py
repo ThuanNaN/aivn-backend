@@ -73,3 +73,19 @@ async def delete_problem_data(id: str):
     return ErrorResponseModel(error="An error occurred.",
                             message="Problem was not deleted.",
                             code=404)
+
+@router.get("/order", description="Order all problems by date created")
+async def order_problems():
+    problems = await retrieve_problems()
+    sorted_problems = sorted(problems, key=lambda x: x['created_at'])
+    sorted_info = []
+    for i, problem_data in enumerate(sorted_problems):
+        problem_data["index"] = i
+        await update_problem(id, problem_data)
+        sorted_info.append({
+            "id": problem_data["id"],
+            "index": i
+        })
+    return ResponseModel(data=sorted_info,
+                         message="Problems ordered successfully.",
+                         code=200)
