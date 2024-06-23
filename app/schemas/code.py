@@ -9,7 +9,7 @@ class CodeSchema(BaseModel):
 
 class TestcaseResult(BaseModel):
     testcase_id: str
-    output: Union[list, dict, str, int, float, bool]
+    output: Union[list, set, dict, str, int, float, bool, None]
     is_pass: bool
 
 class PublicTestcaseResult(TestcaseResult):
