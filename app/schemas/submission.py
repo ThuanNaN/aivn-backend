@@ -1,17 +1,17 @@
 from datetime import datetime
+from typing import List
 from pydantic import BaseModel
 
+
+class ProblemSubmission(BaseModel):
+    problem_id: str
+    code: str
 
 
 class SubmissionSchema(BaseModel):
     user_id: str
-    problem_id: str
-    code: str
+    problems: List[ProblemSubmission]
     created_at: datetime = datetime.now().isoformat()
-
-
-class UpdateSubmissionSchema(BaseModel):
-    pass
 
 
 class ResponseModel(BaseModel):
