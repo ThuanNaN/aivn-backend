@@ -21,8 +21,12 @@ async def run_code(code_inputs: CodeSchema = Body(...)):
     private_testcases = problem["private_testcases"]
 
     # Run code
-    public_testcases_results = test_py_funct(code_inputs.code, public_testcases)
-    private_testcases_results = test_py_funct(code_inputs.code, private_testcases)
+    public_testcases_results = test_py_funct(code_inputs.code, 
+                                             public_testcases, 
+                                             return_testcase=True)
+    
+    private_testcases_results = test_py_funct(code_inputs.code, 
+                                              private_testcases)
 
     return ResponseModel(
         data={
