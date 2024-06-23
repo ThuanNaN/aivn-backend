@@ -10,7 +10,7 @@ logger = Logger("routes/submission", log_file="submission.log")
 
 
 @router.post("/submit", description="Submit code to a test")
-async def submit_code(submission_data: SubmissionSchema = Body(...)):
+async def submit_code(submission_data: SubmissionSchema):
     submission_data = submission_data.model_dump()
     problem_submissions = submission_data["problems"]
 

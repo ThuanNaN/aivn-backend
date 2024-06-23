@@ -9,7 +9,7 @@ logger = Logger("routes/code", log_file="code.log")
 
 
 @router.post("/run", description="Run code from code block (string)")
-async def run_code(code_inputs: CodeSchema = Body(...)):
+async def run_code(code_inputs: CodeSchema):
     problem = await retrieve_problem(code_inputs.problem_id)
     if not problem:
         logger.error(f"Problem with ID {code_inputs.problem_id} not found.")
