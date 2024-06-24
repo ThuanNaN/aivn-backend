@@ -56,7 +56,11 @@ def run_testcase(func,
 def test_py_funct(py_func: str, 
                   test_case: List[Dict[str, str]],
                   return_testcase: bool = False
-                  ) -> List[dict]:
+                  ) -> list:
+    
+    if len(test_case) == 0:
+        return []
+
     func = buld_py_funct(py_func)
 
     if isinstance(func, Exception):
