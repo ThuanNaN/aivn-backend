@@ -1,3 +1,4 @@
+from pprint import pprint
 from fastapi import APIRouter
 from app.schemas.submission import (
     SubmissionSchema,
@@ -5,10 +6,10 @@ from app.schemas.submission import (
     ErrorResponseModel
 )
 from app.api.v1.controllers.problem import retrieve_problem
-from app.api.v1.controllers.run_code import test_py_funct
 from app.api.v1.controllers.submission import (
+    run_testcases,
     add_submission,
-    pass_testcases
+    retrieve_submissions
 )
 from app.utils.logger import Logger
 
@@ -18,68 +19,73 @@ logger = Logger("routes/submission", log_file="submission.log")
 
 @router.post("/submit", description="Submit code to a test")
 async def submit_code(submission_data: SubmissionSchema):
-    submission_data = submission_data.model_dump()
-    problem_submissions = submission_data["problems"]
+    submission_dict = submission_data.model_dump()
+    problems_submited = submission_dict["problems"]
 
-    test_result = []
-    score = 0
+    problem_results = []
+    total_score = 0
 
-    for problem_submission in problem_submissions:
-        problem = await retrieve_problem(problem_submission.problem_id)
-        if not problem:
-            logger.error(
-                f"Problem with ID {problem_submission.problem_id} not found.")
+    for problem in problems_submited:
+        problem_id = problem["problem_id"]
+        submited_code = problem["submited_code"]
+
+        problem_info = await retrieve_problem(problem_id)
+        if not problem_info:
+            logger.error(f'Problem with ID {problem_id} not found.')
             return ErrorResponseModel(error="An error occurred.",
                                       message="Problem not found.",
                                       code=404)
-        problem_code = problem_submission.code
 
-        public_testcases = problem.get("public_testcases", [])
-        private_testcases = problem.get("private_testcases", [])
+        public_testcases = problem_info.get("public_testcases", [])
+        private_testcases = problem_info.get("private_testcases", [])
 
-        def run_testcases(code, testcases, return_testcase):
-            if not testcases:
-                return []
-            results_dict = test_py_funct(py_func=code,
-                                         testcases=testcases,
-                                         return_testcase=return_testcase)
+        public_results, is_pass_public = run_testcases(
+            submited_code, public_testcases)
+        private_results, is_pass_private = run_testcases(
+            submited_code, private_testcases)
 
-            if results_dict["error"] is not None:
-                return ErrorResponseModel(
-                    error="Error running code.",
-                    message=results_dict["error"],
-                    code=500
-                )
-            return results_dict["testcase_outputs"]
+        is_pass_problem = is_pass_public and is_pass_private
+        total_score += int(is_pass_problem)
 
-        public_results = run_testcases(problem_code, public_testcases, True)
-        if isinstance(public_results, ErrorResponseModel):
-            return public_results
-
-        private_results = run_testcases(problem_code, private_testcases, True)
-        if isinstance(private_results, ErrorResponseModel):
-            return private_results
-
-        is_pass_problem = False
-        if pass_testcases(public_results) and pass_testcases(private_results):
-            score += 1
-            is_pass_problem = True
-
-        test_result.append(
+        problem_results.append(
             {
-                "problem_id": problem_submission.problem_id,
+                "problem_id": problem_id,
+                "title": problem_info["title"],
+                "description": problem_info["description"],
+                "submited_code": submited_code,
                 "public_testcases_results": public_results,
                 "private_testcases_results": private_results,
                 "is_pass_problem": is_pass_problem
             }
         )
-    submission_data["test_result"] = test_result
-    await add_submission(submission_data)
 
-    return ResponseModel(
-        data={
-            "total_problem": len(problem_submissions),
-            "score": score
-        },
-        message="Submission added successfully.",
-        code=200)
+    submission_dict["problems"] = problem_results
+    try:
+        _ = await add_submission(submission_dict)
+        return ResponseModel(
+            data={
+                "total_score": total_score,
+                "total_problems": len(problems_submited)
+            },
+            message="Submission added successfully.",
+            code=200)
+
+    except Exception as e:
+        logger.error(f"Error when add submission: {e}")
+        return ErrorResponseModel(
+            error="An error occurred.",
+            message="Unable to add submission.",
+            code=500
+        )
+
+
+@router.get("/submissions", description="Get all submissions")
+async def get_submissions():
+    submissions = await retrieve_submissions()
+    if submissions:
+        return ResponseModel(data=submissions,
+                             message="Submissions retrieved successfully.",
+                             code=200)
+    return ResponseModel(data=[],
+                         message="No submissions exist.",
+                         code=404)

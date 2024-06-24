@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import List
+from typing import List, Union
 from pydantic import BaseModel
 
 
 class ProblemSubmission(BaseModel):
     problem_id: str
-    code: str
+    submited_code: str
 
 
 class SubmissionSchema(BaseModel):
@@ -15,7 +15,7 @@ class SubmissionSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: dict
+    data: Union[list, dict]
     message: str
     code: int
 
