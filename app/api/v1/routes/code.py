@@ -17,34 +17,40 @@ async def run_code(code_inputs: CodeSchema):
                                   message="Problem not found.",
                                   code=404)
 
-    public_testcases = problem["public_testcases"]
-    private_testcases = problem["private_testcases"]
+    public_testcases = problem.get("public_testcases", [])
+    private_testcases = problem.get("private_testcases", [])
 
-    # Run code
-    public_results = test_py_funct(code_inputs.code,
-                                   public_testcases,
-                                   return_testcase=True)
+    def run_testcases(code, testcases, return_testcase):
+        if not testcases:
+            return []
+        results_dict = test_py_funct(py_func=code, 
+                                     testcases=testcases, 
+                                     return_testcase=return_testcase)
+        
+        logger.info(f'Error: {results_dict["error"]}')
+        if results_dict["error"] is not None:
+            return ErrorResponseModel(
+                error="Error running code.",
+                message=results_dict["error"],
+                code=500
+            )
+        return results_dict["testcase_outputs"]
 
-    private_results = test_py_funct(code_inputs.code,
-                                    private_testcases,
-                                    return_testcase=False)
+    public_results = run_testcases(code_inputs.code, public_testcases, True)
+    if isinstance(public_results, ErrorResponseModel):
+        return public_results
 
-    if isinstance(public_results, Exception):
-        return ErrorResponseModel(
-            error="An error occurred.",
-            message=str(public_results),
-            code=500)
+    private_results = run_testcases(code_inputs.code, private_testcases, False)
+    if isinstance(private_results, ErrorResponseModel):
+        return private_results
+    
 
-    if isinstance(private_results, Exception):
-        return ErrorResponseModel(
-            error="An error occurred.",
-            message=str(private_results),
-            code=500)
+    logger.info(f"public_results: {public_results}" )
 
     return ResponseModel(
         data={
             "public_testcases_results": public_results,
-            "private_testcases_results": private_results,
+            "private_testcases_results": [],
         },
         message="Code run successfully.",
         code=200)
