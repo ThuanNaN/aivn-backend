@@ -31,6 +31,9 @@ class UpdateProblemSchema(BaseModel):
     private_testcases: Optional[List[TestCase]]
     updated_at: datetime = datetime.now().isoformat()
 
+class OrderSchema(BaseModel):
+    problem_id: str
+    index: int
 
 class ResponseModel(BaseModel):
     data: Union[dict, List[dict]]
