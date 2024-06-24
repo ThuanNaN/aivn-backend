@@ -47,7 +47,7 @@ async def run_code(code_inputs: CodeSchema):
     return ResponseModel(
         data={
             "public_testcases_results": public_results,
-            "private_testcases_results": [],
+            "private_testcases_results": private_results,
         },
         message="Code run successfully.",
         code=200)
