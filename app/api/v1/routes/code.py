@@ -21,24 +21,30 @@ async def run_code(code_inputs: CodeSchema):
     private_testcases = problem["private_testcases"]
 
     # Run code
-    public_testcases_results = test_py_funct(code_inputs.code, 
-                                             public_testcases, 
-                                             return_testcase=True)
-    
-    private_testcases_results = test_py_funct(code_inputs.code, 
-                                              private_testcases,
-                                              return_testcase=False)
+    public_results = test_py_funct(code_inputs.code,
+                                   public_testcases,
+                                   return_testcase=True)
 
-    if isinstance(public_testcases_results, Exception):
+    private_results = test_py_funct(code_inputs.code,
+                                    private_testcases,
+                                    return_testcase=False)
+
+    if isinstance(public_results, Exception):
         return ErrorResponseModel(
             error="An error occurred.",
-            message=str(public_testcases_results),
+            message=str(public_results),
+            code=500)
+
+    if isinstance(private_results, Exception):
+        return ErrorResponseModel(
+            error="An error occurred.",
+            message=str(private_results),
             code=500)
 
     return ResponseModel(
         data={
-            "public_testcases_results": public_testcases_results,
-            "private_testcases_results": private_testcases_results,
+            "public_testcases_results": public_results,
+            "private_testcases_results": private_results,
         },
         message="Code run successfully.",
         code=200)
