@@ -15,7 +15,7 @@ class SubmissionSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: list
+    data: dict
     message: str
     code: int
 
