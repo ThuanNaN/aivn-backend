@@ -1,18 +1,7 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 from app.utils.logger import Logger
 
 logger = Logger("controllers/run_code", log_file="run_code.log")
-
-
-def buld_py_funct(py_func: str):
-    try:
-        locals = {}
-        globals = {}
-        exec(py_func, globals, locals)
-        func = next(iter(locals.values()))
-        return func
-    except Exception as e:
-        return e
 
 
 def text2var(str_input: str) -> dict:
@@ -25,27 +14,34 @@ def text2var(str_input: str) -> dict:
     return locals
 
 
-def run_testcase(func, 
-                 test_case: Dict[str, str], 
+def run_testcase(py_func: str, 
+                 testcase: Dict[str, str], 
                  return_testcase: bool
                 ) -> dict:
-    input = text2var(test_case["input"])
-    expected_output = text2var("output = "+test_case["expected_output"])["output"]
-    testcase_id = str(test_case["testcase_id"])
-
-    try:
-        func_output = func(**input)
-    except Exception as e:
-        func_output = e
+    input = text2var(testcase["input"])
+    expected_output = text2var("output = "+testcase["expected_output"])["output"]
+    testcase_id = str(testcase["testcase_id"])
 
     testcase_output = {
         "testcase_id": testcase_id,
-        "output": func_output,
+        "output": None,
         "is_pass": False,
+        "error": None
     }
-
     if return_testcase:
         testcase_output["expected_output"] = expected_output
+
+    try:
+        locals = {}
+        globals = {}
+        exec(py_func, globals, locals)
+        funct = next(iter(locals.values()))
+        func_output = funct(**input)
+    except Exception as e:
+        testcase_output["error"] = str(e)
+        return testcase_output
+
+    testcase_output["output"] = func_output
 
     if func_output == expected_output:
         testcase_output["is_pass"] = True
@@ -54,15 +50,20 @@ def run_testcase(func,
 
 
 def test_py_funct(py_func: str, 
-                  test_case: List[Dict[str, str]],
+                  testcases: List[Dict[str, str]],
                   return_testcase: bool = False
-                  ) -> List[dict]:
-    func = buld_py_funct(py_func)
+                  ) -> dict:
+    test_info = {
+        "testcase_outputs": [],
+        "error": None
+    }
 
-    if isinstance(func, Exception):
-        return func
-    
     testcase_outputs = []
-    for case in test_case:
-        testcase_outputs.append(run_testcase(func, case, return_testcase))
-    return testcase_outputs
+    for testcase in testcases:
+        run_output = run_testcase(py_func, testcase, return_testcase)
+        testcase_outputs.append(run_output)
+        if run_output["error"] is not None:
+            test_info["error"] = run_output["error"]
+            break    
+    test_info["testcase_outputs"] = testcase_outputs
+    return test_info
