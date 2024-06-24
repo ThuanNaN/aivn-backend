@@ -23,6 +23,7 @@ def run_testcase(py_func: str,
 
     testcase_output = {
         "testcase_id": testcase_id,
+        "input": input,
         "output": None,
         "is_pass": False,
         "error": None
@@ -50,7 +51,8 @@ def run_testcase(py_func: str,
 
 def test_py_funct(py_func: str, 
                   testcases: List[Dict[str, str]],
-                  return_testcase: bool = False
+                  return_testcase: bool = False,
+                  run_all: bool = False
                   ) -> dict:
     test_info = {
         "testcase_outputs": [],
@@ -62,6 +64,7 @@ def test_py_funct(py_func: str,
         testcase_outputs.append(run_output)
         if run_output["error"] is not None:
             test_info["error"] = run_output["error"]
-            break    
+            if not run_all:
+                break    
     test_info["testcase_outputs"] = testcase_outputs
     return test_info
