@@ -60,6 +60,7 @@ async def submit_code(submission_data: SubmissionSchema):
         if isinstance(private_results, ErrorResponseModel):
             return private_results
 
+        is_pass_problem = False
         if pass_testcases(public_results) and pass_testcases(private_results):
             score += 1
             is_pass_problem = True
