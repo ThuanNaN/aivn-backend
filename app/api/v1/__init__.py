@@ -13,4 +13,4 @@ async def check_health():
 v1_router.include_router(build_chart_router, tags=["Build Chart"])
 v1_router.include_router(problem_router, tags=["Problem"])
 v1_router.include_router(code_router, prefix="/code", tags=["Code"])
-v1_router.include_router(submission_router, prefix="/code", tags=["Code"])
+v1_router.include_router(submission_router, prefix="/submission", tags=["Submission"])
