@@ -13,7 +13,6 @@ def text2var(str_input: str) -> dict:
         logger.error(f"Error converting text to variable: {e}")
     return locals
 
-
 def run_testcase(py_func: str, 
                  testcase: Dict[str, str], 
                  return_testcase: bool
@@ -38,7 +37,7 @@ def run_testcase(py_func: str,
         funct = next(iter(locals.values()))
         func_output = funct(**input)
     except Exception as e:
-        testcase_output["error"] = str(e)
+        testcase_output["error"] = f"{type(e).__name__}: {e}"
         return testcase_output
 
     testcase_output["output"] = func_output
@@ -57,7 +56,6 @@ def test_py_funct(py_func: str,
         "testcase_outputs": [],
         "error": None
     }
-
     testcase_outputs = []
     for testcase in testcases:
         run_output = run_testcase(py_func, testcase, return_testcase)
