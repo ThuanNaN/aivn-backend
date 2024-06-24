@@ -43,9 +43,6 @@ async def run_code(code_inputs: CodeSchema):
     private_results = run_testcases(code_inputs.code, private_testcases, False)
     if isinstance(private_results, ErrorResponseModel):
         return private_results
-    
-
-    logger.info(f"public_results: {public_results}" )
 
     return ResponseModel(
         data={
