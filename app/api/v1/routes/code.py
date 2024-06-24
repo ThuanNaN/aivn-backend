@@ -27,7 +27,6 @@ async def run_code(code_inputs: CodeSchema):
                                      testcases=testcases, 
                                      return_testcase=return_testcase)
         
-        logger.info(f'Error: {results_dict["error"]}')
         if results_dict["error"] is not None:
             return ErrorResponseModel(
                 error="Error running code.",

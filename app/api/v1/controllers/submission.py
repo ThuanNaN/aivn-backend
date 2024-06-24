@@ -1,3 +1,4 @@
+from typing import List, Dict
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 
@@ -29,3 +30,9 @@ async def add_submission(submission_data: dict) -> dict:
     except Exception as e:
         logger.error(f"Error when add submission: {e}")
 
+
+def pass_testcases(results: List[dict]) -> bool:
+    for result in results:
+        if not result["is_pass"]:
+            return False
+    return True
