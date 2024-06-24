@@ -77,7 +77,7 @@ async def delete_problem_data(id: str):
                               code=404)
 
 
-@router.put("/order", description="Order all problems by date created")
+@router.put("/order-problem", description="Order all problems by date created")
 async def order_problems(orders: List[OrderSchema]):
     for order in orders:
         problem_data = await retrieve_problem(order.problem_id)
