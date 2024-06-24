@@ -39,6 +39,6 @@ class Logger(logging.Logger):
         self.addHandler(stream_handler)
 
     def _add_file_handler(self, log_file):
-        file_handler = RotatingFileHandler(log_file, maxBytes=10000, backupCount=10)
+        file_handler = RotatingFileHandler(log_file, maxBytes=1e5, backupCount=10)
         file_handler.setFormatter(self.file_formatter)
         self.addHandler(file_handler)
