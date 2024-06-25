@@ -2,6 +2,16 @@
 
 ## Getting Started
 
+### Python env
+
+Conda venv
+
+```bash
+conda create -n codeless python=3.11 --y
+conda activate codeless
+pip3 install -r requirements.txt
+```
+
 Dev the FastAPI service
 
 ```bash
