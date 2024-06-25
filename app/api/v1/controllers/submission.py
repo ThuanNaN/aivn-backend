@@ -1,6 +1,7 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from app.api.v1.controllers.run_code import test_py_funct
+from bson.objectid import ObjectId
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -39,6 +40,13 @@ async def retrieve_submissions():
         return submissions
     except Exception as e:
         logger.error(f"Error when retrieve submissions: {e}")
+
+async def retrieve_submission(id: str):
+    try:
+        submission = await submission_collection.find_one({"_id": ObjectId(id)})
+        return submission_helper(submission)
+    except Exception as e:
+        logger.error(f"Error when retrieve submission: {e}")
 
 
 def run_testcases(code, testcases):

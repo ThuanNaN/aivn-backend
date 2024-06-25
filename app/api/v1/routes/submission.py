@@ -9,9 +9,11 @@ from app.api.v1.controllers.problem import retrieve_problem
 from app.api.v1.controllers.submission import (
     run_testcases,
     add_submission,
-    retrieve_submissions
+    retrieve_submissions,
+    retrieve_submission
 )
 from app.utils.logger import Logger
+
 
 router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
@@ -89,3 +91,14 @@ async def get_submissions():
     return ResponseModel(data=[],
                          message="No submissions exist.",
                          code=404)
+
+@router.get("/submissions/{id}", description="Retrieve a submission with a matching ID")
+async def get_submission(id: str):
+    submission = await retrieve_submission(id)
+    if submission:
+        return ResponseModel(data=submission,
+                             message="Submission retrieved successfully.",
+                             code=200)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Submission was not retrieved.",
+                              code=404)
