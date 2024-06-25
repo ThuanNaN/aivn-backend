@@ -92,7 +92,7 @@ async def get_submissions():
                          message="No submissions exist.",
                          code=404)
 
-@router.get("/submissions/{id}", description="Retrieve a submission with a matching ID")
+@router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
     submission = await retrieve_submission(id)
     if submission:
