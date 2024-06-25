@@ -18,10 +18,12 @@ def submission_helper(submission) -> dict:
         "id": str(submission["_id"]),
         "user_id": submission["user_id"],
         "problems": submission["problems"],
-        "created_at": str( submission["created_at"]),
+        "created_at": str(submission["created_at"]),
     }
 
 # Create a new submission
+
+
 async def add_submission(submission_data: dict):
     try:
         submission = await submission_collection.insert_one(submission_data)
@@ -41,6 +43,7 @@ async def retrieve_submissions():
     except Exception as e:
         logger.error(f"Error when retrieve submissions: {e}")
 
+
 async def retrieve_submission(id: str):
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
@@ -53,22 +56,22 @@ def run_testcases(code, testcases):
     if not testcases:
         return [], True
     results_dict = test_py_funct(py_func=code,
-                                    testcases=testcases,
-                                    return_testcase=True,
-                                    run_all=True)
+                                 testcases=testcases,
+                                 return_testcase=True,
+                                 run_all=True)
     return_dict = []
     is_pass_testcases = True
-    for result in results_dict["testcase_outputs"]:
+    for i, result in enumerate(results_dict["testcase_outputs"]):
         return_dict.append(
             {
-                "input": str(result["input"]),
+                "input": testcases[i]["input"],
                 "output": str(result["output"]),
-                "expected_output": str(result["expected_output"]),
+                "expected_output": testcases[i]["expected_output"],
                 "error": result["error"],
                 "is_pass": result["is_pass"]
             }
         )
-        
+
         if not result["is_pass"]:
             is_pass_testcases = False
 
