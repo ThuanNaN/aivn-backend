@@ -61,9 +61,9 @@ def run_testcases(code, testcases):
     for result in results_dict["testcase_outputs"]:
         return_dict.append(
             {
-                "input": result["input"],
-                "output": result["output"],
-                "expected_output": result["expected_output"],
+                "input": str(result["input"]),
+                "output": str(result["output"]),
+                "expected_output": str(result["expected_output"]),
                 "error": result["error"],
                 "is_pass": result["is_pass"]
             }
