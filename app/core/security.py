@@ -1,6 +1,6 @@
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer
 from app.schemas.user import UserSchema
 
 
@@ -16,10 +16,10 @@ ywIDAQAB
 """
 
 ALGORITHM = "RS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = HTTPBearer()
 
 
-async def is_authenticated(token: str = Depends(oauth2_scheme)
+async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)
                            ) -> UserSchema:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,8 +31,9 @@ async def is_authenticated(token: str = Depends(oauth2_scheme)
         detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    token = oauth2_scheme.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
         clerk_user_id: str = payload.get("sub")
         if clerk_user_id is None:
             raise credentials_exception
