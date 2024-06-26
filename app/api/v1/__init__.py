@@ -14,9 +14,23 @@ v1_router = APIRouter(prefix="/v1", tags=["API v1"])
 async def check_health():
     return {"status": "API v1 is healthy"}
 
-v1_router.include_router(build_chart_router, tags=["Build Chart"])
+v1_router.include_router(build_chart_router, 
+                         tags=["Build Chart"])
 
-v1_router.include_router(user_router, tags=["User"], dependencies=[Depends(is_authenticated)])
-v1_router.include_router(problem_router, tags=["Problem"], dependencies=[Depends(is_authenticated)])
-v1_router.include_router(code_router, prefix="/code", tags=["Code"], dependencies=[Depends(is_authenticated)])
-v1_router.include_router(submission_router, prefix="/submission", tags=["Submission"], dependencies=[Depends(is_authenticated)])
+v1_router.include_router(user_router, 
+                         dependencies=[Depends(is_authenticated)],
+                         tags=["User"])
+
+v1_router.include_router(problem_router, 
+                         dependencies=[Depends(is_authenticated)],
+                         tags=["Problem"])
+
+v1_router.include_router(code_router, 
+                         prefix="/code", 
+                         dependencies=[Depends(is_authenticated)],
+                         tags=["Code"])
+
+v1_router.include_router(submission_router, 
+                         prefix="/submission", 
+                         dependencies=[Depends(is_authenticated)],
+                         tags=["Submission"])
