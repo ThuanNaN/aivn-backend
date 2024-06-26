@@ -9,6 +9,7 @@ logger = Logger("controllers/user", log_file="user.log")
 
 try:
     user_collection = mongo_db["users"]
+    whitelist_collection = mongo_db["whitelists"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -29,13 +30,31 @@ def user_helper(user) -> dict:
     }
 
 def clerk_user_helper(user) -> dict:
+    if user["username"] is None:
+        username = user["first_name"] + " " + user["last_name"]
+    else:
+        username = user["username"]
+
+    if user["image_url"] is None:
+        image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.facebook.com%2Faivietnam.edu.vn%2F&psig=AOvVaw1Y_V6Js0AFy7P34aNqjBn3&ust=1719491806171000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCPiK8qOk-YYDFQAAAAAdAAAAABAE"
+    else:
+        image_url = user["image_url"]
+    
     return {
+        "id": user["id"],
         "clerk_user_id": user["id"],
-        "username": user["username"],
+        "username": username,
         "first_name": user["first_name"],
         "last_name": user["last_name"],
-        "image_url": user["image_url"],
-        "email_addresses": user["email_addresses"][0]["email_address"],
+        "avatar": image_url,
+        "email": user["email_addresses"][0]["email_address"],
+    }
+
+def whitelist_helper(user) -> dict:
+    return {
+        "id": str(user["_id"]),
+        "email": user["email"],
+        "nickname": user["nickname"],
     }
 
 
@@ -107,3 +126,35 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         logger.error(f"Request timeout: {timeout_err}")
     except Exception as e:
         logger.error(f"Error when retrieve user: {e}")
+
+
+
+# Create a new whitelist
+async def add_whitelist(whitelist_data: dict) -> dict:
+    try:
+        whitelist = await whitelist_collection.insert_one(whitelist_data)
+        new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
+        return whitelist_helper(new_whitelist)
+    except Exception as e:
+        logger.error(f"Error when add whitelist: {e}")
+
+
+# Retrieve all whitelists
+async def retrieve_whitelists():
+    try:
+        whitelists = []
+        async for whitelist in whitelist_collection.find():
+            whitelists.append(whitelist_helper(whitelist))
+        return whitelists
+    except Exception as e:
+        logger.error(f"Error when retrieve whitelists: {e}")
+
+
+# Check an email is in whitelist
+async def check_whitelist(email: str) -> bool:
+    try:
+        whitelist = await whitelist_collection.find_one({"email": email})
+        if whitelist:
+            return True
+    except Exception as e:
+        logger.error(f"Error when check whitelist: {e}")

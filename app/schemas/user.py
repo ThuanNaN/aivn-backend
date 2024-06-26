@@ -4,20 +4,28 @@ from pydantic import BaseModel
 
 
 class UserSchema(BaseModel):
-    clerk_user_id: str | None = None
-    email: str | None = None
-    username: str | None = None
-    role: str | None = None
-    avatar: str | None = None
+    clerk_user_id: str 
+    email: str 
+    username: str 
+    role: str 
+    avatar: str 
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
 
 
-class UpdateUserSchema(BaseModel):
+class UpdateUserInfoSchema(BaseModel):
     username: Optional[str]
-    role: Optional[str]
     avatar: Optional[str]
     updated_at: datetime = datetime.now()
+
+
+class UpdateUserRoleSchema(UpdateUserInfoSchema):
+    role: Optional[str]
+
+
+class WhiteListSchema(BaseModel):
+    email: str
+    nickname: str
 
 
 class ResponseModel(BaseModel):
