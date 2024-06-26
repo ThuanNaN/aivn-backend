@@ -51,7 +51,7 @@ async def get_user(clerk_user_id: str):
 
 
 @router.patch("/user/{clerk_user_id}", description="Update a user with a matching ID")
-async def update_user(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
+async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
     updated = await update_user(clerk_user_id, data.model_dump())
     if updated:
         return ResponseModel(data=[],
@@ -65,7 +65,6 @@ async def update_user(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
 @router.post("/user/upsert", description="Update a user with Clerk data")
 async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     clerk_user = await retrieve_user_clerk(clerk_user_id)
-
     if clerk_user["username"] is None:
         username = clerk_user["first_name"] + " " + clerk_user["last_name"]
     else:
@@ -75,7 +74,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.facebook.com%2Faivietnam.edu.vn%2F&psig=AOvVaw1Y_V6Js0AFy7P34aNqjBn3&ust=1719491806171000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCPiK8qOk-YYDFQAAAAAdAAAAABAE"
     else:
         image_url = clerk_user["image_url"]
-    
+
     role = clerk_user.get("role", "user")
 
     update_data = UpdateUserSchema(
@@ -83,11 +82,19 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         role=role,
         avatar=image_url
     )
-    updated = await update_user(clerk_user_id, update_data.model_dump())
-    if updated:
-        return ResponseModel(data=[],
-                            message="User updated successfully.",
-                            code=200)
-    return ErrorResponseModel(error="An error occurred.",
-                            message="User was not updated.",
-                            code=404)
+
+    is_exist_user = await retrieve_user(clerk_user_id)
+    if is_exist_user:
+        updated = await update_user(clerk_user_id, update_data.model_dump())
+        if updated:
+            return ResponseModel(data=[],
+                                 message="User updated successfully.",
+                                 code=200)
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="User was not updated.",
+                                  code=404)
+    else:
+        new_user = await add_user(update_data.model_dump())
+        return ResponseModel(data=new_user,
+                             message="User added successfully.",
+                             code=200)
