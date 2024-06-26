@@ -36,7 +36,6 @@ def clerk_user_helper(user) -> dict:
         "last_name": user["last_name"],
         "image_url": user["image_url"],
         "email_addresses": user["email_addresses"][0]["email_address"],
-        "role": user["public_metadata"]["role"],
     }
 
 
