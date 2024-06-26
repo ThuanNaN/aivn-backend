@@ -1,7 +1,6 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
-from app.schemas.user import UserSchema
 
 
 SECRET_KEY = """-----BEGIN PUBLIC KEY-----
@@ -19,8 +18,7 @@ ALGORITHM = "RS256"
 oauth2_scheme = HTTPBearer()
 
 
-async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)
-                           ) -> UserSchema:
+async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -33,7 +31,7 @@ async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)
     )
     token = oauth2_scheme.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         clerk_user_id: str = payload.get("sub")
         if clerk_user_id is None:
             raise credentials_exception

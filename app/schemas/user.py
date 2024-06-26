@@ -1,25 +1,38 @@
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from pydantic import BaseModel
 
 
 class UserSchema(BaseModel):
-    username: str
-    email: str
-    created_at: datetime = datetime.now().isoformat()
-    updated_at: datetime = datetime.now().isoformat()
+    clerk_user_id: str 
+    email: str 
+    username: str 
+    role: str 
+    avatar: str 
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
 
 
-class UpdateUserSchema(BaseModel):
+class UpdateUserInfoSchema(BaseModel):
     username: Optional[str]
-    email: Optional[str]
-    updated_at: datetime = datetime.now().isoformat()
+    avatar: Optional[str]
+    updated_at: datetime = datetime.now()
+
+
+class UpdateUserRoleSchema(UpdateUserInfoSchema):
+    role: Optional[str]
+
+
+class WhiteListSchema(BaseModel):
+    email: str
+    nickname: str
 
 
 class ResponseModel(BaseModel):
-    data: list
+    data: Union[list, dict]
     message: str
     code: int
+
 
 class ErrorResponseModel(BaseModel):
     error: str
