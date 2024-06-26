@@ -1,7 +1,8 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
-from app.api.v1.controllers.run_code import test_py_funct
 from bson.objectid import ObjectId
+from app.api.v1.controllers.run_code import test_py_funct
+from app.api.v1.controllers.user import retrieve_user
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -38,7 +39,14 @@ async def retrieve_submissions():
     try:
         submissions = []
         async for submission in submission_collection.find():
-            submissions.append(submission_helper(submission))
+            user_info = await retrieve_user(submission["user_id"])
+            return_dict = {
+                "username": user_info["username"],
+                "email": user_info["email"],
+                "avatar": user_info["avatar"],
+                **submission_helper(submission)
+            }
+            submissions.append(return_dict)
         return submissions
     except Exception as e:
         logger.error(f"Error when retrieve submissions: {e}")
@@ -47,7 +55,14 @@ async def retrieve_submissions():
 async def retrieve_submission(id: str):
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
-        return submission_helper(submission)
+        user_info = await retrieve_user(submission["user_id"])
+        return_dict = {
+                "username": user_info["username"],
+                "email": user_info["email"],
+                "avatar": user_info["avatar"],
+                **submission_helper(submission)
+            }
+        return return_dict
     except Exception as e:
         logger.error(f"Error when retrieve submission: {e}")
 
