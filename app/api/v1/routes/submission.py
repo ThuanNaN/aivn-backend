@@ -1,5 +1,4 @@
-from pprint import pprint
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.schemas.submission import (
     SubmissionSchema,
     ResponseModel,
@@ -10,8 +9,10 @@ from app.api.v1.controllers.submission import (
     run_testcases,
     add_submission,
     retrieve_submissions,
-    retrieve_submission
+    retrieve_submission,
+    retrieve_submission_by_user
 )
+from app.core.security import is_authenticated
 from app.utils.logger import Logger
 
 
@@ -92,9 +93,22 @@ async def get_submissions():
                          message="No submissions exist.",
                          code=404)
 
+
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
     submission = await retrieve_submission(id)
+    if submission:
+        return ResponseModel(data=submission,
+                             message="Submission retrieved successfully.",
+                             code=200)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Submission was not retrieved.",
+                              code=404)
+
+
+@router.get("/my-submission", description="Retrieve a submission by user ID")
+async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
+    submission = await retrieve_submission_by_user(user_id)
     if submission:
         return ResponseModel(data=submission,
                              message="Submission retrieved successfully.",
