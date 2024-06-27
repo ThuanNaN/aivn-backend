@@ -11,8 +11,7 @@ class ProblemSubmission(BaseModel):
 class SubmissionSchema(BaseModel):
     user_id: str
     problems: List[ProblemSubmission]
-    created_at: datetime = datetime.now().isoformat()
-
+    created_at: datetime = datetime.now()
 
 class ResponseModel(BaseModel):
     data: Union[list, dict]

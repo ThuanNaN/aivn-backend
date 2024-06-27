@@ -17,8 +17,8 @@ class ProblemSchema(BaseModel):
     code_template: str
     public_testcases: List[TestCase]
     private_testcases: List[TestCase]
-    created_at: datetime = datetime.now().isoformat()
-    updated_at: datetime = datetime.now().isoformat()
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
 
 
 class UpdateProblemSchema(BaseModel):
@@ -29,7 +29,7 @@ class UpdateProblemSchema(BaseModel):
     code_template: Optional[str]
     public_testcases: Optional[List[TestCase]]
     private_testcases: Optional[List[TestCase]]
-    updated_at: datetime = datetime.now().isoformat()
+    updated_at: datetime = datetime.now()
 
 class OrderSchema(BaseModel):
     problem_id: str
