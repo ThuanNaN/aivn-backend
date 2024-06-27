@@ -72,16 +72,17 @@ async def retrieve_submission(id: str):
 async def retrieve_submission_by_user(user_id: str):
     try:
         submission = await submission_collection.find_one({"user_id": user_id})
-        user_info = await retrieve_user(submission["user_id"])
-        return_dict = {
-                "username": user_info["username"],
-                "email": user_info["email"],
-                "avatar": user_info["avatar"],
-                **submission_helper(submission)
-            }
-        return return_dict
+        if submission:
+            user_info = await retrieve_user(submission["user_id"])
+            return_dict = {
+                    "username": user_info["username"],
+                    "email": user_info["email"],
+                    "avatar": user_info["avatar"],
+                    **submission_helper(submission)
+                }
+            return return_dict
     except Exception as e:
-        logger.error(f"Error when retrieve submission by user: {e}")
+        logger.error(f"Error retrieve_submission_by_user: {e}")
 
 def run_testcases(code, testcases):
     if not testcases:
