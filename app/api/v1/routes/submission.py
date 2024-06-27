@@ -103,10 +103,10 @@ async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
     submission = await retrieve_submission_by_user(user_id)
     if submission:
         return ResponseModel(data=submission,
-                             message="Submission retrieved successfully.",
+                             message="Your submission retrieved successfully.",
                              code=200)
     return ErrorResponseModel(error="An error occurred.",
-                              message="Submission was not retrieved.",
+                              message="Your submission was not retrieved.",
                               code=404)
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
