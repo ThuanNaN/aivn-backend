@@ -69,7 +69,7 @@ async def add_user(user_data: dict) -> dict:
 
 
 # Retrieve all users
-async def retrieve_users():
+async def retrieve_users() -> list[dict]:
     try:
         users = []
         async for user in user_collection.find():
