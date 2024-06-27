@@ -1,7 +1,7 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
-
+from app.api.v1.controllers.user import retrieve_user
 
 SECRET_KEY = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvZrZXYBd+sjK1wQ3t2yH
@@ -40,3 +40,20 @@ async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
     except jwt.ExpiredSignatureError:
         raise token_exception
 
+async def is_admin(clerk_user_id: str = Depends(is_authenticated)):
+    user = await retrieve_user(clerk_user_id)
+    if user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have enough permissions",
+        )
+    return user
+
+async def is_aio(clerk_user_id: str = Depends(is_authenticated)):
+    user = await retrieve_user(clerk_user_id)
+    if user["role"] not in ["admin", "aio"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have enough permissions",
+        )
+    return user
