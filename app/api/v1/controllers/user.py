@@ -30,8 +30,12 @@ def user_helper(user) -> dict:
     }
 
 def clerk_user_helper(user) -> dict:
+    email = user["email_addresses"][0]["email_address"]
     if user["username"] is None:
-        username = user["first_name"] + " " + user["last_name"]
+        if user["first_name"] is not None and user["last_name"] is not None:
+            username = user["first_name"] + " " + user["last_name"]
+        else:
+            username = email.split("@")[0]
     else:
         username = user["username"]
 
@@ -47,7 +51,7 @@ def clerk_user_helper(user) -> dict:
         "first_name": user["first_name"],
         "last_name": user["last_name"],
         "avatar": image_url,
-        "email": user["email_addresses"][0]["email_address"],
+        "email": email
     }
 
 def whitelist_helper(user) -> dict:
@@ -128,6 +132,7 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         response = requests.get(CLERK_URL, headers=headers, timeout=10)
         response.raise_for_status()
         user_data = response.json()
+
         return clerk_user_helper(user_data)
 
     except HTTPError as http_err:
@@ -135,7 +140,7 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
     except Timeout as timeout_err:
         logger.error(f"Request timeout: {timeout_err}")
     except Exception as e:
-        logger.error(f"Error when retrieve user: {e}")
+        logger.error(f"Error when retrieve user clerk: {e}")
 
 
 async def add_whitelist(whitelist_data: dict) -> dict:
