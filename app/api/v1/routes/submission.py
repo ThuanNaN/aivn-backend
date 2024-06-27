@@ -98,9 +98,9 @@ async def get_submissions():
                          code=404)
 
 
-@router.get("/{id}", description="Retrieve a submission with a matching ID")
-async def get_submission(id: str):
-    submission = await retrieve_submission(id)
+@router.get("/my-submission", description="Retrieve a submission by user ID")
+async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
+    submission = await retrieve_submission_by_user(user_id)
     if submission:
         return ResponseModel(data=submission,
                              message="Submission retrieved successfully.",
@@ -109,10 +109,9 @@ async def get_submission(id: str):
                               message="Submission was not retrieved.",
                               code=404)
 
-
-@router.get("/my-submission", description="Retrieve a submission by user ID")
-async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
-    submission = await retrieve_submission_by_user(user_id)
+@router.get("/{id}", description="Retrieve a submission with a matching ID")
+async def get_submission(id: str):
+    submission = await retrieve_submission(id)
     if submission:
         return ResponseModel(data=submission,
                              message="Submission retrieved successfully.",
