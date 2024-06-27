@@ -1,6 +1,6 @@
 from typing import List
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends
 from app.api.v1.controllers.problem import (
     add_problem,
     retrieve_problems,
@@ -15,12 +15,16 @@ from app.schemas.problem import (
     ResponseModel,
     ErrorResponseModel
 )
+from app.core.security import is_admin
 
 router = APIRouter()
 logger = Logger("routes/problem", log_file="problem.log")
 
 
-@router.post("/problem", description="Add a new problem")
+@router.post("/problem",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add a new problem")
 async def create_problem(problem: ProblemSchema):
     problem_dict = problem.model_dump()
     new_problem = await add_problem(problem_dict)
@@ -29,7 +33,8 @@ async def create_problem(problem: ProblemSchema):
                          code=200)
 
 
-@router.get("/problems", description="Retrieve all problems")
+@router.get("/problems",
+            description="Retrieve all problems")
 async def get_problems():
     problems = await retrieve_problems()
     if problems:
@@ -41,7 +46,8 @@ async def get_problems():
                          code=404)
 
 
-@router.get("/problem/{id}", description="Retrieve a problem with a matching ID")
+@router.get("/problem/{id}",
+            description="Retrieve a problem with a matching ID")
 async def get_problem(id: str):
     problem = await retrieve_problem(id)
     if problem:
@@ -53,7 +59,10 @@ async def get_problem(id: str):
                               code=404)
 
 
-@router.patch("/problem/{id}", description="Update a problem with a matching ID")
+@router.patch("/problem/{id}",
+              dependencies=[Depends(is_admin)],
+              tags=["Admin"],
+              description="Update a problem with a matching ID")
 async def update_problem_data(id: str, data: UpdateProblemSchema = Body(...)):
     updated = await update_problem(id, data.model_dump())
     if updated:
@@ -65,7 +74,10 @@ async def update_problem_data(id: str, data: UpdateProblemSchema = Body(...)):
                               code=404)
 
 
-@router.delete("/problem/{id}", description="Delete a problem with a matching ID")
+@router.delete("/problem/{id}",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
+               description="Delete a problem with a matching ID")
 async def delete_problem_data(id: str):
     deleted = await delete_problem(id)
     if deleted:
@@ -77,7 +89,10 @@ async def delete_problem_data(id: str):
                               code=404)
 
 
-@router.put("/order-problem", description="Order all problems by date created")
+@router.put("/order-problem",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Order all problems by date created")
 async def order_problems(orders: List[OrderSchema]):
     for order in orders:
         problem_data = await retrieve_problem(order.problem_id)

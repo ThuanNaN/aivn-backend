@@ -1,6 +1,9 @@
 from app.utils.logger import Logger
 from fastapi import APIRouter, Body, Depends
-from app.core.security import is_authenticated
+from app.core.security import (
+    is_authenticated,
+    is_admin
+)
 from app.api.v1.controllers.user import (
     add_user,
     retrieve_users,
@@ -24,14 +27,20 @@ router = APIRouter()
 logger = Logger("routes/user", log_file="user.log")
 
 
-@router.post("/user", description="Add a new user")
+@router.post("/user",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add a new user")
 async def create_user(user: UserSchema):
     user_dict = user.model_dump()
     new_user = await add_user(user_dict)
     return new_user
 
 
-@router.get("/users", description="Retrieve all users")
+@router.get("/users",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Retrieve all users")
 async def get_users():
     users = await retrieve_users()
     if users:
@@ -43,7 +52,8 @@ async def get_users():
                          code=404)
 
 
-@router.get("/user/{clerk_user_id}", description="Retrieve a user with a matching ID")
+@router.get("/user/{clerk_user_id}",
+            description="Retrieve a user with a matching ID")
 async def get_user(clerk_user_id: str):
     user = await retrieve_user(clerk_user_id)
     if user:
@@ -55,7 +65,10 @@ async def get_user(clerk_user_id: str):
                               code=404)
 
 
-@router.patch("/user/{clerk_user_id}", description="Update a user with a matching ID")
+@router.patch("/user/{clerk_user_id}",
+              dependencies=[Depends(is_admin)],
+              tags=["Admin"],
+              description="Update a user with a matching ID")
 async def update_user_data(clerk_user_id: str, data: UpdateUserInfoSchema = Body(...)):
     updated = await update_user(clerk_user_id, data.model_dump())
     if updated:
@@ -79,13 +92,19 @@ async def get_me(clerk_user_id: str = Depends(is_authenticated)):
                               code=404)
 
 
-@router.post("/whitelist", description="Add an email to whitelist")
+@router.post("/whitelist",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add an email to whitelist")
 async def add_email_to_whitelist(whitelist_data: WhiteListSchema):
     whitelist = await add_whitelist(whitelist_data.model_dump())
     return whitelist
 
 
-@router.get("/whitelists", description="Retrieve all whitelists")
+@router.get("/whitelists",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Retrieve all whitelists")
 async def get_whitelists():
     whitelists = await retrieve_whitelists()
     if whitelists:
@@ -106,11 +125,11 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         return ErrorResponseModel(error="An error occurred.",
                                   message="User was not retrieved from Clerk.",
                                   code=404)
-    
-    role = "user" # default role
+
+    role = "user"  # default role
     is_whitelist = await check_whitelist(clerk_user_data["email"])
 
-    if is_exist_user: # logged before
+    if is_exist_user:  # logged before
         if is_whitelist:
             # Update role to aio
             role = "aio"
@@ -118,7 +137,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 username=clerk_user_data["username"],
                 avatar=clerk_user_data["avatar"],
                 role=role)
-        else: # -> [user, admin]
+        else:  # -> [user, admin]
             update_data = UpdateUserInfoSchema(
                 username=clerk_user_data["username"],
                 avatar=clerk_user_data["avatar"])

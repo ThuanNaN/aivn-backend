@@ -12,7 +12,7 @@ from app.api.v1.controllers.submission import (
     retrieve_submission,
     retrieve_submission_by_user
 )
-from app.core.security import is_authenticated
+from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
 
 
@@ -20,7 +20,8 @@ router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
 
 
-@router.post("/submit", description="Submit code to a test")
+@router.post("/submit", 
+             description="Submit code to a test")
 async def submit_code(submission_data: SubmissionSchema):
     submission_dict = submission_data.model_dump()
     problems_submited = submission_dict["problems"]
@@ -82,7 +83,10 @@ async def submit_code(submission_data: SubmissionSchema):
         )
 
 
-@router.get("/submissions", description="Get all submissions")
+@router.get("/submissions", 
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Get all submissions")
 async def get_submissions():
     submissions = await retrieve_submissions()
     if submissions:
