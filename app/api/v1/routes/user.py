@@ -12,7 +12,8 @@ from app.api.v1.controllers.user import (
     update_user,
     add_whitelist,
     retrieve_whitelists,
-    check_whitelist
+    check_whitelist_via_email,
+    check_whitelist_via_id
 )
 from app.schemas.user import (
     UserSchema,
@@ -118,47 +119,62 @@ async def get_whitelists():
 
 @router.post("/upsert", description="Update a user with Clerk data")
 async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
-    clerk_user_data = await retrieve_user_clerk(clerk_user_id)
+    ROLE = "user"  # default role
 
-    is_exist_user = await retrieve_user(clerk_user_id)
-    if not clerk_user_data:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User was not retrieved from Clerk.",
-                                  code=404)
+    # check if user exist in DB
+    is_exist_user = await retrieve_user(clerk_user_id)  # -> user_data
 
-    role = "user"  # default role
-    is_whitelist = await check_whitelist(clerk_user_data["email"])
+    if is_exist_user:  # logged in before
+        CURRENT_ROLE = is_exist_user["role"]
+        is_whitelist = await check_whitelist_via_id(clerk_user_id)
+        if is_whitelist and CURRENT_ROLE != "aio":
+            NEW_ROLE = "aio"
+            update_role_data = UpdateUserRoleSchema(role=NEW_ROLE)
+            updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
+            if updated_role:
+                return ResponseModel(data=[],
+                                     message="User updated successfully.",
+                                     code=200)
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="User role was not updated.",
+                                      code=404)
+        # no update role
+        # just update username and avatar
 
-    if is_exist_user:  # logged before
-        if is_whitelist:
-            # Update role to aio
-            role = "aio"
-            update_data = UpdateUserRoleSchema(
-                username=clerk_user_data["username"],
-                avatar=clerk_user_data["avatar"],
-                role=role)
-        else:  # -> [user, admin]
-            update_data = UpdateUserInfoSchema(
-                username=clerk_user_data["username"],
-                avatar=clerk_user_data["avatar"])
+        # clerk_user_data = await retrieve_user_clerk(clerk_user_id)
+        # if not clerk_user_data:
+        #     return ErrorResponseModel(error="An error occurred.",
+        #                               message="User was not retrieved from Clerk.",
+        #                               code=404)
+        # update_info_data = UpdateUserInfoSchema(
+        #     username=clerk_user_data["username"],
+        #     avatar=clerk_user_data["avatar"])
 
-        updated = await update_user(clerk_user_id, update_data.model_dump())
-        if updated:
-            return ResponseModel(data=[],
-                                 message="User updated successfully.",
-                                 code=200)
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User was not updated.",
-                                  code=404)
+        # updated_info_data = await update_user(clerk_user_id, update_info_data.model_dump())
+        # if updated_info_data:
+        #     return ResponseModel(data=[],
+        #                          message="User updated successfully.",
+        #                          code=200)
+        # return ErrorResponseModel(error="An error occurred.",
+        #                           message="User info was not updated.",
+        #                           code=404)
+        
+    # first time -> create new user in DB
     else:
+        clerk_user_data = await retrieve_user_clerk(clerk_user_id)
+        if not clerk_user_data:
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="User was not retrieved from Clerk.",
+                                      code=404)
+        is_whitelist = await check_whitelist_via_email(clerk_user_data["email"])
         if is_whitelist:
-            role = "aio"
+            ROLE = "aio"
         # Create a new user
         new_user_data = UserSchema(
             clerk_user_id=clerk_user_id,
             email=clerk_user_data["email"],
             username=clerk_user_data["username"],
-            role=role,
+            role=ROLE,
             avatar=clerk_user_data["avatar"]
         )
         new_user = await add_user(new_user_data.model_dump())

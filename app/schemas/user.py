@@ -19,8 +19,9 @@ class UpdateUserInfoSchema(BaseModel):
     updated_at: datetime = datetime.now()
 
 
-class UpdateUserRoleSchema(UpdateUserInfoSchema):
+class UpdateUserRoleSchema(BaseModel):
     role: Optional[str]
+    updated_at: datetime = datetime.now()
 
 
 class WhiteListSchema(BaseModel):

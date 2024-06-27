@@ -58,8 +58,10 @@ def whitelist_helper(user) -> dict:
     }
 
 
-# Create a new user
 async def add_user(user_data: dict) -> dict:
+    """
+    Create a new user
+    """
     try:
         user = await user_collection.insert_one(user_data)
         new_user = await user_collection.find_one({"_id": user.inserted_id})
@@ -68,8 +70,10 @@ async def add_user(user_data: dict) -> dict:
         logger.error(f"Error when add user: {e}")
 
 
-# Retrieve all users
 async def retrieve_users() -> list[dict]:
+    """
+    Retrieve all users in database
+    """
     try:
         users = []
         async for user in user_collection.find():
@@ -79,8 +83,10 @@ async def retrieve_users() -> list[dict]:
         logger.error(f"Error when retrieve users: {e}")
 
 
-# Retrieve a user with a matching ID
 async def retrieve_user(clerk_user_id: str) -> dict:
+    """
+    Retrieve a user with a matching ID
+    """
     try:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if user:
@@ -89,8 +95,10 @@ async def retrieve_user(clerk_user_id: str) -> dict:
         logger.error(f"Error when retrieve user: {e}")
 
 
-# Update a user with a matching ID
 async def update_user(clerk_user_id: str, data: dict):
+    """
+    Update a user with a matching ID
+    """
     try:
         if len(data) < 1:
             return False
@@ -106,8 +114,10 @@ async def update_user(clerk_user_id: str, data: dict):
         logger.error(f"Error when update user: {e}")
 
 
-# Retrieve a user data from Clerk
 async def retrieve_user_clerk(clerk_user_id: str) -> dict:
+    """
+    Retrieve a user data from Clerk
+    """
     try:
         CLERK_URL = f"https://api.clerk.com/v1/users/{clerk_user_id}"
         CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
@@ -128,9 +138,10 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         logger.error(f"Error when retrieve user: {e}")
 
 
-
-# Create a new whitelist
 async def add_whitelist(whitelist_data: dict) -> dict:
+    """
+    Create a new whitelist
+    """
     try:
         whitelist = await whitelist_collection.insert_one(whitelist_data)
         new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
@@ -139,8 +150,10 @@ async def add_whitelist(whitelist_data: dict) -> dict:
         logger.error(f"Error when add whitelist: {e}")
 
 
-# Retrieve all whitelists
-async def retrieve_whitelists():
+async def retrieve_whitelists() -> list[dict]:
+    """
+    Retrieve all whitelists in database
+    """
     try:
         whitelists = []
         async for whitelist in whitelist_collection.find():
@@ -150,11 +163,31 @@ async def retrieve_whitelists():
         logger.error(f"Error when retrieve whitelists: {e}")
 
 
-# Check an email is in whitelist
-async def check_whitelist(email: str) -> bool:
+async def check_whitelist_via_email(email: str) -> bool:
+    """
+    Check an email is in whitelist by email 
+    """
     try:
         whitelist = await whitelist_collection.find_one({"email": email})
         if whitelist:
             return True
+    except Exception as e:
+        logger.error(f"Error when check whitelist: {e}")
+
+
+async def check_whitelist_via_id(clerk_user_id: str) -> bool:
+    """
+    Check an email is in whitelist by clerk_user_id
+
+    Only use for user who has been logged in before -> exist in users collection
+    """
+    try:
+        user_data = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        if user_data:
+            email = user_data["email"]
+            whitelist = await whitelist_collection.find_one({"email": email})
+            if whitelist:
+                return True
+        return False
     except Exception as e:
         logger.error(f"Error when check whitelist: {e}")
