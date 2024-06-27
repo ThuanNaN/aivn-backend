@@ -43,6 +43,7 @@ async def retrieve_submissions():
             if not user_info:
                 raise Exception(f'User with ID: {submission["user_id"]} not found.')
             return_dict = {
+                "username": user_info["username"],
                 "email": user_info["email"],
                 "avatar": user_info["avatar"],
                 **submission_helper(submission)
