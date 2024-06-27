@@ -178,6 +178,10 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             avatar=clerk_user_data["avatar"]
         )
         new_user = await add_user(new_user_data.model_dump())
-        return ResponseModel(data=new_user,
-                             message="User added successfully.",
-                             code=200)
+        if new_user:
+            return ResponseModel(data=new_user,
+                                 message="User added successfully.",
+                                 code=200)
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="User was not added.",
+                                  code=404)
