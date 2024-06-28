@@ -17,7 +17,7 @@ from app.api.v1.controllers.user import (
 )
 from app.schemas.user import (
     UserSchema,
-    UpdateUserInfoSchema,
+    UpdateUserSchema,
     UpdateUserRoleSchema,
     WhiteListSchema,
     ResponseModel,
@@ -70,7 +70,7 @@ async def get_user(clerk_user_id: str):
               dependencies=[Depends(is_admin)],
               tags=["Admin"],
               description="Update a user with a matching ID")
-async def update_user_data(clerk_user_id: str, data: UpdateUserInfoSchema = Body(...)):
+async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
     updated = await update_user(clerk_user_id, data.model_dump())
     if updated:
         return ResponseModel(data=[],
