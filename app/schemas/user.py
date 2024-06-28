@@ -12,6 +12,12 @@ class UserSchema(BaseModel):
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
 
+class UpdateUserSchema(BaseModel):
+    username: Optional[str]
+    avatar: Optional[str]
+    role: Optional[str]
+    updated_at: datetime = datetime.now()
+
 
 class UpdateUserInfoSchema(BaseModel):
     username: Optional[str]
