@@ -20,12 +20,19 @@ def problem_helper(problem) -> dict:
         "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
+        "choices": problem["choices"],
         "created_at": str( problem["created_at"]),
         "updated_at": str(problem["updated_at"])
     }
 
-# Create a new problem
 async def add_problem(problem_data: dict) -> dict:
+    """
+    Add a new problem to the database
+    Args:
+        problem_data (dict): problem data
+    Returns:
+        dict: problem data
+    """
     try:
         problem = await problem_collection.insert_one(problem_data)
         new_problem = await problem_collection.find_one({"_id": problem.inserted_id})
@@ -34,8 +41,12 @@ async def add_problem(problem_data: dict) -> dict:
         logger.error(f"Error when add problem: {e}")
 
 
-# Retrieve all problems
 async def retrieve_problems():
+    """
+    Retrieve all problems from the database
+    Returns:
+        list: list of problems
+    """
     try:
         problems = []
         async for problem in problem_collection.find():
@@ -45,8 +56,14 @@ async def retrieve_problems():
         logger.error(f"Error when retrieve problems: {e}")
 
 
-# Retrieve a problem with a matching ID
 async def retrieve_problem(id: str) -> dict:
+    """
+    Retrieve a problem with a matching ID
+    Args:
+        id (str): problem ID
+    Returns:
+        dict: problem data
+    """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if problem:
@@ -55,8 +72,15 @@ async def retrieve_problem(id: str) -> dict:
         logger.error(f"Error when retrieve problem: {e}")
 
 
-# Update a problem with a matching ID
 async def update_problem(id: str, data: dict):
+    """
+    Update a problem with a matching ID
+    Args:
+        id (str): problem ID
+        data (dict): problem data to update
+    Returns:
+        bool: True if update success, False if not
+    """
     try:
         if len(data) < 1:
             return False
@@ -72,8 +96,14 @@ async def update_problem(id: str, data: dict):
         logger.error(f"Error when update problem: {e}")
 
 
-# Delete a problem from the database
 async def delete_problem(id: str):
+    """
+    Delete a problem with a matching ID
+    Args:
+        id (str): problem ID
+    Returns:
+        bool: True if delete success, False if not
+    """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if problem:
