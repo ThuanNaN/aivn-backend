@@ -5,14 +5,14 @@ from uuid import UUID, uuid4
 
 class TestCase(BaseModel):
     testcase_id: UUID = Field(default_factory=uuid4)
-    input: str
-    expected_output: str
+    input: str | None
+    expected_output: str | None
 
 
 class Choice(BaseModel):
     choice_id: UUID = Field(default_factory=uuid4)
-    answer: str
-    is_correct: bool
+    answer: str | None
+    is_correct: bool | None
 
 
 class ProblemSchema(BaseModel):
@@ -22,13 +22,13 @@ class ProblemSchema(BaseModel):
     slug: str
     
     # >>> code problems
-    code_template: str = None
-    public_testcases: List[TestCase] = None
-    private_testcases: List[TestCase] = None
+    code_template: str | None
+    public_testcases: List[TestCase] | None = None
+    private_testcases:  List[TestCase] | None = None
     # >>> code problems
 
     # >>> choice problems
-    choices: List[Choice] = None
+    choices: List[Choice] | None = None
     # >>> choice problems
 
     created_at: datetime = datetime.now()
