@@ -23,8 +23,9 @@ class ProblemSubmissionDB(BaseModel):
     submitted_choice: str = None
     title: str
     description: str
-    public_testcases: list
-    private_testcases: list
+    public_testcases_results: list
+    private_testcases_results: list
+    choice_results: list
     is_pass_problem: bool
 
 class SubmissionDBSchema(BaseModel):

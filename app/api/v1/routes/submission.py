@@ -62,6 +62,7 @@ async def submit_code(submission_data: SubmissionSchema):
                                       code=404)
         
         public_results, private_results = None, None
+        choice_results = None
 
         if submitted_code is not None:
             public_testcases = problem_info.get("public_testcases", []) 
@@ -80,10 +81,7 @@ async def submit_code(submission_data: SubmissionSchema):
 
         if submitted_choice is not None:
             choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
-
             true_answers_id = [str(choice["choice_id"]) for choice in problem_info["choices"] if choice["is_correct"]]
-            logger.info(f"true_answers_id: {true_answers_id}")
-            logger.info(f"choice_answers: {choice_answers}")
 
             if len(choice_answers) != len(true_answers_id):
                 is_pass_problem = False
@@ -100,6 +98,7 @@ async def submit_code(submission_data: SubmissionSchema):
                 "description": problem_info["description"],
                 "public_testcases_results": public_results,
                 "private_testcases_results": private_results,
+                "choice_results": problem_info["choices"],
                 "is_pass_problem": is_pass_problem
             }
         )
