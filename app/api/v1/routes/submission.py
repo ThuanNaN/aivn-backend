@@ -60,6 +60,8 @@ async def submit_code(submission_data: SubmissionSchema):
             return ErrorResponseModel(error="An error occurred when retrieving problem.",
                                       message="Problem not found.",
                                       code=404)
+        
+        public_results, private_results = None, None
 
         if submitted_code is not None:
             public_testcases = problem_info.get("public_testcases", []) 
@@ -79,7 +81,7 @@ async def submit_code(submission_data: SubmissionSchema):
         if submitted_choice is not None:
             choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
 
-            true_answers_id = [choice["choice_id"] for choice in problem_info["choices"] if choice["is_correct"]]
+            true_answers_id = [str(choice["choice_id"]) for choice in problem_info["choices"] if choice["is_correct"]]
             logger.info(f"true_answers_id: {true_answers_id}")
             logger.info(f"choice_answers: {choice_answers}")
 
