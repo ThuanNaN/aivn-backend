@@ -1,7 +1,20 @@
-from typing import List, Dict, Union
+from typing import List, Dict
 from app.utils.logger import Logger
 
 logger = Logger("controllers/run_code", log_file="run_code.log")
+
+
+def remove_import_lines(code: str, 
+                        key_word: List[str] = ["os", "sys", "import"]
+                        ) -> str:
+    lines = code.split('\n')
+    result_lines = []
+
+    for line in lines:
+        if not any(keyword in line for keyword in key_word):
+            result_lines.append(line)
+    
+    return '\n'.join(result_lines)
 
 
 def text2var(str_input: str) -> dict:
@@ -54,6 +67,7 @@ def test_py_funct(py_func: str,
                   return_testcase: bool = False,
                   run_all: bool = False
                   ) -> dict:
+    py_func = remove_import_lines(py_func)
     test_info = {
         "testcase_outputs": [],
         "error": None
