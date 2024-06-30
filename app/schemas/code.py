@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 from pydantic import BaseModel
 
 
@@ -10,12 +10,12 @@ class CodeSchema(BaseModel):
 class TestcaseResult(BaseModel):
     testcase_id: str
     input: dict
-    output: Union[list, set, dict, str, int, float, bool, None]
+    output: list | set | dict | str | int | float | bool | None
     is_pass: bool
-    error: Union[str, None]
+    error: str | None
 
 class PublicTestcaseResult(TestcaseResult):
-    expected_output: Union[list, set, dict, str, int, float, bool, None]
+    expected_output: list | set | dict | str | int | float | bool | None
 
 
 class TestedSchema(BaseModel):

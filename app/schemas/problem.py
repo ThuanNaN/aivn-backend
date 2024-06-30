@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
@@ -53,7 +53,7 @@ class OrderSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: Union[dict, List[dict]]
+    data: List[dict] | dict
     message: str
     code: int
 

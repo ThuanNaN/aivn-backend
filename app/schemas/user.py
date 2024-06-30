@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -36,7 +36,7 @@ class WhiteListSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: Union[list, dict]
+    data: list | dict
     message: str
     code: int
 

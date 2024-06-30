@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import List, Union
+from typing import List
 from pydantic import BaseModel
 
 ## >> Input schemas
 class ProblemSubmission(BaseModel):
     problem_id: str
-    submitted_code: str = None
-    submitted_choice: str = None
+    submitted_code: str | None = None
+    submitted_choice: str | None = None
 
 
 class SubmissionSchema(BaseModel):
@@ -19,13 +19,13 @@ class SubmissionSchema(BaseModel):
 ## >> Database schemas
 class ProblemSubmissionDB(BaseModel):
     problem_id: str
-    submitted_code: str = None
-    submitted_choice: str = None
+    submitted_code: str | None = None
+    submitted_choice: str | None = None
     title: str
     description: str
-    public_testcases_results: list
-    private_testcases_results: list
-    choice_results: list
+    public_testcases_results: list | None = None
+    private_testcases_results: list | None = None
+    choice_results: list | None = None
     is_pass_problem: bool
 
 class SubmissionDBSchema(BaseModel):
@@ -36,7 +36,7 @@ class SubmissionDBSchema(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    data: Union[list, dict]
+    data: list | dict
     message: str
     code: int
 
