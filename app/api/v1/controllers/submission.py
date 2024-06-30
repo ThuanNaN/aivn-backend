@@ -22,13 +22,14 @@ def submission_helper(submission) -> dict:
         "created_at": str(submission["created_at"]),
     }
 
+
 # Create a new submission
-
-
 async def add_submission(submission_data: dict):
     try:
         submission = await submission_collection.insert_one(submission_data)
-        new_submission = await submission_collection.find_one({"_id": submission.inserted_id})
+        new_submission = await submission_collection.find_one(
+            {"_id": submission.inserted_id}
+        )
         return submission_helper(new_submission)
     except Exception as e:
         logger.error(f"Error when add submission: {e}")
@@ -83,6 +84,7 @@ async def retrieve_submission_by_user(user_id: str):
             return return_dict
     except Exception as e:
         logger.error(f"Error retrieve_submission_by_user: {e}")
+
 
 def run_testcases(code, testcases):
     if not testcases:

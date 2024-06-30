@@ -24,39 +24,78 @@ logger = Logger("routes/submission", log_file="submission.log")
              description="Submit code to a test")
 async def submit_code(submission_data: SubmissionSchema):
     submission_dict = submission_data.model_dump()
-    problems_submited = submission_dict["problems"]
+    
+    submitted_problems = submission_dict["problems"]
 
     problem_results = []
     total_score = 0
 
-    for problem in problems_submited:
-        problem_id = problem["problem_id"]
-        submited_code = problem["submited_code"]
+    for submitted in submitted_problems:
+        # problem ==> {
+        #   "problem_id":
+        #   "submited_code":
+        #   "submited_choice":
+        # }
+
+        problem_id = submitted["problem_id"]
+        submitted_code = submitted["submitted_code"] # def test_py_funct(): return 1
+        submitted_choice = submitted["submitted_choice"] # id_1,id_2
 
         problem_info = await retrieve_problem(problem_id)
+        # ==>  return {
+            #     "id": 
+            #     "title": 
+            #     "description":
+            #     "index": 
+            #     "code_template": 
+            #     "public_testcases":
+            #     "private_testcases": 
+            #     "choices":
+            #     "created_at": 
+            #     "updated_at":
+            # }
+
         if not problem_info:
             logger.error(f'Problem with ID {problem_id} not found.')
-            return ErrorResponseModel(error="An error occurred.",
+            return ErrorResponseModel(error="An error occurred when retrieving problem.",
                                       message="Problem not found.",
                                       code=404)
 
-        public_testcases = problem_info.get("public_testcases", [])
-        private_testcases = problem_info.get("private_testcases", [])
+        if submitted_code is not None:
+            public_testcases = problem_info.get("public_testcases", []) 
+            private_testcases = problem_info.get("private_testcases", [])
 
-        public_results, is_pass_public = run_testcases(
-            submited_code, public_testcases)
-        private_results, is_pass_private = run_testcases(
-            submited_code, private_testcases)
+            public_results, is_pass_public = run_testcases(
+                submitted_code, public_testcases)
+            
+            private_results, is_pass_private = run_testcases(
+                submitted_code, private_testcases)
+            
+            is_pass_problem = is_pass_public and is_pass_private
+            total_score += int(is_pass_problem)
 
-        is_pass_problem = is_pass_public and is_pass_private
-        total_score += int(is_pass_problem)
+
+
+        if submitted_choice is not None:
+            choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
+
+            true_aswers_id = [choice["choice_id"] for choice in problem_info["choices"] if choice["is_correct"]]
+            print("true_aswers_id: ", true_aswers_id)
+            print("choice_answers: ", choice_answers)
+
+            if len(choice_answers) != len(true_aswers_id):
+                is_pass_problem = False
+            else:
+                is_pass_problem = sorted(choice_answers) == sorted(true_aswers_id)
+            total_score += int(is_pass_problem)
 
         problem_results.append(
             {
                 "problem_id": problem_id,
+                "submited_code": submitted_code,
+                "submited_choice": submitted_choice,
                 "title": problem_info["title"],
                 "description": problem_info["description"],
-                "submited_code": submited_code,
                 "public_testcases_results": public_results,
                 "private_testcases_results": private_results,
                 "is_pass_problem": is_pass_problem
@@ -69,7 +108,7 @@ async def submit_code(submission_data: SubmissionSchema):
         return ResponseModel(
             data={
                 "total_score": total_score,
-                "total_problems": len(problems_submited)
+                "total_problems": len(submitted_problems)
             },
             message="Submission added successfully.",
             code=200)
