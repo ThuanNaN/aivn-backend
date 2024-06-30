@@ -33,8 +33,8 @@ async def submit_code(submission_data: SubmissionSchema):
     for submitted in submitted_problems:
         # problem ==> {
         #   "problem_id":
-        #   "submited_code":
-        #   "submited_choice":
+        #   "submitted_code":
+        #   "submitted_choice":
         # }
 
         problem_id = submitted["problem_id"]
@@ -79,21 +79,21 @@ async def submit_code(submission_data: SubmissionSchema):
         if submitted_choice is not None:
             choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
 
-            true_aswers_id = [choice["choice_id"] for choice in problem_info["choices"] if choice["is_correct"]]
-            print("true_aswers_id: ", true_aswers_id)
-            print("choice_answers: ", choice_answers)
+            true_answers_id = [choice["choice_id"] for choice in problem_info["choices"] if choice["is_correct"]]
+            logger.info(f"true_answers_id: {true_answers_id}")
+            logger.info(f"choice_answers: {choice_answers}")
 
-            if len(choice_answers) != len(true_aswers_id):
+            if len(choice_answers) != len(true_answers_id):
                 is_pass_problem = False
             else:
-                is_pass_problem = sorted(choice_answers) == sorted(true_aswers_id)
+                is_pass_problem = sorted(choice_answers) == sorted(true_answers_id)
             total_score += int(is_pass_problem)
 
         problem_results.append(
             {
                 "problem_id": problem_id,
-                "submited_code": submitted_code,
-                "submited_choice": submitted_choice,
+                "submitted_code": submitted_code,
+                "submitted_choice": submitted_choice,
                 "title": problem_info["title"],
                 "description": problem_info["description"],
                 "public_testcases_results": public_results,
