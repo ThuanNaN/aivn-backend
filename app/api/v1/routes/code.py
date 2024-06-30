@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from app.schemas.code import CodeSchema, ResponseModel, ErrorResponseModel
 from app.api.v1.controllers.problem import retrieve_problem
 from app.api.v1.controllers.run_code import test_py_funct

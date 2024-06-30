@@ -15,8 +15,6 @@ except Exception as e:
     exit(1)
 
 # helper
-
-
 def user_helper(user) -> dict:
     return {
         "id": str(user["_id"]),

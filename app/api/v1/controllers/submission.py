@@ -56,6 +56,13 @@ async def retrieve_submissions():
 
 
 async def retrieve_submission(id: str):
+    """
+    Retrieve a submission with a matching ID
+    Args: 
+        id: str
+    Return:
+        dict
+    """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         user_info = await retrieve_user(submission["user_id"])
