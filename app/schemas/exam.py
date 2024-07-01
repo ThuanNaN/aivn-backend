@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class DoExamSchema(BaseModel):
-    start_time: datetime = datetime.now()
+    start_time: str = datetime.now().isoformat()
 
 class DoExamDBSchema(DoExamSchema):
     user_id: str
