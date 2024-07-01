@@ -21,37 +21,33 @@ async def run_code(code_inputs: CodeSchema):
     public_testcases = problem_info.get("public_testcases", [])
     private_testcases = problem_info.get("private_testcases", [])
 
-    def run_testcases(admin_template: str, code: str, testcases, return_testcase):
+    async def run_testcases(admin_template: str, code: str, testcases, return_testcase):
         if not testcases:
-            return []
-        results_dict = test_py_funct(admin_template=admin_template,
-                                     py_func=code, 
-                                     testcases=testcases, 
-                                     return_testcase=return_testcase)
+            return [], None
+        results_dict = await test_py_funct(admin_template=admin_template,
+                                           py_func=code,
+                                           testcases=testcases,
+                                           return_testcase=return_testcase,
+                                           run_all=True)
         result = results_dict["testcase_outputs"]
         error = results_dict["error"]
         return result, error
 
-    public_results, public_error = run_testcases(admin_template, 
-                                   code_inputs.code, 
-                                   public_testcases, 
-                                   True)
+    public_results, public_error = await run_testcases(admin_template,
+                                                       code_inputs.code,
+                                                       public_testcases,
+                                                       True)
 
-    private_results, private_error = run_testcases(admin_template,
-                                    code_inputs.code, 
-                                    private_testcases, 
-                                    False)
-    if public_error:
-        final_error = public_error
-    elif private_error:
-        final_error = private_error
-    else:
-        final_error = None
+    private_results, private_error = await run_testcases(admin_template,
+                                                         code_inputs.code,
+                                                         private_testcases,
+                                                         False)
+
     return ResponseModel(
         data={
             "public_testcases_results": public_results,
             "private_testcases_results": private_results,
-            "error": final_error
+            "error": public_error or private_error or None
         },
         message="Code run successfully.",
         code=status.HTTP_200_OK)

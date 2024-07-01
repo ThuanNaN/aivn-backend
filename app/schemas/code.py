@@ -9,7 +9,7 @@ class CodeSchema(BaseModel):
 
 class TestcaseResult(BaseModel):
     testcase_id: str
-    input: dict
+    input: dict | str
     output: list | set | dict | str | int | float | bool | None
     is_pass: bool
     error: str | None
