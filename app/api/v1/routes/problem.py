@@ -1,6 +1,6 @@
 from typing import List
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, status
 from app.api.v1.controllers.problem import (
     add_problem,
     retrieve_problems,
@@ -30,7 +30,7 @@ async def create_problem(problem: ProblemSchema):
     new_problem = await add_problem(problem_dict)
     return ResponseModel(data=new_problem,
                          message="Problem added successfully.",
-                         code=200)
+                         code=status.HTTP_200_OK)
 
 
 @router.get("/problems",
@@ -40,10 +40,10 @@ async def get_problems():
     if problems:
         return ResponseModel(data=problems,
                              message="Problems retrieved successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ResponseModel(data=[],
                          message="No problems exist.",
-                         code=404)
+                         code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/problem/{id}",
@@ -53,10 +53,10 @@ async def get_problem(id: str):
     if problem:
         return ResponseModel(data=problem,
                              message="Problem retrieved successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Problem was not retrieved.",
-                              code=404)
+                              code=status.HTTP_404_NOT_FOUND)
 
 
 @router.patch("/problem/{id}",
@@ -68,10 +68,10 @@ async def update_problem_data(id: str, data: UpdateProblemSchema = Body(...)):
     if updated:
         return ResponseModel(data=[],
                              message="Problem data updated successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Problem data was not updated.",
-                              code=404)
+                              code=status.HTTP_404_NOT_FOUND)
 
 
 @router.delete("/problem/{id}",
@@ -83,10 +83,10 @@ async def delete_problem_data(id: str):
     if deleted:
         return ResponseModel(data=[],
                              message="Problem deleted successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Problem was not deleted.",
-                              code=404)
+                              code=status.HTTP_404_NOT_FOUND)
 
 
 @router.put("/order-problem",
@@ -101,7 +101,7 @@ async def order_problems(orders: List[OrderSchema]):
         if not updated:
             return ErrorResponseModel(error="An error occurred.",
                                       message="Problem data was not updated.",
-                                      code=404)
+                                      code=status.HTTP_404_NOT_FOUND)
     return ResponseModel(data=[],
                          message="Problems ordered successfully.",
-                         code=200)
+                         code=status.HTTP_200_OK)
