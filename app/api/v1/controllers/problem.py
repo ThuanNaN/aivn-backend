@@ -18,6 +18,7 @@ def problem_helper(problem) -> dict:
         "description": problem["description"],
         "index": problem["index"],
         "code_template": problem["code_template"],
+        "admin_template": problem["admin_template"],
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],

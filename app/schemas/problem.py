@@ -23,6 +23,7 @@ class ProblemSchema(BaseModel):
     
     # >>> code problems
     code_template: str | None
+    admin_template: str | None = None
     public_testcases: List[TestCase] | None = None
     private_testcases:  List[TestCase] | None = None
     # >>> code problems
@@ -41,6 +42,7 @@ class UpdateProblemSchema(BaseModel):
     index: Optional[int]
     slug: Optional[str]
     code_template: Optional[str]
+    admin_template: Optional[str]
     public_testcases: Optional[List[TestCase]]
     private_testcases: Optional[List[TestCase]]
     choices: Optional[List[Choice]]
