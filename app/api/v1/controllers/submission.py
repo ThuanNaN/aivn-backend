@@ -24,6 +24,8 @@ def submission_helper(submission) -> dict:
     }
 
 # timer helper
+
+
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
@@ -31,6 +33,8 @@ def timer_helper(timer) -> dict:
     }
 
 # Create a new submission
+
+
 async def add_submission(submission_data: dict):
     try:
         submission = await submission_collection.insert_one(submission_data)
@@ -49,7 +53,8 @@ async def retrieve_submissions():
         async for submission in submission_collection.find():
             user_info = await retrieve_user(submission["user_id"])
             if not user_info:
-                raise Exception(f'User with ID: {submission["user_id"]} not found.')
+                raise Exception(
+                    f'User with ID: {submission["user_id"]} not found.')
             return_dict = {
                 "username": user_info["username"],
                 "email": user_info["email"],
@@ -74,11 +79,11 @@ async def retrieve_submission(id: str):
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         user_info = await retrieve_user(submission["user_id"])
         return_dict = {
-                "username": user_info["username"],
-                "email": user_info["email"],
-                "avatar": user_info["avatar"],
-                **submission_helper(submission)
-            }
+            "username": user_info["username"],
+            "email": user_info["email"],
+            "avatar": user_info["avatar"],
+            **submission_helper(submission)
+        }
         return return_dict
     except Exception as e:
         logger.error(f"Error when retrieve submission: {e}")
@@ -90,11 +95,11 @@ async def retrieve_submission_by_user(user_id: str):
         if submission:
             user_info = await retrieve_user(submission["user_id"])
             return_dict = {
-                    "username": user_info["username"],
-                    "email": user_info["email"],
-                    "avatar": user_info["avatar"],
-                    **submission_helper(submission)
-                }
+                "username": user_info["username"],
+                "email": user_info["email"],
+                "avatar": user_info["avatar"],
+                **submission_helper(submission)
+            }
             return return_dict
     except Exception as e:
         logger.error(f"Error retrieve_submission_by_user: {e}")
@@ -142,6 +147,21 @@ async def add_time_limit(time_data: dict) -> dict:
         logger.error(f"Error when add time limit: {e}")
 
 
+async def retrieve_time_limits() -> list:
+    """
+    Retrieve all time limits from the database
+    Returns:
+        list: list of time limits
+    """
+    try:
+        time_limits = []
+        async for time_limit in setting_collection.find():
+            time_limits.append(timer_helper(time_limit))
+        return time_limits
+    except Exception as e:
+        logger.error(f"Error when retrieve time limits: {e}")
+
+
 async def retrieve_time_limit(id: str) -> dict:
     """
     Retrieve a time limit from the database
@@ -152,8 +172,30 @@ async def retrieve_time_limit(id: str) -> dict:
     """
     try:
         time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
+        print(time_limit)
         if time_limit:
             return timer_helper(time_limit)
     except Exception as e:
         logger.error(f"Error when retrieve time limit: {e}")
 
+
+async def update_time_limit(id: str, data: dict) -> bool:
+    """
+    Update a time limit with a matching ID
+    Args:
+        id (str): time limit ID
+        data (dict): time limit data to update
+    Returns:
+        None
+    """
+    try:
+        time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
+        if time_limit:
+            updated = await setting_collection.update_one(
+                {"_id": ObjectId(id)}, {"$set": data}
+            )
+            if updated:
+                return True
+            return False
+    except Exception as e:
+        logger.error(f"Error when update time limit: {e}")

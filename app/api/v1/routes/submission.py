@@ -18,7 +18,9 @@ from app.api.v1.controllers.submission import (
     retrieve_submission_by_user,
 
     add_time_limit,
-    retrieve_time_limit
+    retrieve_time_limit,
+    retrieve_time_limits,
+    update_time_limit
 )
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
@@ -170,13 +172,29 @@ async def get_submission(id: str):
 @router.post("/time-limit", description="Set time limit for submission")
 async def set_time_limit(setting_data: SettingSchema):
     setting = setting_data.model_dump()
-    new_setting = await add_time_limit(setting)
-    return ResponseModel(data=new_setting,
-                         message="New time limit set successfully.",
-                         code=status.HTTP_200_OK)
+
+    time_limits = await retrieve_time_limits()
+    if len(time_limits) > 1:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Time limit more than 1.",
+                                  code=status.HTTP_400_BAD_REQUEST)
+    if time_limits:
+        time_limit_id = time_limits[0]["id"]
+        await update_time_limit(time_limit_id, setting)
+    else:
+        await add_time_limit(setting)
+
+    new_setting = await retrieve_time_limit(time_limit_id)
+    if new_setting:
+        return ResponseModel(data=new_setting,
+                            message="New time limit set successfully.",
+                            code=status.HTTP_200_OK)    
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Time limit was not set.",
+                              code=status.HTTP_404_NOT_FOUND)
 
 
-@router.get("/time-limit", description="Get time limit for submission")
+@router.get("/time-limit/{id}", description="Get time limit for submission")
 async def get_time_limit(id: str):
     setting = await retrieve_time_limit(id)
     if setting:

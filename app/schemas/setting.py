@@ -4,7 +4,7 @@ class SettingSchema(BaseModel):
     duration: int
 
 class ResponseModel(BaseModel):
-    data: dict
+    data: dict | list
     message: str
     code: int
 
