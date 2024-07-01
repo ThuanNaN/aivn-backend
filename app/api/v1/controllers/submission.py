@@ -172,7 +172,6 @@ async def retrieve_time_limit(id: str) -> dict:
     """
     try:
         time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
-        print(time_limit)
         if time_limit:
             return timer_helper(time_limit)
     except Exception as e:
