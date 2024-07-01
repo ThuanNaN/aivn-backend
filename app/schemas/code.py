@@ -21,6 +21,7 @@ class PublicTestcaseResult(TestcaseResult):
 class TestedSchema(BaseModel):
     public_testcases_results: List[PublicTestcaseResult]
     private_testcases_results: List[TestcaseResult]
+    error: str | None
 
 
 class ResponseModel(BaseModel):
