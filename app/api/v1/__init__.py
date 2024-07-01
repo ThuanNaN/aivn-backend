@@ -40,5 +40,6 @@ v1_router.include_router(submission_router,
                          tags=["Submission"])
 
 v1_router.include_router(do_exam_router,
+                         prefix="/time",
                          dependencies=[Depends(is_aio)],
                          tags=["Do Exam Timer"])
