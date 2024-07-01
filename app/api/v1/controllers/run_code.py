@@ -1,52 +1,71 @@
 from typing import List, Dict
+import numpy as np
+# import torch
 from app.utils.logger import Logger
 
 logger = Logger("controllers/run_code", log_file="run_code.log")
 
 rm_keys = ["os", "sys", "import", "cmd", "rm", "remove"]
 
-def remove_import_lines(code: str, 
+
+def remove_import_lines(code: str,
                         key_word: List[str] = rm_keys
                         ) -> str:
     lines = code.split('\n')
     result_lines = []
-
     for line in lines:
         if not any(keyword in line for keyword in key_word):
             result_lines.append(line)
-    
     return '\n'.join(result_lines)
 
+def check_input_output(input_value, output_value) -> bool:
+    if isinstance(input_value, (int, float)):
+        return input_value == output_value
+    elif isinstance(input_value, (list, tuple)):
+        return all(check_input_output(i, o) for i, o in zip(input_value, output_value))
+    elif isinstance(input_value, np.ndarray):
+        return np.array_equal(input_value, output_value)
+    # elif isinstance(input_value, torch.Tensor):
+    #     return torch.equal(input_value, output_value)
+    else:
+        raise TypeError(f"Unsupported input type: {type(input_value)}")
 
-def text2var(str_input: str) -> dict:
+
+def map_values_to_string(input_dict):
+    return {key: str(value) for key, value in input_dict.items()}
+
+
+def text2var(str_input: str, admin_locals: dict = {}) -> dict:
     locals = {}
-    globals = {}
+    globals = admin_locals
     try:
         exec(str_input, globals, locals)
     except Exception as e:
         logger.error(f"Error converting text to variable: {e}")
     return locals
 
+
 def run_testcase(admin_template: str,
-                 py_func: str, 
-                 testcase: Dict[str, str], 
+                 py_func: str,
+                 testcase: Dict[str, str],
                  return_testcase: bool
-                ) -> dict:
+                 ) -> dict:
     admin_locals = text2var(admin_template)
-    input = text2var(testcase["input"])
-    expected_output = text2var("output = "+testcase["expected_output"])["output"]
+    input = text2var(testcase["input"], admin_locals)
+    str_input = "output = " + testcase["expected_output"]
+    output_var = text2var(str_input, admin_locals)
+    expected_output = output_var["output"]
     testcase_id = str(testcase["testcase_id"])
 
     testcase_output = {
         "testcase_id": testcase_id,
-        "input": input,
+        "input": map_values_to_string(input),
         "output": None,
         "is_pass": False,
         "error": None
     }
     if return_testcase:
-        testcase_output["expected_output"] = expected_output
-
+        testcase_output["expected_output"] = testcase["expected_output"]
     try:
         locals = {}
         globals = admin_locals
@@ -60,16 +79,13 @@ def run_testcase(admin_template: str,
         testcase_output["error"] = f"{type(e).__name__}: {e}"
         return testcase_output
 
-    testcase_output["output"] = func_output
-
-    if func_output == expected_output:
-        testcase_output["is_pass"] = True
-
+    testcase_output["output"] = repr(func_output)
+    testcase_output["is_pass"] = check_input_output(func_output, expected_output)
     return testcase_output
 
 
 def test_py_funct(admin_template: str,
-                  py_func: str, 
+                  py_func: str,
                   testcases: List[Dict[str, str]],
                   return_testcase: bool = False,
                   run_all: bool = False
@@ -82,13 +98,13 @@ def test_py_funct(admin_template: str,
     testcase_outputs = []
     for testcase in testcases:
         run_output = run_testcase(admin_template,
-                                  py_func, 
-                                  testcase, 
+                                  py_func,
+                                  testcase,
                                   return_testcase)
         testcase_outputs.append(run_output)
         if run_output["error"] is not None:
             test_info["error"] = run_output["error"]
             if not run_all:
-                break    
+                break
     test_info["testcase_outputs"] = testcase_outputs
     return test_info
