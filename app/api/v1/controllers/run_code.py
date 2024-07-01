@@ -18,17 +18,25 @@ def remove_import_lines(code: str,
             result_lines.append(line)
     return '\n'.join(result_lines)
 
-def check_input_output(input_value, output_value) -> bool:
-    if isinstance(input_value, (int, float)):
-        return input_value == output_value
-    elif isinstance(input_value, (list, tuple)):
-        return all(check_input_output(i, o) for i, o in zip(input_value, output_value))
-    elif isinstance(input_value, np.ndarray):
-        return np.array_equal(input_value, output_value)
+def check_output(expected_out, funct_out) -> bool:
+    if type(expected_out) != type(funct_out):
+        raise TypeError(f"Expected output type {type(expected_out)} \
+                        does not match function output type {type(funct_out)}")
+
+    if isinstance(expected_out, (int, float)):
+        return expected_out == funct_out
+    elif isinstance(expected_out, (list, tuple)):
+        return all(check_output(i, o) for i, o in zip(expected_out, funct_out))
+    elif isinstance(expected_out, np.ndarray):
+        return np.array_equal(expected_out, funct_out)
+    elif isinstance(expected_out, dict):
+        if expected_out.keys() != funct_out.keys():
+            return False
+        return all(check_output(expected_out[k], funct_out[k]) for k in expected_out)
     # elif isinstance(input_value, torch.Tensor):
     #     return torch.equal(input_value, output_value)
     else:
-        raise TypeError(f"Unsupported input type: {type(input_value)}")
+        raise TypeError(f"Unsupported input type: {type(expected_out)}")
 
 
 def map_values_to_string(input_dict):
@@ -75,12 +83,11 @@ def run_testcase(admin_template: str,
                              Only one function is allowed.")
         generated_function = next(iter(locals.values()))
         func_output = generated_function(**input)
+        testcase_output["output"] = repr(func_output)
+        testcase_output["is_pass"] = check_output(expected_output, func_output)
     except Exception as e:
         testcase_output["error"] = f"{type(e).__name__}: {e}"
-        return testcase_output
 
-    testcase_output["output"] = repr(func_output)
-    testcase_output["is_pass"] = check_input_output(func_output, expected_output)
     return testcase_output
 
 
