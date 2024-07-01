@@ -29,7 +29,7 @@ def submission_helper(submission) -> dict:
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
-        "duration": timer["duration"],
+        "duration": str(timer["duration"]),
     }
 
 # Create a new submission
