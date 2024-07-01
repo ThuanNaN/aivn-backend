@@ -3,9 +3,10 @@ from app.utils.logger import Logger
 
 logger = Logger("controllers/run_code", log_file="run_code.log")
 
+rm_keys = ["os", "sys", "import", "cmd", "rm", "remove"]
 
 def remove_import_lines(code: str, 
-                        key_word: List[str] = ["os", "sys", "import"]
+                        key_word: List[str] = rm_keys
                         ) -> str:
     lines = code.split('\n')
     result_lines = []
@@ -26,10 +27,12 @@ def text2var(str_input: str) -> dict:
         logger.error(f"Error converting text to variable: {e}")
     return locals
 
-def run_testcase(py_func: str, 
+def run_testcase(admin_template: str,
+                 py_func: str, 
                  testcase: Dict[str, str], 
                  return_testcase: bool
                 ) -> dict:
+    admin_locals = text2var(admin_template)
     input = text2var(testcase["input"])
     expected_output = text2var("output = "+testcase["expected_output"])["output"]
     testcase_id = str(testcase["testcase_id"])
@@ -46,12 +49,13 @@ def run_testcase(py_func: str,
 
     try:
         locals = {}
-        globals = {}
+        globals = admin_locals
         exec(py_func, globals, locals)
         if len(locals) > 1:
-            raise Exception("Multiple functions found in the code. Only one function is allowed.")
-        funct = next(iter(locals.values()))
-        func_output = funct(**input)
+            raise Exception("Multiple functions found in the code. \
+                             Only one function is allowed.")
+        generated_function = next(iter(locals.values()))
+        func_output = generated_function(**input)
     except Exception as e:
         testcase_output["error"] = f"{type(e).__name__}: {e}"
         return testcase_output
@@ -64,7 +68,8 @@ def run_testcase(py_func: str,
     return testcase_output
 
 
-def test_py_funct(py_func: str, 
+def test_py_funct(admin_template: str,
+                  py_func: str, 
                   testcases: List[Dict[str, str]],
                   return_testcase: bool = False,
                   run_all: bool = False
@@ -76,7 +81,10 @@ def test_py_funct(py_func: str,
     }
     testcase_outputs = []
     for testcase in testcases:
-        run_output = run_testcase(py_func, testcase, return_testcase)
+        run_output = run_testcase(admin_template,
+                                  py_func, 
+                                  testcase, 
+                                  return_testcase)
         testcase_outputs.append(run_output)
         if run_output["error"] is not None:
             test_info["error"] = run_output["error"]

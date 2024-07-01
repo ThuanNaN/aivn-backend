@@ -74,21 +74,30 @@ async def submit_code(submission_data: SubmissionSchema):
         public_results, private_results = None, None
 
         if submitted_code is not None:
+            admin_template = problem_info.get("admin_template", "")
             public_testcases = problem_info.get("public_testcases", []) 
             private_testcases = problem_info.get("private_testcases", [])
 
             public_results, is_pass_public = run_testcases(
-                submitted_code, public_testcases)
+                admin_template,
+                submitted_code, 
+                public_testcases
+            )
             
             private_results, is_pass_private = run_testcases(
-                submitted_code, private_testcases)
+                admin_template,
+                submitted_code, 
+                private_testcases
+            )
             
             is_pass_problem = is_pass_public and is_pass_private
             total_score += int(is_pass_problem)
 
         if submitted_choice is not None:
             choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
-            true_answers_id = [str(choice["choice_id"]) for choice in problem_info["choices"] if choice["is_correct"]]
+            true_answers_id = [str(choice["choice_id"]) 
+                               for choice in problem_info["choices"] 
+                               if choice["is_correct"]]
 
             if len(choice_answers) != len(true_answers_id):
                 is_pass_problem = False

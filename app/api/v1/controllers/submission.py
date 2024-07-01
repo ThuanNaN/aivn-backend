@@ -105,10 +105,11 @@ async def retrieve_submission_by_user(user_id: str):
         logger.error(f"Error retrieve_submission_by_user: {e}")
 
 
-def run_testcases(code, testcases):
+def run_testcases(admin_template: str, code: str, testcases: list):
     if not testcases:
         return [], True
-    results_dict = test_py_funct(py_func=code,
+    results_dict = test_py_funct(admin_template=admin_template,
+                                 py_func=code,
                                  testcases=testcases,
                                  return_testcase=True,
                                  run_all=True)
