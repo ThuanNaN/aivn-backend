@@ -57,6 +57,7 @@ async def submit_code(submission_data: SubmissionSchema):
             #     "description":
             #     "index": 
             #     "code_template": 
+            #     "admin_template": 
             #     "public_testcases":
             #     "private_testcases": 
             #     "choices":
@@ -169,7 +170,7 @@ async def get_submission(id: str):
 
 
 ### >>> Setting Exam
-@router.post("/time-limit", description="Set time limit for submission")
+@router.post("/time/time-limit", description="Set time limit for submission")
 async def set_time_limit(setting_data: SettingSchema):
     setting = setting_data.model_dump()
 
@@ -194,13 +195,14 @@ async def set_time_limit(setting_data: SettingSchema):
                               code=status.HTTP_404_NOT_FOUND)
 
 
-@router.get("/time-limit/{id}", description="Get time limit for submission")
-async def get_time_limit(id: str):
-    setting = await retrieve_time_limit(id)
-    if setting:
-        return ResponseModel(data=setting,
+@router.get("/time/time-limit", description="Get time limit for submission")
+async def get_time_limit():
+    setting = await retrieve_time_limits()
+    if len(setting) == 1:
+        return ResponseModel(data=setting[0],
                              message="Time limit retrieved successfully.",
                              code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Time limit was not retrieved.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if not setting:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Time limit not found.",
+                                  code=status.HTTP_404_NOT_FOUND)
