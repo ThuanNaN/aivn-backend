@@ -48,6 +48,8 @@ def run_testcase(py_func: str,
         locals = {}
         globals = {}
         exec(py_func, globals, locals)
+        if len(locals) > 1:
+            raise Exception("Multiple functions found in the code. Only one function is allowed.")
         funct = next(iter(locals.values()))
         func_output = funct(**input)
     except Exception as e:

@@ -4,6 +4,7 @@ from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.problem import router as problem_router
 from app.api.v1.routes.code import router as code_router
 from app.api.v1.routes.submission import router as submission_router
+from app.api.v1.routes.do_exam import router as do_exam_router
 from app.core.security import (
     is_authenticated,
     is_aio
@@ -11,28 +12,32 @@ from app.core.security import (
 
 v1_router = APIRouter(prefix="/v1", tags=["API v1"])
 
+
 @v1_router.get("/health")
 async def check_health():
     return {"status": "API v1 is healthy"}
 
-v1_router.include_router(build_chart_router, 
+v1_router.include_router(build_chart_router,
                          dependencies=[Depends(is_authenticated)],
                          tags=["Build Chart"])
 
-v1_router.include_router(user_router, 
+v1_router.include_router(user_router,
                          dependencies=[Depends(is_authenticated)],
                          tags=["User"])
 
-v1_router.include_router(problem_router, 
+v1_router.include_router(problem_router,
                          dependencies=[Depends(is_aio)],
                          tags=["Problem"])
 
-v1_router.include_router(code_router, 
-                         prefix="/code", 
+v1_router.include_router(code_router,
+                         prefix="/code",
                          dependencies=[Depends(is_aio)],
                          tags=["Code"])
 
-v1_router.include_router(submission_router, 
-                         prefix="/submission", 
+v1_router.include_router(submission_router,
+                         prefix="/submission",
                          dependencies=[Depends(is_aio)],
                          tags=["Submission"])
+v1_router.include_router(do_exam_router,
+                         dependencies=[Depends(is_authenticated)],
+                         tags=["Do Exam Timer"])
