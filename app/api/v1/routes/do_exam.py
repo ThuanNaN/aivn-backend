@@ -18,7 +18,6 @@ logger = Logger("routes/do_exam", log_file="do_exam.log")
 
 @router.post("/timer",
              dependencies=[Depends(is_authenticated)],
-             tags=["Timer"],
              description="Add a new timer")
 async def create_timer(timer: DoExamSchema):
     timer_dict = timer.model_dump()

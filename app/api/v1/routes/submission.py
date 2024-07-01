@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from app.schemas.submission import (
     SubmissionSchema,
+    ResponseModel,
+    ErrorResponseModel
+)
+from app.schemas.setting import (
+    SettingSchema,
     ResponseModel,
     ErrorResponseModel
 )
@@ -10,11 +15,13 @@ from app.api.v1.controllers.submission import (
     add_submission,
     retrieve_submissions,
     retrieve_submission,
-    retrieve_submission_by_user
+    retrieve_submission_by_user,
+
+    add_time_limit,
+    retrieve_time_limit
 )
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
-
 
 router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
@@ -59,10 +66,9 @@ async def submit_code(submission_data: SubmissionSchema):
             logger.error(f'Problem with ID {problem_id} not found.')
             return ErrorResponseModel(error="An error occurred when retrieving problem.",
                                       message="Problem not found.",
-                                      code=404)
+                                      code=status.HTTP_404_NOT_FOUND)
         
         public_results, private_results = None, None
-        choice_results = None
 
         if submitted_code is not None:
             public_testcases = problem_info.get("public_testcases", []) 
@@ -76,8 +82,6 @@ async def submit_code(submission_data: SubmissionSchema):
             
             is_pass_problem = is_pass_public and is_pass_private
             total_score += int(is_pass_problem)
-
-
 
         if submitted_choice is not None:
             choice_answers = submitted_choice.split(",") # -> ["id_1", "id_2"]
@@ -112,14 +116,14 @@ async def submit_code(submission_data: SubmissionSchema):
                 "total_problems": len(submitted_problems)
             },
             message="Submission added successfully.",
-            code=200)
+            code=status.HTTP_201_CREATED)
 
     except Exception as e:
         logger.error(f"Error when add submission: {e}")
         return ErrorResponseModel(
             error="An error occurred.",
             message="Unable to add submission.",
-            code=500
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
@@ -132,10 +136,10 @@ async def get_submissions():
     if submissions:
         return ResponseModel(data=submissions,
                              message="Submissions retrieved successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ResponseModel(data=[],
                          message="No submissions exist.",
-                         code=404)
+                         code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/my-submission", description="Retrieve a submission by user ID")
@@ -144,10 +148,11 @@ async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
     if submission:
         return ResponseModel(data=submission,
                              message="Your submission retrieved successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Your submission was not retrieved.",
-                              code=404)
+                              code=status.HTTP_404_NOT_FOUND)
+
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
@@ -155,7 +160,29 @@ async def get_submission(id: str):
     if submission:
         return ResponseModel(data=submission,
                              message="Submission retrieved successfully.",
-                             code=200)
+                             code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Submission was not retrieved.",
-                              code=404)
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+### >>> Setting Exam
+@router.post("/time-limit", description="Set time limit for submission")
+async def set_time_limit(setting_data: SettingSchema):
+    setting = setting_data.model_dump()
+    new_setting = await add_time_limit(setting)
+    return ResponseModel(data=new_setting,
+                         message="New time limit set successfully.",
+                         code=status.HTTP_200_OK)
+
+
+@router.get("/time-limit", description="Get time limit for submission")
+async def get_time_limit(id: str):
+    setting = await retrieve_time_limit(id)
+    if setting:
+        return ResponseModel(data=setting,
+                             message="Time limit retrieved successfully.",
+                             code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Time limit was not retrieved.",
+                              code=status.HTTP_404_NOT_FOUND)

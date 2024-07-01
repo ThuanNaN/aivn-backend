@@ -5,7 +5,7 @@ from bson.objectid import ObjectId
 logger = Logger("controllers/do_exam", log_file="do_exam.log")
 
 try:
-    timer_collection = mongo_db["do_exam"]
+    timer_collection = mongo_db["timer"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)

@@ -8,12 +8,13 @@ logger = Logger("controllers/submission", log_file="submission.log")
 
 try:
     submission_collection = mongo_db["submissions"]
+    setting_collection = mongo_db["setting"]
 except Exception as e:
     logger.error(f"Error when connect to submissions: {e}")
     exit(1)
 
 
-# helper
+# submission helper
 def submission_helper(submission) -> dict:
     return {
         "id": str(submission["_id"]),
@@ -22,6 +23,12 @@ def submission_helper(submission) -> dict:
         "created_at": str(submission["created_at"]),
     }
 
+# timer helper
+def timer_helper(timer) -> dict:
+    return {
+        "id": str(timer["_id"]),
+        "duration": timer["duration"],
+    }
 
 # Create a new submission
 async def add_submission(submission_data: dict):
@@ -117,3 +124,36 @@ def run_testcases(code, testcases):
             is_pass_testcases = False
 
     return return_dict, is_pass_testcases
+
+
+async def add_time_limit(time_data: dict) -> dict:
+    """
+    Add a new time limit to the database
+    Args:
+        time_data (dict): time data
+    Returns:
+        dict: time data
+    """
+    try:
+        time_limit = await setting_collection.insert_one(time_data)
+        new_time_limit = await setting_collection.find_one({"_id": time_limit.inserted_id})
+        return timer_helper(new_time_limit)
+    except Exception as e:
+        logger.error(f"Error when add time limit: {e}")
+
+
+async def retrieve_time_limit(id: str) -> dict:
+    """
+    Retrieve a time limit from the database
+    Args:
+        id (str): id of the time limit
+    Returns:
+        dict: time limit data
+    """
+    try:
+        time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
+        if time_limit:
+            return timer_helper(time_limit)
+    except Exception as e:
+        logger.error(f"Error when retrieve time limit: {e}")
+
