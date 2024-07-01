@@ -3,8 +3,10 @@ from datetime import datetime
 
 
 class DoExamSchema(BaseModel):
-    user_id: str
     start_time: datetime = datetime.now()
+
+class DoExamDBSchema(DoExamSchema):
+    user_id: str
 
 
 class ResponseModel(BaseModel):

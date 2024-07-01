@@ -14,8 +14,8 @@ except Exception as e:
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
-        "user_id": timer["user_id"],
         "start_time": timer["start_time"],
+        "user_id": timer["user_id"]
     }
 
 
@@ -33,7 +33,7 @@ async def add_timer(timer_data: dict) -> dict:
         logger.error(f"Error when add timer: {e}")
 
 
-async def retrieve_timer(user_id: str) -> dict:
+async def retrieve_timer_by_user_id(user_id: str) -> dict:
     """
     Retrieve a timer from the database
     Args:
@@ -42,8 +42,9 @@ async def retrieve_timer(user_id: str) -> dict:
         dict: timer data
     """
     try:
-        timer = await timer_collection.find_one({"user_id": ObjectId(user_id)})
+        timer = await timer_collection.find_one({"user_id": user_id})
         if timer:
             return timer_helper(timer)
     except Exception as e:
         logger.error(f"Error when retrieve timer: {e}")
+
