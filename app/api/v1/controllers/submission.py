@@ -81,8 +81,7 @@ async def retrieve_all_search_pagination(pipeline: list,
     """
     try:
         results = await submission_collection.aggregate(pipeline).to_list(length=None)
-        # total_submissions = await submission_collection.count_documents(match_stage["$match"])
-        total_submissions = len(results)
+        total_submissions = await submission_collection.count_documents(match_stage["$match"])
         total_pages = (total_submissions + per_page - 1) // per_page
 
         result_data = []
