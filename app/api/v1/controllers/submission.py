@@ -105,6 +105,23 @@ async def retrieve_submission_by_user(user_id: str):
         logger.error(f"Error retrieve_submission_by_user: {e}")
 
 
+async def delete_submission(id: str):
+    """
+    Delete a submission with a matching ID
+    Args:
+        id: str
+    Return:
+        bool
+    """
+    try:
+        submission = await submission_collection.find_one({"_id": ObjectId(id)})
+        if submission:
+            await submission_collection.delete_one({"_id": ObjectId(id)})
+            return True
+    except Exception as e:
+        logger.error(f"Error when delete submission: {e}")
+
+
 def run_testcases(admin_template: str, code: str, testcases: list):
     if not testcases:
         return [], True

@@ -16,6 +16,7 @@ from app.api.v1.controllers.submission import (
     retrieve_submissions,
     retrieve_submission,
     retrieve_submission_by_user,
+    delete_submission,
 
     add_time_limit,
     retrieve_time_limit,
@@ -175,6 +176,20 @@ async def get_submission(id: str):
                              code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Submission was not retrieved.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.delete("/{id}", 
+               dependencies=[Depends(is_admin)],
+               description="Delete a submission with a matching ID")
+async def delete_submission_data(id: str):
+    deleted_submission = await delete_submission(id)
+    if deleted_submission:
+        return ResponseModel(data=deleted_submission,
+                             message="Submission deleted successfully.",
+                             code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Submission was not deleted.",
                               code=status.HTTP_404_NOT_FOUND)
 
 
