@@ -186,7 +186,8 @@ async def get_submission(id: str):
                dependencies=[Depends(is_admin)],
                description="Delete a submission with a matching ID")
 async def delete_submission_data(id: str):
-    user_id = await retrieve_submission(id)["user_id"]
+    submission_info = await retrieve_submission(id)
+    user_id = submission_info["user_id"]
     deleted_timer =  await delete_timer_by_user_id(user_id)
     deleted_submission = await delete_submission(id)
     if deleted_submission and deleted_timer:
