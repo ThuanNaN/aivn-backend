@@ -2,6 +2,7 @@ from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.run_code import test_py_funct
+from app.api.v1.controllers.run_code_v2 import TestPythonFunction
 from app.api.v1.controllers.user import retrieve_user
 
 logger = Logger("controllers/submission", log_file="submission.log")
@@ -24,6 +25,8 @@ def submission_helper(submission) -> dict:
     }
 
 # timer helper
+
+
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
@@ -31,6 +34,8 @@ def timer_helper(timer) -> dict:
     }
 
 # Create a new submission
+
+
 async def add_submission(submission_data: dict):
     try:
         submission = await submission_collection.insert_one(submission_data)
@@ -69,10 +74,10 @@ async def retrieve_submissions():
 
 
 async def retrieve_all_search_pagination(pipeline: list,
-                                          match_stage:dict, 
-                                          page: int, 
-                                          per_page: int
-                                          ) -> dict:
+                                         match_stage: dict,
+                                         page: int,
+                                         per_page: int
+                                         ) -> dict:
     """
     Retrieve all submissions with search filter and pagination
 
@@ -102,8 +107,8 @@ async def retrieve_all_search_pagination(pipeline: list,
             "per_page": per_page
         }
     except Exception as e:
-        logger.error(f"Error when retrieve submissions with search filter and pagination: {e}")
-    
+        logger.error(
+            f"Error when retrieve submissions with search filter and pagination: {e}")
 
 
 async def retrieve_submission(id: str):
@@ -164,13 +169,30 @@ async def delete_submission(id: str):
 
 
 async def run_testcases(admin_template: str, code: str, testcases: list):
+    """
+    Run testcases for a problem
+
+    Args:
+        admin_template: str
+        code: str
+        testcases: list
+
+    Return:
+        list of dict
+    """
     if not testcases:
         return [], True
-    results_dict = await test_py_funct(admin_template=admin_template,
-                                 py_func=code,
-                                 testcases=testcases,
-                                 return_testcase=True,
-                                 run_all=True)
+    # results_dict = await test_py_funct(admin_template=admin_template,
+    #                              py_func=code,
+    #                              testcases=testcases,
+    #                              return_testcase=True,
+    #                              run_all=True)
+    results_dict = await TestPythonFunction(admin_template,
+                                            code,
+                                            testcases,
+                                            return_testcase=True,
+                                            run_all=True
+                                            ).run_all_testcases()
     return_dict = []
     is_pass_testcases = True
     for i, result in enumerate(results_dict["testcase_outputs"]):

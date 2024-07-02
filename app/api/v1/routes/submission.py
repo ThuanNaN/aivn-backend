@@ -210,7 +210,6 @@ async def get_submissions(
 
     submissions = await retrieve_all_search_pagination(pipeline, match_stage, page, per_page)
     if submissions:
-        print(submissions)
         return ResponseModel(data=submissions,
                              message="Submissions retrieved successfully.",
                              code=status.HTTP_200_OK)

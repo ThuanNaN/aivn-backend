@@ -2,6 +2,7 @@ from fastapi import APIRouter, status
 from app.schemas.code import CodeSchema, ResponseModel, ErrorResponseModel
 from app.api.v1.controllers.problem import retrieve_problem
 from app.api.v1.controllers.run_code import test_py_funct
+from app.api.v1.controllers.run_code_v2 import TestPythonFunction
 from app.utils.logger import Logger
 
 router = APIRouter()
@@ -24,11 +25,19 @@ async def run_code(code_inputs: CodeSchema):
     async def run_testcases(admin_template: str, code: str, testcases, return_testcase):
         if not testcases:
             return [], None
-        results_dict = await test_py_funct(admin_template=admin_template,
-                                           py_func=code,
-                                           testcases=testcases,
-                                           return_testcase=return_testcase,
-                                           run_all=True)
+        # results_dict = await test_py_funct(admin_template=admin_template,
+        #                                    py_func=code,
+        #                                    testcases=testcases,
+        #                                    return_testcase=return_testcase,
+        #                                    run_all=True)
+
+        results_dict = await TestPythonFunction(admin_template, 
+                                                code, 
+                                                testcases, 
+                                                return_testcase=True,
+                                                run_all=True
+                                                ).run_all_testcases()
+        
         result = results_dict["testcase_outputs"]
         error = results_dict["error"]
         return result, error
