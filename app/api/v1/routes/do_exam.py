@@ -6,8 +6,7 @@ from fastapi import (
 )
 from app.api.v1.controllers.do_exam import (
     add_timer,
-    retrieve_timer_by_user_id,
-    delete_timer_by_user_id
+    retrieve_timer_by_user_id
 )
 from app.schemas.exam import (
     DoExamSchema, 
