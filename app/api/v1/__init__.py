@@ -26,20 +26,25 @@ v1_router.include_router(user_router,
                          tags=["User"])
 
 v1_router.include_router(problem_router,
-                         dependencies=[Depends(is_aio)],
+                        #  dependencies=[Depends(is_aio)],
+                         dependencies=[Depends(is_authenticated)],
                          tags=["Problem"])
 
 v1_router.include_router(code_router,
                          prefix="/code",
-                         dependencies=[Depends(is_aio)],
+                        #  dependencies=[Depends(is_aio)],
+                         dependencies=[Depends(is_authenticated)],
                          tags=["Code"])
 
 v1_router.include_router(submission_router,
                          prefix="/submission",
-                         dependencies=[Depends(is_aio)],
+                        #  dependencies=[Depends(is_aio)],
+                         dependencies=[Depends(is_authenticated)],
+
                          tags=["Submission"])
 
 v1_router.include_router(do_exam_router,
                          prefix="/time",
-                         dependencies=[Depends(is_aio)],
+                        #  dependencies=[Depends(is_aio)],
+                         dependencies=[Depends(is_authenticated)],
                          tags=["Do Exam Timer"])
