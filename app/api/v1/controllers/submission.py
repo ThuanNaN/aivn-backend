@@ -24,8 +24,6 @@ def submission_helper(submission) -> dict:
     }
 
 # timer helper
-
-
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
@@ -33,8 +31,6 @@ def timer_helper(timer) -> dict:
     }
 
 # Create a new submission
-
-
 async def add_submission(submission_data: dict):
     try:
         submission = await submission_collection.insert_one(submission_data)
@@ -46,8 +42,13 @@ async def add_submission(submission_data: dict):
         logger.error(f"Error when add submission: {e}")
 
 
-# Retrieve all submissions
 async def retrieve_submissions():
+    """
+    Retrieve all submissions from database
+
+    Return:
+        list of dict submission
+    """
     try:
         submissions = []
         async for submission in submission_collection.find():
@@ -67,11 +68,52 @@ async def retrieve_submissions():
         logger.error(f"Error when retrieve submissions: {e}")
 
 
+async def retrieve_all_search_pagination(pipeline: list,
+                                          match_stage:dict, 
+                                          page: int, 
+                                          per_page: int
+                                          ) -> dict:
+    """
+    Retrieve all submissions with search filter and pagination
+
+    Return:
+        dict
+    """
+    try:
+        results = await submission_collection.aggregate(pipeline).to_list(length=None)
+        # total_submissions = await submission_collection.count_documents(match_stage["$match"])
+        total_submissions = len(results)
+        total_pages = (total_submissions + per_page - 1) // per_page
+
+        result_data = []
+        for result in results:
+            user_info = await retrieve_user(result["user_id"])
+            return_dict = {
+                "username": user_info["username"],
+                "email": user_info["email"],
+                "avatar": user_info["avatar"],
+                **submission_helper(result)
+            }
+            result_data.append(return_dict)
+        return {
+            "submissions_data": result_data,
+            "total_submissions": total_submissions,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": per_page
+        }
+    except Exception as e:
+        logger.error(f"Error when retrieve submissions with search filter and pagination: {e}")
+    
+
+
 async def retrieve_submission(id: str):
     """
     Retrieve a submission with a matching ID
+
     Args: 
         id: str
+
     Return:
         dict
     """
