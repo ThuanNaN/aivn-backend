@@ -48,3 +48,19 @@ async def retrieve_timer_by_user_id(user_id: str) -> dict:
     except Exception as e:
         logger.error(f"Error when retrieve timer: {e}")
 
+
+async def delete_timer_by_user_id(user_id: str) -> dict:
+    """
+    Delete a timer from the database
+    Args:
+        user_id (str): user_id of the timer
+    Returns:
+        dict: timer data
+    """
+    try:
+        timer = await timer_collection.find_one({"user_id": user_id})
+        if timer:
+            await timer_collection.delete_one({"user_id": user_id})
+            return True
+    except Exception as e:
+        logger.error(f"Error when delete timer: {e}")

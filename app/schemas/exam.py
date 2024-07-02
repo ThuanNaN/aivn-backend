@@ -10,7 +10,7 @@ class DoExamDBSchema(DoExamSchema):
 
 
 class ResponseModel(BaseModel):
-    data: dict
+    data: dict | list
     message: str
     code: int
 
