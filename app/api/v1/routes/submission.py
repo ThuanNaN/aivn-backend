@@ -79,13 +79,13 @@ async def submit_code(submission_data: SubmissionSchema):
             public_testcases = problem_info.get("public_testcases", []) 
             private_testcases = problem_info.get("private_testcases", [])
 
-            public_results, is_pass_public = run_testcases(
+            public_results, is_pass_public = await run_testcases(
                 admin_template,
                 submitted_code, 
                 public_testcases
             )
             
-            private_results, is_pass_private = run_testcases(
+            private_results, is_pass_private = await run_testcases(
                 admin_template,
                 submitted_code, 
                 private_testcases
@@ -185,7 +185,7 @@ async def get_submission(id: str):
 async def delete_submission_data(id: str):
     deleted_submission = await delete_submission(id)
     if deleted_submission:
-        return ResponseModel(data=deleted_submission,
+        return ResponseModel(data=[],
                              message="Submission deleted successfully.",
                              code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",

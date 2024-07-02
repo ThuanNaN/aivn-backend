@@ -122,10 +122,10 @@ async def delete_submission(id: str):
         logger.error(f"Error when delete submission: {e}")
 
 
-def run_testcases(admin_template: str, code: str, testcases: list):
+async def run_testcases(admin_template: str, code: str, testcases: list):
     if not testcases:
         return [], True
-    results_dict = test_py_funct(admin_template=admin_template,
+    results_dict = await test_py_funct(admin_template=admin_template,
                                  py_func=code,
                                  testcases=testcases,
                                  return_testcase=True,
