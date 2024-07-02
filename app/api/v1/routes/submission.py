@@ -23,6 +23,9 @@ from app.api.v1.controllers.submission import (
     retrieve_time_limits,
     update_time_limit
 )
+from app.api.v1.controllers.do_exam import (
+    delete_timer_by_user_id
+)
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
 
@@ -183,8 +186,10 @@ async def get_submission(id: str):
                dependencies=[Depends(is_admin)],
                description="Delete a submission with a matching ID")
 async def delete_submission_data(id: str):
+    user_id = await retrieve_submission(id)["user_id"]
+    deleted_timer =  await delete_timer_by_user_id(user_id)
     deleted_submission = await delete_submission(id)
-    if deleted_submission:
+    if deleted_submission and deleted_timer:
         return ResponseModel(data=[],
                              message="Submission deleted successfully.",
                              code=status.HTTP_200_OK)

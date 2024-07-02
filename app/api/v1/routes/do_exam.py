@@ -59,17 +59,3 @@ async def get_problem(user_id: str = Depends(is_authenticated)):
     return ErrorResponseModel(error="An error occurred.",
                               code=status.HTTP_404_NOT_FOUND,
                               message="Timer does not exist.")
-
-
-@router.delete("/timer",
-                description="Delete a timer with a matching user_id ID")
-async def delete_problem(user_id: str = Depends(is_authenticated)):
-    delete_result = await delete_timer_by_user_id(user_id)
-    if delete_result:
-        return ResponseModel(data=[],
-                             message="Timer deleted successfully.",
-                             code=status.HTTP_200_OK)
-    
-    return ErrorResponseModel(error="An error occurred.",
-                              code=status.HTTP_404_NOT_FOUND,
-                              message="Timer does not exist.")
