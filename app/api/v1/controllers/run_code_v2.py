@@ -135,12 +135,21 @@ class TestPythonFunction:
         except Exception as e:
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             return testcase_output
+        
+        if method_output is None:
+            testcase_output["error"] = "Output is None"
+            return testcase_output
+        
         testcase_output["output"] = method_output
 
         # check output
-        is_correct = self.check_output(method_output, expected_output)
+        try:
+            is_correct = self.check_output(method_output, expected_output)
+        except Exception as e:
+            testcase_output["error"] = f"{type(e).__name__}: {e}"
+            return testcase_output
+        
         testcase_output["is_pass"] = is_correct
-
         return testcase_output
 
     def check_output(self, output, expected_output) -> bool:
