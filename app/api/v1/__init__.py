@@ -18,7 +18,8 @@ async def check_health():
     return {"status": "API v1 is healthy"}
 
 v1_router.include_router(build_chart_router,
-                         dependencies=[Depends(is_authenticated)],
+                         dependencies=[Depends(is_aio)],
+                        #  dependencies=[Depends(is_authenticated)],
                          tags=["Build Chart"])
 
 v1_router.include_router(user_router,
