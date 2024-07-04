@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from typing import List, Dict
 import re
 import numpy as np
@@ -7,16 +8,18 @@ import torch
 from app.utils.logger import Logger
 logger = Logger("controllers/run_code", log_file="run_code.log")
 
-class BuildObject:
-    REMOVE_KEYWORDS = ["os", "sys", "import", "cmd", "rm", "remove"]
-    TIMEOUT_DURATION = 10 
 
+class BuildObject:
+    REMOVE_KEYWORDS = ["os", "sys", "import", "cmd", "rm", "remove", "del", "delete"]
+    TIMEOUT_DURATION = 10
 
     @staticmethod
     async def exec_code(str_input: str, admin_vars: dict = {}) -> dict:
         loop = asyncio.get_running_loop()
         local_vars = {}
         global_vars = admin_vars
+        error = None
+
         def sync_exec():
             exec(str_input, global_vars, local_vars)
         try:
@@ -25,11 +28,17 @@ class BuildObject:
                 timeout=BuildObject.TIMEOUT_DURATION
             )
         except asyncio.TimeoutError:
-            logger.error("Too long to execute the code.")
-        # except Exception as e:
-        #     logger.error(f"Error convert to variable: {e}")
-        return local_vars
-
+            # logger.error("Too long to execute the code.")
+            error = "Too long to execute the code."
+        except Exception as e:
+            # logger.error(f"Error convert to variable: {e}")
+            # error = f"{type(e).__name__}: {e}"
+            track_error = traceback.format_exc()
+            error = track_error.split("exec(str_input, global_vars, local_vars)\n")[-1]
+        return {
+            "error": error,
+            "local_vars": local_vars
+        }
 
     @staticmethod
     def remove_import_lines(code_str: str) -> str:
@@ -41,15 +50,14 @@ class BuildObject:
         return '\n'.join(result_lines)
 
 
-
 class TestPythonFunction:
-    def __init__(self, 
+    def __init__(self,
                  admin_code_str: str,
                  code_str: str,
                  testcases: List[Dict[str, str]],
                  return_testcase: bool = False,
                  run_all: bool = False
-                ) -> None:
+                 ) -> None:
         self.admin_code_str = admin_code_str
         self.code_str = code_str
         self.testcases = testcases
@@ -57,13 +65,26 @@ class TestPythonFunction:
         self.run_all = run_all
 
     async def run_all_testcases(self) -> dict:
-        self.admin_vars = await BuildObject.exec_code(self.admin_code_str)
-        self.class_name = self.admin_vars["class_name"]
-        self.class_method = self.admin_vars["class_method"]
-        self.code_str = BuildObject.remove_import_lines(self.code_str)
-
         error = None
         testcase_outputs = []
+
+        # get admin variables
+        admin_templates = await BuildObject.exec_code(self.admin_code_str)
+        if admin_templates["error"] is not None:
+            return {
+                "testcase_outputs": testcase_outputs,
+                "error": "Exec admin template error: " + admin_templates["error"]
+            }
+        self.admin_vars = admin_templates["local_vars"]
+
+        # get class name and method
+        self.class_name = self.admin_vars["class_name"]
+        self.class_method = self.admin_vars["class_method"]
+
+        # remove import lines in code_str
+        self.code_str = BuildObject.remove_import_lines(self.code_str)
+
+        # run all testcases
         for testcase in self.testcases:
             run_one_output = await self.run_one_testcase(testcase)
             testcase_outputs.append(run_one_output)
@@ -75,8 +96,7 @@ class TestPythonFunction:
             "testcase_outputs": testcase_outputs,
             "error": error
         }
-            
-        
+
     async def run_one_testcase(self, testcase: Dict[str, str]) -> dict:
         testcase_output = {
             "testcase_id": str(testcase["testcase_id"]),
@@ -89,44 +109,49 @@ class TestPythonFunction:
             testcase_output["expected_output"] = testcase["expected_output"]
 
         # get testcase input
-
         extracted_text = re.findall(r'{(.*?)}', testcase["input"])
         init_kwargs_str = extracted_text[0].replace("|", "\n")
         input_kwargs_str = extracted_text[1].replace("|", "\n")
 
-        try:
-            init_kwargs = await BuildObject.exec_code(init_kwargs_str, self.admin_vars)
-            input_kwargs = await BuildObject.exec_code(input_kwargs_str, self.admin_vars)
+        # init_kwargs
+        build_init_kwargs = await BuildObject.exec_code(init_kwargs_str, self.admin_vars)
+        if build_init_kwargs["error"] is not None:
+            testcase_output["error"] = build_init_kwargs["error"]
+            return testcase_output
 
-        except Exception as e:
-            testcase_output["error"] = f"{type(e).__name__}: {e}"
+        init_kwargs = build_init_kwargs["local_vars"]
+
+        # input_kwargs
+        build_input_kwargs = await BuildObject.exec_code(input_kwargs_str, self.admin_vars)
+        if build_input_kwargs["error"] is not None:
+            testcase_output["error"] = build_input_kwargs["error"]
             return testcase_output
-        
+        input_kwargs = build_input_kwargs["local_vars"]
+
         # get expected output
-        try:
-            testcase_output_str = testcase["expected_output"]
-            testcase_output_dict = await BuildObject.exec_code(testcase_output_str,
-                                                            self.admin_vars)
-        except Exception as e:
-            testcase_output["error"] = f"{type(e).__name__}: {e}"
+        testcase_output_str = testcase["expected_output"]
+        build_testcase_output = await BuildObject.exec_code(testcase_output_str, self.admin_vars)
+
+        if build_testcase_output["error"] is not None:
+            testcase_output["error"] = build_testcase_output["error"]
             return testcase_output
-        
-        expected_output = testcase_output_dict.get("output")
+        expected_output = build_testcase_output["local_vars"].get("output")
 
         # get object variables
-        try:
-            object_vars = await BuildObject.exec_code(self.code_str, self.admin_vars)
-        except Exception as e:
-            testcase_output["error"] = f"{type(e).__name__}: {e}"
+        build_object_vars = await BuildObject.exec_code(self.code_str, self.admin_vars)
+        if build_object_vars["error"] is not None:
+            testcase_output["error"] = build_object_vars["error"]
+            testcase_output["output"] = build_object_vars["error"]
             return testcase_output
+        object_vars = build_object_vars["local_vars"]
         
         # build object
         try:
             my_object = object_vars.get(self.class_name)(**init_kwargs)
         except Exception as e:
             testcase_output["error"] = f"{type(e).__name__}: {e}"
+            testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
-        
 
         # run method
         try:
@@ -134,28 +159,31 @@ class TestPythonFunction:
             method_output = method(**input_kwargs)
         except Exception as e:
             testcase_output["error"] = f"{type(e).__name__}: {e}"
+            testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
-        
+
         if method_output is None:
             testcase_output["error"] = "Output is None"
+            testcase_output["output"] = "None"
             return testcase_output
-        
-        testcase_output["output"] = method_output
+
+        testcase_output["output"] = repr(method_output)
 
         # check output
         try:
             is_correct = self.check_output(method_output, expected_output)
         except Exception as e:
             testcase_output["error"] = f"{type(e).__name__}: {e}"
+            testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
-        
+
         testcase_output["is_pass"] = is_correct
         return testcase_output
 
     def check_output(self, output, expected_output) -> bool:
         if type(expected_output) != type(output):
             raise TypeError(
-                f"Expected output type {type(expected_output)} does not match function output type {type(output)}")
+                f"Expected output type {type(expected_output)} does not match Output type {type(output)}")
         if isinstance(expected_output, (int, float)):
             return expected_output == output
         elif isinstance(expected_output, (list, tuple)):
