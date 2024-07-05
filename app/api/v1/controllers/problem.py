@@ -26,6 +26,29 @@ def problem_helper(problem) -> dict:
         "updated_at": str(problem["updated_at"])
     }
 
+# helper
+def user_problem_helper(problem) -> dict:
+    if problem["choices"] is not None:
+        for i in range(len(problem["choices"])):
+            problem["choices"][i]["is_correct"] = False
+
+    if problem["private_testcases"] is not None:
+        problem["private_testcases"] = [{}]
+
+    return {
+        "id": str(problem["_id"]),
+        "title": problem["title"],
+        "description": problem["description"],
+        "index": problem["index"],
+        "code_template": problem["code_template"],
+        "admin_template": problem["admin_template"],
+        "public_testcases": problem["public_testcases"],
+        "private_testcases": problem["private_testcases"],
+        "choices": problem["choices"],
+        "created_at": str( problem["created_at"]),
+        "updated_at": str(problem["updated_at"])
+    }
+
 async def add_problem(problem_data: dict) -> dict:
     """
     Add a new problem to the database
@@ -42,7 +65,7 @@ async def add_problem(problem_data: dict) -> dict:
         logger.error(f"Error when add problem: {e}")
 
 
-async def retrieve_problems():
+async def retrieve_problems(role: str = None) -> list[dict]:
     """
     Retrieve all problems from the database
     Returns:
@@ -51,13 +74,16 @@ async def retrieve_problems():
     try:
         problems = []
         async for problem in problem_collection.find():
-            problems.append(problem_helper(problem))
+            if role == "admin":
+                problems.append(problem_helper(problem))
+            else:
+                problems.append(user_problem_helper(problem))
         return problems
     except Exception as e:
         logger.error(f"Error when retrieve problems: {e}")
 
 
-async def retrieve_problem(id: str) -> dict:
+async def retrieve_problem(id: str, role: str = None) -> dict:
     """
     Retrieve a problem with a matching ID
     Args:
@@ -68,7 +94,10 @@ async def retrieve_problem(id: str) -> dict:
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if problem:
-            return problem_helper(problem)
+            if role == "admin":
+                return problem_helper(problem)
+            else:
+                return user_problem_helper(problem)
     except Exception as e:
         logger.error(f"Error when retrieve problem: {e}")
 

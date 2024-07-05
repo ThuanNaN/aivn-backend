@@ -15,7 +15,8 @@ from app.schemas.problem import (
     ResponseModel,
     ErrorResponseModel
 )
-from app.core.security import is_admin
+from app.core.security import is_admin, is_authenticated
+from app.api.v1.controllers.user import retrieve_user
 
 router = APIRouter()
 logger = Logger("routes/problem", log_file="problem.log")
@@ -35,8 +36,10 @@ async def create_problem(problem: ProblemSchema):
 
 @router.get("/problems",
             description="Retrieve all problems")
-async def get_problems():
-    problems = await retrieve_problems()
+async def get_problems(user_clerk_id: str = Depends(is_authenticated)):
+    cur_user = await retrieve_user(user_clerk_id)
+    role = cur_user["role"]
+    problems = await retrieve_problems(role)
     if problems:
         return ResponseModel(data=problems,
                              message="Problems retrieved successfully.",
@@ -48,8 +51,10 @@ async def get_problems():
 
 @router.get("/problem/{id}",
             description="Retrieve a problem with a matching ID")
-async def get_problem(id: str):
-    problem = await retrieve_problem(id)
+async def get_problem(id: str, user_clerk_id: str = Depends(is_authenticated)):
+    cur_user = await retrieve_user(user_clerk_id)
+    role = cur_user["role"]
+    problem = await retrieve_problem(id, role)
     if problem:
         return ResponseModel(data=problem,
                              message="Problem retrieved successfully.",
