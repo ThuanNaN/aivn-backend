@@ -33,7 +33,7 @@ def user_problem_helper(problem) -> dict:
             problem["choices"][i]["is_correct"] = False
 
     if problem["private_testcases"] is not None:
-        problem["private_testcases"] = [{}]
+        problem["private_testcases"] = []
 
     return {
         "id": str(problem["_id"]),
