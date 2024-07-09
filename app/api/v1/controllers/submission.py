@@ -1,8 +1,7 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.run_code import test_py_funct
-from app.api.v1.controllers.run_code_v2 import TestPythonFunction
+from app.api.v1.controllers.run_code import TestPythonFunction
 from app.api.v1.controllers.user import retrieve_user
 
 logger = Logger("controllers/submission", log_file="submission.log")
