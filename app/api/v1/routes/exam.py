@@ -1,12 +1,5 @@
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body, Depends, status
-from app.api.v1.controllers.problem import (
-    add_problem,
-    retrieve_problems,
-    retrieve_problem,
-    update_problem,
-    delete_problem
-)
+from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
     ExamSchema,
     UpdateExamSchema
@@ -16,10 +9,7 @@ from app.schemas.response import (
     DictResponseModel,
     ErrorResponseModel
 )
-from app.schemas.difficulty import DifficultyEnum
-from app.schemas.category import CategoryEnum
 from app.core.security import is_admin, is_authenticated
-from app.api.v1.controllers.user import retrieve_user
 from app.api.v1.controllers.exam import (
     add_exam,
     retrieve_exams,
