@@ -22,15 +22,3 @@ class TestedSchema(BaseModel):
     public_testcases_results: List[PublicTestcaseResult]
     private_testcases_results: List[TestcaseResult]
     error: str | None
-
-
-class ResponseModel(BaseModel):
-    data: TestedSchema
-    message: str
-    code: int
-
-
-class ErrorResponseModel(BaseModel):
-    error: str
-    message: str
-    code: int
