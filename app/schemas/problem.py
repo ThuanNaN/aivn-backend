@@ -88,7 +88,7 @@ class UpdateProblemSchema(BaseModel):
     slug: str | None = None
     difficulty: DifficultyEnum = DifficultyEnum.EASY.value
     categories: CategoryModel = CategoryModel(category_id=uuid4(),
-                                              category_name=CategoryEnum.PYTHON.value)
+                                              category_name="python")
     admin_template: str | None = None
     code_template: str | None = None
     public_testcases: List[TestCase] | None = None
@@ -105,7 +105,7 @@ class UpdateProblemSchema(BaseModel):
                     "slug": "add-two-numbers",
                     "difficulty": DifficultyEnum.EASY,
                     "categories": [CategoryModel(category_id=uuid4(),
-                                                category_name=CategoryEnum.PYTHON.value).model_dump()],
+                                                category_name="python").model_dump()],
                     "admin_template": "import numpy as np",
                     "code_template": "def add(a, b):\n    return a + b",
                     "public_testcases": [
