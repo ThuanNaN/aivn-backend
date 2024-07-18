@@ -1,15 +1,6 @@
-from enum import Enum
 from pydantic import BaseModel
 from datetime import datetime
 
-class CategoryEnum(Enum):
-    PYTHON = "python"
-    NUMPY = "numpy"
-    PYTORCH = "pytorch"
-
-    @classmethod
-    def get_list(cls) -> list[str]:
-        return [category.value for category in cls]
     
 class CategoryModel(BaseModel):
     category_name: str
@@ -20,7 +11,7 @@ class CategoryModel(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "category_name": CategoryEnum.PYTHON.value,
+                    "category_name": "python",
                     "created_at": datetime.now(),
                     "updated_at": datetime.now()
                 }
@@ -37,7 +28,7 @@ class UpdateCategorySchema(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "category_name": CategoryEnum.PYTHON.value,
+                    "category_name": "pytorch",
                     "updated_at": datetime.now()
                 }
             ]

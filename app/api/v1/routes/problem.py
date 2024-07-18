@@ -18,31 +18,11 @@ from app.schemas.response import (
     DictResponseModel,
     ErrorResponseModel
 )
-from app.schemas.difficulty import DifficultyEnum
-from app.schemas.category import CategoryEnum
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.user import retrieve_user
 
 router = APIRouter()
 logger = Logger("routes/problem", log_file="problem.log")
-
-
-@router.get("/difficulties",
-            description="Retrieve all difficulties")
-def get_difficulties():
-    difficulties = DifficultyEnum.get_list()
-    return ListResponseModel(data=difficulties,
-                             message="Difficulties retrieved successfully.",
-                             code=status.HTTP_200_OK)
-
-
-@router.get("/categories",
-            description="Retrieve all categories")
-def get_categories():
-    categories = CategoryEnum.get_list()
-    return ListResponseModel(data=categories,
-                             message="Categories retrieved successfully.",
-                             code=status.HTTP_200_OK)
 
 
 @router.post("",

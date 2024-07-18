@@ -2,7 +2,7 @@ from typing import List
 from datetime import datetime
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from .category import CategoryModel, CategoryEnum
+from .category import CategoryModel
 from .difficulty import DifficultyEnum
 
 
@@ -25,7 +25,7 @@ class ProblemSchema(BaseModel):
     slug: str
     difficulty: str | None = DifficultyEnum.EASY.value
     categories: List[CategoryModel] | None = [CategoryModel(category_id=uuid4(),
-                                                            category_name=CategoryEnum.PYTHON.value)]
+                                                            category_name="python")]
 
     # >>> code problems
     admin_template: str | None = None
@@ -50,7 +50,7 @@ class ProblemSchema(BaseModel):
                     "slug": "add-two-numbers",
                     "difficulty": DifficultyEnum.EASY.value,
                     "categories": [CategoryModel(category_id=uuid4(),
-                                                category_name=CategoryEnum.PYTHON.value).model_dump()],
+                                                category_name="python").model_dump()],
                     "admin_template": "import numpy as np",
                     "code_template": "def add(a, b):\n    return a + b",
                     "public_testcases": [
