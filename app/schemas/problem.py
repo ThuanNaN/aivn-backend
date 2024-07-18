@@ -130,3 +130,6 @@ class UpdateProblemSchema(BaseModel):
             ]
         }
     }
+
+class UpdateProblemSchemaDB(UpdateProblemSchema):
+    creator_id: str

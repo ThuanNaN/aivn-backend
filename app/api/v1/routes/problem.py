@@ -11,6 +11,7 @@ from app.schemas.problem import (
     ProblemSchema,
     ProblemSchemaDB,
     UpdateProblemSchema,
+    UpdateProblemSchemaDB
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -91,8 +92,13 @@ async def get_problem(id: str, user_clerk_id: str = Depends(is_authenticated)):
               dependencies=[Depends(is_admin)],
               tags=["Admin"],
               description="Update a problem with a matching ID")
-async def update_problem_data(id: str, data: UpdateProblemSchema = Body(...)):
-    updated = await update_problem(id, data.model_dump())
+async def update_problem_data(id: str, 
+                              problem_data: UpdateProblemSchema = Body(...),
+                              user_clerk_id: str = Depends(is_authenticated)):
+    problem_dict = problem_data.model_dump()
+    updated_data = UpdateProblemSchemaDB(**problem_dict, 
+                                         creator_id=user_clerk_id)
+    updated = await update_problem(id, updated_data.model_dump())
     if updated:
         return ListResponseModel(data=[],
                                  message="Problem data updated successfully.",
