@@ -25,6 +25,11 @@ fastapi run --reload --host 0.0.0.0 --port 8000
 Deploy the FastAPI service
 
 ```bash
-# for deploy
-uvicorn app.main:app --workers 1 --host 0.0.0.0 --port 8000
+# for deploy uvicorn
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 
+```
+
+```bash
+# for deploy gunicorn with uvicorn worker
+gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
