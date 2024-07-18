@@ -17,28 +17,28 @@ from app.core.security import (
 router = APIRouter()
 
 router.include_router(user_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/user",
                       tags=["User"])
 
 
 router.include_router(contest_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/contest",
                       tags=["Contest"])
 
 router.include_router(exam_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/exam",
                       tags=["Exam"])
 
 router.include_router(category_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/category",
                       tags=["Category"])
 
 router.include_router(problem_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/problem",
                       tags=["Problem"])
 
@@ -49,18 +49,18 @@ router.include_router(exam_problem_router,
 
 
 router.include_router(code_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/code",
                       tags=["Code"])
 
 
 router.include_router(submission_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/submission",
                       tags=["Submission"])
 
 
 router.include_router(timer_router,
-                      #   dependencies=[Depends(is_authenticated)],
+                      dependencies=[Depends(is_authenticated)],
                       prefix="/time",
                       tags=["Timer"])

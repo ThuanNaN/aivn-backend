@@ -46,6 +46,18 @@ async def get_users():
                              code=404)
 
 
+@router.get("/me", description="Retrieve a user logged in")
+async def get_me(clerk_user_id: str = Depends(is_authenticated)):
+    user = await retrieve_user(clerk_user_id)
+    if user:
+        return DictResponseModel(data=user,
+                                 message="User retrieved successfully.",
+                                 code=200)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="User was not retrieved.",
+                              code=404)
+
+
 @router.get("/{clerk_user_id}",
             description="Retrieve a user with a matching ID")
 async def get_user(clerk_user_id: str):
@@ -71,18 +83,6 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
                                  code=200)
     return ErrorResponseModel(error="An error occurred.",
                               message="User was not updated.",
-                              code=404)
-
-
-@router.get("/me", description="Retrieve a user logged in")
-async def get_me(clerk_user_id: str = Depends(is_authenticated)):
-    user = await retrieve_user(clerk_user_id)
-    if user:
-        return DictResponseModel(data=user,
-                                 message="User retrieved successfully.",
-                                 code=200)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="User was not retrieved.",
                               code=404)
 
 
@@ -131,6 +131,11 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             return ErrorResponseModel(error="An error occurred.",
                                       message="User role was not updated.",
                                       code=404)
+
+        return ListResponseModel(data=[],
+                                 message="User updated successfully.",
+                                 code=200)
+
         # no update role
         # just update username and avatar
 
