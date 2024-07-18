@@ -12,6 +12,21 @@ class UserSchema(BaseModel):
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "clerk_user_id": "1",
+                "email": "example@gmail.com",
+                "username": "example",
+                "role": "user",
+                "avatar": "example.jpg",
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
+            }
+        }
+    }
+
+
 class UpdateUserSchema(BaseModel):
     username: Optional[str]
     avatar: Optional[str]
@@ -33,16 +48,3 @@ class UpdateUserRoleSchema(BaseModel):
 class WhiteListSchema(BaseModel):
     email: str
     nickname: str
-
-
-class ResponseModel(BaseModel):
-    data: list | dict
-    message: str
-    code: int
-
-
-class ErrorResponseModel(BaseModel):
-    error: str
-    message: str
-    code: int
-    
