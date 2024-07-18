@@ -1,13 +1,14 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from app.schemas.submission import (
+    ProblemResult,
     SubmissionSchema,
-    ResponseModel,
-    ErrorResponseModel
+    SubmissionSchemaDB
 )
-from app.schemas.setting import (
-    SettingSchema,
-    ResponseModel,
+from app.schemas.setting import SettingSchema
+from app.schemas.response import (
+    ListResponseModel,
+    DictResponseModel,
     ErrorResponseModel
 )
 from app.api.v1.controllers.problem import retrieve_problem
@@ -25,7 +26,7 @@ from app.api.v1.controllers.submission import (
     retrieve_time_limits,
     update_time_limit
 )
-from app.api.v1.controllers.do_exam import (
+from app.api.v1.controllers.timer import (
     delete_timer_by_user_id
 )
 from app.core.security import is_admin, is_authenticated
@@ -37,14 +38,13 @@ logger = Logger("routes/submission", log_file="submission.log")
 
 @router.post("/submit",
              description="Submit code to a test")
-async def submit_code(submission_data: SubmissionSchema):
+async def submit_code(submission_data: SubmissionSchema,
+                      clerk_user_id: str = Depends(is_authenticated)):
     submission_dict = submission_data.model_dump()
-
     submitted_problems = submission_dict["problems"]
 
     problem_results = []
     total_score = 0
-
     for submitted in submitted_problems:
         # problem ==> {
         #   "problem_id":
@@ -109,28 +109,32 @@ async def submit_code(submission_data: SubmissionSchema):
             if len(choice_answers) != len(true_answers_id):
                 is_pass_problem = False
             else:
-                is_pass_problem = sorted(
-                    choice_answers) == sorted(true_answers_id)
+                is_pass_problem = sorted(choice_answers) == sorted(true_answers_id)
             total_score += int(is_pass_problem)
 
         problem_results.append(
-            {
-                "problem_id": problem_id,
-                "submitted_code": submitted_code,
-                "submitted_choice": submitted_choice,
-                "title": problem_info["title"],
-                "description": problem_info["description"],
-                "public_testcases_results": public_results,
-                "private_testcases_results": private_results,
-                "choice_results": problem_info["choices"],
-                "is_pass_problem": is_pass_problem
-            }
+            ProblemResult(
+                problem_id=problem_id,
+                submitted_code=submitted_code,
+                submitted_choice=submitted_choice,
+                title=problem_info["title"],
+                description=problem_info["description"],
+                public_testcases_results=public_results,
+                private_testcases_results=private_results,
+                choice_results=problem_info["choices"],
+                is_pass_problem=is_pass_problem
+            )
         )
 
-    submission_dict["problems"] = problem_results
+    submission_db = SubmissionSchemaDB(
+        exam_id=submission_dict["exam_id"],
+        clerk_user_id=clerk_user_id,
+        problems=problem_results
+    )
+
     try:
-        _ = await add_submission(submission_dict)
-        return ResponseModel(
+        _ = await add_submission(submission_db.model_dump())
+        return DictResponseModel(
             data={
                 "total_score": total_score,
                 "total_problems": len(submitted_problems)
@@ -147,20 +151,43 @@ async def submit_code(submission_data: SubmissionSchema):
         )
 
 
-# @router.get("/submissions",
-#             dependencies=[Depends(is_admin)],
-#             tags=["Admin"],
-#             description="Get all submissions")
-# async def get_submissions():
-#     submissions = await retrieve_submissions()
-#     if submissions:
-#         return ResponseModel(data=submissions,
-#                              message="Submissions retrieved successfully.",
-#                              code=status.HTTP_200_OK)
-#     return ResponseModel(data=[],
-#                          message="No submissions exist.",
-#                          code=status.HTTP_404_NOT_FOUND)
+@router.post("/time-limit", description="Set time limit for submission")
+async def set_time_limit(setting_data: SettingSchema):
+    setting = setting_data.model_dump()
 
+    time_limits = await retrieve_time_limits()
+    if len(time_limits) > 1:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Time limit more than 1.",
+                                  code=status.HTTP_400_BAD_REQUEST)
+    if time_limits:
+        time_limit_id = time_limits[0]["id"]
+        await update_time_limit(time_limit_id, setting)
+    else:
+        await add_time_limit(setting)
+
+    new_setting = await retrieve_time_limit(time_limit_id)
+    if new_setting:
+        return DictResponseModel(data=new_setting,
+                             message="New time limit set successfully.",
+                             code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Time limit was not set.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.get("/time-limit", description="Get time limit for submission")
+async def get_time_limit():
+    setting = await retrieve_time_limits()
+    if len(setting) == 1:
+        return DictResponseModel(data=setting[0],
+                             message="Time limit retrieved successfully.",
+                             code=status.HTTP_200_OK)
+    if not setting:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Time limit not found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    
 
 @router.get("/submissions",
             dependencies=[Depends(is_admin)],
@@ -210,10 +237,10 @@ async def get_submissions(
 
     submissions = await retrieve_all_search_pagination(pipeline, match_stage, page, per_page)
     if submissions:
-        return ResponseModel(data=submissions,
+        return DictResponseModel(data=submissions,
                              message="Submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
-    return ResponseModel(data=[],
+    return ListResponseModel(data=[],
                          message="No submissions exist.",
                          code=status.HTTP_404_NOT_FOUND)
 
@@ -222,7 +249,7 @@ async def get_submissions(
 async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
     submission = await retrieve_submission_by_user(user_id)
     if submission:
-        return ResponseModel(data=submission,
+        return DictResponseModel(data=submission,
                              message="Your submission retrieved successfully.",
                              code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
@@ -234,7 +261,7 @@ async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
 async def get_submission(id: str):
     submission = await retrieve_submission(id)
     if submission:
-        return ResponseModel(data=submission,
+        return DictResponseModel(data=submission,
                              message="Submission retrieved successfully.",
                              code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
@@ -251,48 +278,10 @@ async def delete_submission_data(id: str):
     deleted_timer = await delete_timer_by_user_id(user_id)
     deleted_submission = await delete_submission(id)
     if deleted_submission and deleted_timer:
-        return ResponseModel(data=[],
+        return ListResponseModel(data=[],
                              message="Submission deleted successfully.",
                              code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Submission was not deleted.",
                               code=status.HTTP_404_NOT_FOUND)
 
-
-# >>> Setting Exam
-@router.post("/time/time-limit", description="Set time limit for submission")
-async def set_time_limit(setting_data: SettingSchema):
-    setting = setting_data.model_dump()
-
-    time_limits = await retrieve_time_limits()
-    if len(time_limits) > 1:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Time limit more than 1.",
-                                  code=status.HTTP_400_BAD_REQUEST)
-    if time_limits:
-        time_limit_id = time_limits[0]["id"]
-        await update_time_limit(time_limit_id, setting)
-    else:
-        await add_time_limit(setting)
-
-    new_setting = await retrieve_time_limit(time_limit_id)
-    if new_setting:
-        return ResponseModel(data=new_setting,
-                             message="New time limit set successfully.",
-                             code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Time limit was not set.",
-                              code=status.HTTP_404_NOT_FOUND)
-
-
-@router.get("/time/time-limit", description="Get time limit for submission")
-async def get_time_limit():
-    setting = await retrieve_time_limits()
-    if len(setting) == 1:
-        return ResponseModel(data=setting[0],
-                             message="Time limit retrieved successfully.",
-                             code=status.HTTP_200_OK)
-    if not setting:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Time limit not found.",
-                                  code=status.HTTP_404_NOT_FOUND)

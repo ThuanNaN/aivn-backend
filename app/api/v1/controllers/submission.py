@@ -18,24 +18,24 @@ except Exception as e:
 def submission_helper(submission) -> dict:
     return {
         "id": str(submission["_id"]),
-        "user_id": submission["user_id"],
+        "clerk_user_id": submission["clerk_user_id"],
         "problems": submission["problems"],
         "created_at": str(submission["created_at"]),
     }
 
 # timer helper
-
-
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
         "duration": str(timer["duration"]),
     }
 
-# Create a new submission
-
-
-async def add_submission(submission_data: dict):
+async def add_submission(submission_data: dict) -> dict:
+    """
+    Create a new submission in the database
+    :param submission_data: dict
+    :return: dict
+    """
     try:
         submission = await submission_collection.insert_one(submission_data)
         new_submission = await submission_collection.find_one(
@@ -46,12 +46,10 @@ async def add_submission(submission_data: dict):
         logger.error(f"Error when add submission: {e}")
 
 
-async def retrieve_submissions():
+async def retrieve_submissions() -> list:
     """
     Retrieve all submissions from database
-
-    Return:
-        list of dict submission
+    :return: list
     """
     try:
         submissions = []
@@ -79,9 +77,7 @@ async def retrieve_all_search_pagination(pipeline: list,
                                          ) -> dict:
     """
     Retrieve all submissions with search filter and pagination
-
-    Return:
-        dict
+    :param pipeline: list
     """
     try:
         results = await submission_collection.aggregate(pipeline).to_list(length=None)
@@ -110,15 +106,11 @@ async def retrieve_all_search_pagination(pipeline: list,
             f"Error when retrieve submissions with search filter and pagination: {e}")
 
 
-async def retrieve_submission(id: str):
+async def retrieve_submission(id: str) -> dict:
     """
     Retrieve a submission with a matching ID
-
-    Args: 
-        id: str
-
-    Return:
-        dict
+    :param id: str
+    :return: dict
     """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
@@ -134,7 +126,7 @@ async def retrieve_submission(id: str):
         logger.error(f"Error when retrieve submission: {e}")
 
 
-async def retrieve_submission_by_user(user_id: str):
+async def retrieve_submission_by_user(user_id: str) -> dict:
     try:
         submission = await submission_collection.find_one({"user_id": user_id})
         if submission:
@@ -153,10 +145,8 @@ async def retrieve_submission_by_user(user_id: str):
 async def delete_submission(id: str):
     """
     Delete a submission with a matching ID
-    Args:
-        id: str
-    Return:
-        bool
+    :param id: str
+    :return: bool
     """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
@@ -170,22 +160,13 @@ async def delete_submission(id: str):
 async def run_testcases(admin_template: str, code: str, testcases: list):
     """
     Run testcases for a problem
-
-    Args:
-        admin_template: str
-        code: str
-        testcases: list
-
-    Return:
-        list of dict
+    :param admin_template: str
+    :param code: str
+    :param testcases: list
+    :return: list, bool
     """
     if not testcases:
         return [], True
-    # results_dict = await test_py_funct(admin_template=admin_template,
-    #                              py_func=code,
-    #                              testcases=testcases,
-    #                              return_testcase=True,
-    #                              run_all=True)
     results_dict = await TestPythonFunction(admin_template,
                                             code,
                                             testcases,
@@ -214,10 +195,8 @@ async def run_testcases(admin_template: str, code: str, testcases: list):
 async def add_time_limit(time_data: dict) -> dict:
     """
     Add a new time limit to the database
-    Args:
-        time_data (dict): time data
-    Returns:
-        dict: time data
+    :param time_data: dict
+    :return: dict
     """
     try:
         time_limit = await setting_collection.insert_one(time_data)
@@ -230,8 +209,7 @@ async def add_time_limit(time_data: dict) -> dict:
 async def retrieve_time_limits() -> list:
     """
     Retrieve all time limits from the database
-    Returns:
-        list: list of time limits
+    :return: list[dict]
     """
     try:
         time_limits = []
@@ -245,10 +223,8 @@ async def retrieve_time_limits() -> list:
 async def retrieve_time_limit(id: str) -> dict:
     """
     Retrieve a time limit from the database
-    Args:
-        id (str): id of the time limit
-    Returns:
-        dict: time limit data
+    :param id: str
+    :return: dict
     """
     try:
         time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
@@ -261,11 +237,9 @@ async def retrieve_time_limit(id: str) -> dict:
 async def update_time_limit(id: str, data: dict) -> bool:
     """
     Update a time limit with a matching ID
-    Args:
-        id (str): time limit ID
-        data (dict): time limit data to update
-    Returns:
-        None
+    :param id: str
+    :param data: dict
+    :return: bool
     """
     try:
         time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
