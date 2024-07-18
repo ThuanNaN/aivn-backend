@@ -15,11 +15,16 @@ pip3 install -r requirements.txt
 Dev the FastAPI service
 
 ```bash
+# for dev
 fastapi dev --reload --host 0.0.0.0 --port 8000
+
+# for test production
+fastapi run --reload --host 0.0.0.0 --port 8000
 ```
 
 Deploy the FastAPI service
 
 ```bash
-fastapi run --reload --host 0.0.0.0 --port 8000
+# for deploy
+uvicorn app.main:app --workers 1 --host 0.0.0.0 --port 8000
 ```
