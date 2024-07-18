@@ -1,5 +1,9 @@
 from fastapi import APIRouter, status
-from app.schemas.code import CodeSchema, ResponseModel, ErrorResponseModel
+from app.schemas.code import CodeSchema
+from app.schemas.response import (
+    DictResponseModel,
+    ErrorResponseModel
+)
 from app.api.v1.controllers.problem import retrieve_problem
 from app.api.v1.controllers.run_code import TestPythonFunction
 from app.utils.logger import Logger
@@ -45,7 +49,7 @@ async def run_code(code_inputs: CodeSchema):
                                                          private_testcases,
                                                          False)
 
-    return ResponseModel(
+    return DictResponseModel(
         data={
             "public_testcases_results": public_results,
             "private_testcases_results": private_results,
