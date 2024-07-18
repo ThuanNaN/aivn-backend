@@ -97,7 +97,7 @@ async def retrieve_user(clerk_user_id: str) -> dict:
         logger.error(f"Error when retrieve user: {e}")
 
 
-async def update_user(clerk_user_id: str, data: dict):
+async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     Update a user with a matching ID
     """
