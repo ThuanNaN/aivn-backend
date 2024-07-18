@@ -10,15 +10,19 @@ except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
-# helper
+
+# helper (admin)
 def problem_helper(problem) -> dict:
     return {
         "id": str(problem["_id"]),
+        "creator_id": problem["creator_id"],
         "title": problem["title"],
         "description": problem["description"],
-        "index": problem["index"],
-        "code_template": problem["code_template"],
+        "slug": problem["slug"],
+        "difficulty": problem["difficulty"],
+        "categories": problem["categories"],
         "admin_template": problem["admin_template"],
+        "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
@@ -26,7 +30,7 @@ def problem_helper(problem) -> dict:
         "updated_at": str(problem["updated_at"])
     }
 
-# helper
+# helper (user)
 def user_problem_helper(problem) -> dict:
     if problem["choices"] is not None:
         for i in range(len(problem["choices"])):
@@ -37,11 +41,14 @@ def user_problem_helper(problem) -> dict:
 
     return {
         "id": str(problem["_id"]),
+        "creator_id": problem["creator_id"],
         "title": problem["title"],
         "description": problem["description"],
-        "index": problem["index"],
-        "code_template": problem["code_template"],
+        "slug": problem["slug"],
+        "difficulty": problem["difficulty"],
+        "categories": problem["categories"],
         "admin_template": problem["admin_template"],
+        "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
