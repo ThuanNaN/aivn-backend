@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.routes.build_chart import router as build_chart_router
 from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.contest import router as contest_router
 from app.api.v1.routes.category import router as category_router
@@ -13,11 +12,6 @@ from app.core.security import (
 )
 
 router = APIRouter()
-
-# router.include_router(build_chart_router,
-#                       dependencies=[Depends(is_authenticated)],
-#                       prefix="/visualize",
-#                       tags=["Visualize"])
 
 router.include_router(user_router,
                       #   dependencies=[Depends(is_authenticated)],
