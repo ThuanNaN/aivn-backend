@@ -5,7 +5,7 @@ from app.utils.logger import Logger
 logger = Logger("controllers/category", log_file="category.log")
 
 try:
-    category_collection = mongo_db["category"]
+    category_collection = mongo_db["categories"]
 except Exception as e:
     logger.error(f"Error when connect to category: {e}")
     exit(1)

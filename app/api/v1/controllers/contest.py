@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 logger = Logger("controllers/contest", log_file="contest.log")
 
 try:
-    contest_collection = mongo_db["contest"]
+    contest_collection = mongo_db["contests"]
 except Exception as e:
     logger.error(f"Error when connect to contest: {e}")
     exit(1)
