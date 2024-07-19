@@ -86,6 +86,7 @@ async def retrieve_contest_detail(id: str) -> list:
                 problems = await retrieve_by_exam_id(exam["id"])
                 results.append(
                     {
+                        "contest": contest,
                         "exam": exam,
                         "problems": problems
                     }
