@@ -79,10 +79,9 @@ async def retrieve_exam_detail(id: str) -> dict:
         exam = await retrieve_exam(id)
         if exam:
             problems = await retrieve_by_exam_id(exam["id"])
-            return {
-                "exam": exam,
-                "problems": problems
-            }
+            exam["problems"] = problems
+            return exam
+
     except Exception as e:
         logger.error(f"Error when retrieve exam: {e}")
 

@@ -93,7 +93,7 @@ async def get_contest(id: str):
 async def get_contest_detail(id: str):
     contest_details = await retrieve_contest_detail(id)
     if contest_details:
-        return ListResponseModel(data=contest_details,
+        return DictResponseModel(data=contest_details,
                                  message="Contest retrieved successfully.",
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="Error when retrieve contest.",

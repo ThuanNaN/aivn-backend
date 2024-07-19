@@ -71,7 +71,7 @@ async def retrieve_contest(id: str) -> dict:
         logger.error(f"Error when retrieve contest: {e}")
 
 
-async def retrieve_contest_detail(id: str) -> list:
+async def retrieve_contest_detail(id: str):
     """
     Retrieve a contest with a matching ID, including exams
     :param id: str
@@ -84,14 +84,10 @@ async def retrieve_contest_detail(id: str) -> list:
             exams = await retrieve_exam_by_contest(contest["id"])
             for exam in exams:
                 problems = await retrieve_by_exam_id(exam["id"])
-                results.append(
-                    {
-                        "contest": contest,
-                        "exam": exam,
-                        "problems": problems
-                    }
-                )
-            return results
+                exam["problems"] = problems
+                results.append(exam)
+        contest["exams"] = results
+        return contest
     except Exception as e:
         logger.error(f"Error when retrieve contest detail: {e}")
 
