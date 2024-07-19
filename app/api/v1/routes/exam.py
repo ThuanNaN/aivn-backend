@@ -14,6 +14,7 @@ from app.api.v1.controllers.exam import (
     add_exam,
     retrieve_exams,
     retrieve_exam,
+    retrieve_exam_detail,
     update_exam,
     delete_exam
 )
@@ -59,6 +60,20 @@ async def get_exam_by_id(id: str):
     exam = await retrieve_exam(id)
     if exam:
         return DictResponseModel(data=exam,
+                                 message="Exam retrieved successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred",
+                              message="An error occurred",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.get("/{id}/detail",
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve a exam with a matching ID and its problems")
+async def get_exam_detail(id: str):
+    exam_detail = await retrieve_exam_detail(id)
+    if exam_detail:
+        return DictResponseModel(data=exam_detail,
                                  message="Exam retrieved successfully.",
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred",

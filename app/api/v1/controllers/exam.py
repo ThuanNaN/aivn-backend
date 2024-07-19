@@ -1,7 +1,9 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-
+from app.api.v1.controllers.exam_problem import (
+    retrieve_by_exam_id,
+)
 
 logger = Logger("controllers/exam", log_file="exam.log")
 
@@ -65,6 +67,25 @@ async def retrieve_exam(id: str) -> dict:
             return exam_helper(exam)
     except Exception as e:
         logger.error(f"Error when retrieve exam: {e}")
+
+
+async def retrieve_exam_detail(id: str) -> dict:
+    """
+    Retrieve a exam with a matching ID
+    :param id: str
+    :return: dict
+    """
+    try:
+        exam = await retrieve_exam(id)
+        if exam:
+            problems = await retrieve_by_exam_id(exam["id"])
+            return {
+                "exam": exam,
+                "problems": problems
+            }
+    except Exception as e:
+        logger.error(f"Error when retrieve exam: {e}")
+
 
 
 async def retrieve_exam_by_contest(contest_id: str) -> list:
