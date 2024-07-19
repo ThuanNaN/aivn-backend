@@ -55,7 +55,7 @@ async def get_exams():
 @router.get("/{id}",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve a exam with a matching ID")
-async def get_exam(id: str):
+async def get_exam_by_id(id: str):
     exam = await retrieve_exam(id)
     if exam:
         return DictResponseModel(data=exam,
