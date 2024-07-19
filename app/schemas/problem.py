@@ -2,7 +2,6 @@ from typing import List
 from datetime import datetime
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from .category import CategoryModel
 from .difficulty import DifficultyEnum
 
 
@@ -24,8 +23,6 @@ class ProblemSchema(BaseModel):
     description: str
     slug: str
     difficulty: str | None = DifficultyEnum.EASY.value
-    categories: List[CategoryModel] | None = [CategoryModel(category_id=uuid4(),
-                                                            category_name="python")]
 
     # >>> code problems
     admin_template: str | None = None
@@ -49,8 +46,6 @@ class ProblemSchema(BaseModel):
                     "description": "Add two numbers and return the sum",
                     "slug": "add-two-numbers",
                     "difficulty": DifficultyEnum.EASY.value,
-                    "categories": [CategoryModel(category_id=uuid4(),
-                                                category_name="python").model_dump()],
                     "admin_template": "import numpy as np",
                     "code_template": "def add(a, b):\n    return a + b",
                     "public_testcases": [
@@ -87,8 +82,6 @@ class UpdateProblemSchema(BaseModel):
     description: str | None = None
     slug: str | None = None
     difficulty: DifficultyEnum = DifficultyEnum.EASY.value
-    categories: CategoryModel = CategoryModel(category_id=uuid4(),
-                                              category_name="python")
     admin_template: str | None = None
     code_template: str | None = None
     public_testcases: List[TestCase] | None = None
@@ -104,8 +97,6 @@ class UpdateProblemSchema(BaseModel):
                     "description": "Add two numbers and return the sum",
                     "slug": "add-two-numbers",
                     "difficulty": DifficultyEnum.EASY,
-                    "categories": [CategoryModel(category_id=uuid4(),
-                                                category_name="python").model_dump()],
                     "admin_template": "import numpy as np",
                     "code_template": "def add(a, b):\n    return a + b",
                     "public_testcases": [
