@@ -85,6 +85,21 @@ async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
         logger.error(f"Error when retrieve_exam_problem: {e}")
 
 
+async def retrieve_by_exam_id(exam_id: str) -> list:
+    """
+    Retrieve all exam_problems with a matching exam_id
+    :param exam_id: str
+    :return: list
+    """
+    try:
+        exam_problems = []
+        async for exam_problem in exam_problem_collection.find({"exam_id": exam_id}):
+            exam_problems.append(exam_problem_helper(exam_problem))
+        return exam_problems
+    except Exception as e:
+        logger.error(f"Error when retrieve_exam_problem: {e}")
+
+
 async def update_exam_problem(id: str, data: dict) -> bool:
     """
     Update a exam_problem with a matching ID

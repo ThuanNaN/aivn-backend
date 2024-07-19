@@ -1,7 +1,12 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-
+from app.api.v1.controllers.exam import (
+    retrieve_exam_by_contest,
+)
+from app.api.v1.controllers.exam_problem import (
+    retrieve_by_exam_id,
+)
 
 logger = Logger("controllers/contest", log_file="contest.log")
 
@@ -64,6 +69,30 @@ async def retrieve_contest(id: str) -> dict:
             return contest_helper(contest)
     except Exception as e:
         logger.error(f"Error when retrieve contest: {e}")
+
+
+async def retrieve_contest_detail(id: str) -> list:
+    """
+    Retrieve a contest with a matching ID, including exams
+    :param id: str
+    :return: list
+    """
+    try:
+        results = []
+        contest = await retrieve_contest(id)
+        if contest:
+            exams = await retrieve_exam_by_contest(contest["id"])
+            for exam in exams:
+                problems = await retrieve_by_exam_id(exam["id"])
+                results.append(
+                    {
+                        "exam": exam,
+                        "problems": problems
+                    }
+                )
+            return results
+    except Exception as e:
+        logger.error(f"Error when retrieve contest detail: {e}")
 
 
 async def update_contest(id: str, data: dict) -> bool:

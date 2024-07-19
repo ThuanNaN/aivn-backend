@@ -4,6 +4,7 @@ from app.api.v1.controllers.contest import (
     add_contest,
     retrieve_contests,
     retrieve_contest,
+    retrieve_contest_detail,
     update_contest,
     delete_contest,
 )
@@ -79,6 +80,20 @@ async def get_contest(id: str):
     contest = await retrieve_contest(id)
     if contest:
         return DictResponseModel(data=contest,
+                                 message="Contest retrieved successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="Error when retrieve contest.",
+                              message="Contest not found.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.get("/{id}/details",
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve a contest with a matching ID and its details")
+async def get_contest_detail(id: str):
+    contest_details = await retrieve_contest_detail(id)
+    if contest_details:
+        return ListResponseModel(data=contest_details,
                                  message="Contest retrieved successfully.",
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="Error when retrieve contest.",
