@@ -49,9 +49,11 @@ async def create_contest(contest: ContestSchema):
              description="Add a new exam_problem")
 async def create_exam_problem(exam_id: str,
                               problem_id: str,
+                              index: int,
                               clerk_user_id=Depends(is_authenticated)):
     exam_problem_dict = ExamProblemDB(exam_id=exam_id,
                                       problem_id=problem_id,
+                                      index=index,
                                       creator_id=clerk_user_id)
     new_exam_problem = await add_exam_problem(exam_problem_dict.model_dump())
     return DictResponseModel(data=new_exam_problem,
