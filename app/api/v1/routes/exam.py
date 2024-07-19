@@ -1,8 +1,13 @@
+from typing import List
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
     ExamSchema,
-    UpdateExamSchema
+    UpdateExamSchema,
+    OrderSchema
+)
+from app.schemas.exam_problem import (
+    UpdateExamProblem
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -17,6 +22,10 @@ from app.api.v1.controllers.exam import (
     retrieve_exam_detail,
     update_exam,
     delete_exam
+)
+from app.api.v1.controllers.exam_problem import (
+    retrieve_by_exam_problem_id,
+    update_exam_problem
 )
 
 router = APIRouter()
@@ -110,3 +119,30 @@ async def delete_exam_data(id: str):
     return ErrorResponseModel(error="An error occurred",
                               message="An error occurred",
                               code=status.HTTP_404_NOT_FOUND)
+
+
+@router.put("/{id}/order-problem",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Order problems in an exam by index")
+async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
+    for order in orders:
+        # order -> {
+        #     "exam_id": "6698921e0ab511463f14d0a9",
+        #     "problem_id": "6698921e0ab511463f14d0a9",
+        #     "index": 1
+        # }
+        exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
+                                                         problem_id=order["problem_id"])
+        new_exam_problem = UpdateExamProblem(
+            index=order["index"]
+        )
+        updated = await update_exam_problem(exam_problem["id"],
+                                            new_exam_problem.model_dump())
+        if not updated:
+            return ErrorResponseModel(error="An error occurred",
+                                      message="An error occurred",
+                                      code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="Problems ordered successfully.",
+                             code=status.HTTP_200_OK)

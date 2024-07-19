@@ -26,8 +26,6 @@ class ExamProblemDB(ExamProblem):
 
 
 class UpdateExamProblem(BaseModel):
-    exam_id: str
-    problem_id: str
     index: int
     updated_at: datetime = datetime.now()
 

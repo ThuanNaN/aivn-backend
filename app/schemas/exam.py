@@ -46,3 +46,6 @@ class UpdateExamSchema(BaseModel):
         }
     }
 
+class OrderSchema(BaseModel):
+    problem_id: str
+    index: int
