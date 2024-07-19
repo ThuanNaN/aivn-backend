@@ -7,11 +7,19 @@ from app.api.v1.controllers.problem import (
     update_problem,
     delete_problem
 )
+from app.api.v1.controllers.problem_category import (
+    add_problem_category,
+    retrieve_by_problem_category_id,
+    delete_problem_category
+)
 from app.schemas.problem import (
     ProblemSchema,
     ProblemSchemaDB,
     UpdateProblemSchema,
     UpdateProblemSchemaDB
+)
+from app.schemas.problem_category import (
+    ProblemCategory
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -35,6 +43,21 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
     new_problem = await add_problem(problem_db.model_dump())
     return DictResponseModel(data=new_problem,
                              message="Problem added successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.post("/{id}/categories",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add a new problem-category")
+async def create_problem_category(id: str, category_id: str):
+    problem_category_dict = ProblemCategory(
+        problem_id=id,
+        category_id=category_id
+    )
+    new_problem_category = await add_problem_category(problem_category_dict.model_dump())
+    return DictResponseModel(data=new_problem_category,
+                             message="Problem-Category added successfully.",
                              code=status.HTTP_200_OK)
 
 
@@ -72,11 +95,11 @@ async def get_problem(id: str, user_clerk_id: str = Depends(is_authenticated)):
               dependencies=[Depends(is_admin)],
               tags=["Admin"],
               description="Update a problem with a matching ID")
-async def update_problem_data(id: str, 
+async def update_problem_data(id: str,
                               problem_data: UpdateProblemSchema = Body(...),
                               user_clerk_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
-    updated_data = UpdateProblemSchemaDB(**problem_dict, 
+    updated_data = UpdateProblemSchemaDB(**problem_dict,
                                          creator_id=user_clerk_id)
     updated = await update_problem(id, updated_data.model_dump())
     if updated:
@@ -85,6 +108,23 @@ async def update_problem_data(id: str,
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Problem data was not updated.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.delete("/{id}/categories/{category_id}",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
+               description="Remove a problem-category")
+async def delete_problem_category_data(id: str, category_id: str):
+    problem_category = await retrieve_by_problem_category_id(id, category_id)
+    if problem_category:
+        deleted = await delete_problem_category(problem_category["id"])
+        if deleted:
+            return ListResponseModel(data=[],
+                                     message="Problem-Category deleted successfully.",
+                                     code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              message="Problem-Category was not deleted.",
                               code=status.HTTP_404_NOT_FOUND)
 
 
