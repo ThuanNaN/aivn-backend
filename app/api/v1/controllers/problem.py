@@ -20,7 +20,6 @@ def problem_helper(problem) -> dict:
         "description": problem["description"],
         "slug": problem["slug"],
         "difficulty": problem["difficulty"],
-        "categories": problem["categories"],
         "admin_template": problem["admin_template"],
         "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
@@ -72,11 +71,10 @@ async def add_problem(problem_data: dict) -> dict:
         logger.error(f"Error when add problem: {e}")
 
 
-async def retrieve_problems(role: str = None) -> list[dict]:
+async def retrieve_problems(role: str = None) -> list:
     """
     Retrieve all problems from the database
-    Returns:
-        list: list of problems
+    :return: list
     """
     try:
         problems = []
@@ -93,10 +91,8 @@ async def retrieve_problems(role: str = None) -> list[dict]:
 async def retrieve_problem(id: str, role: str = None) -> dict:
     """
     Retrieve a problem with a matching ID
-    Args:
-        id (str): problem ID
-    Returns:
-        dict: problem data
+    :param id: str
+    :return: dict
     """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
@@ -107,6 +103,27 @@ async def retrieve_problem(id: str, role: str = None) -> dict:
                 return user_problem_helper(problem)
     except Exception as e:
         logger.error(f"Error when retrieve problem: {e}")
+
+
+async def retrieve_search_filter_pagination(pipeline: list,
+                                            match_stage: dict,
+                                            page: int,
+                                            per_page: int
+                                            ) -> dict:
+    """
+    Retrieve all problems with search, filter and pagination.
+    :param pipeline: list
+    :param match_stage: dict
+    :param page: int
+    :param per_page: int
+    :return: dict
+    """
+    try:
+        pass
+    except Exception as e:
+        logger.error(f"Error when retrieve problems with search, filter and pagination: {e}")
+
+
 
 
 async def update_problem(id: str, data: dict):
