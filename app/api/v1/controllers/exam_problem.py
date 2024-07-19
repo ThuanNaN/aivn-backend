@@ -68,7 +68,7 @@ async def retrieve_exam_problem(id: str) -> dict:
         logger.error(f"Error when retrieve_exam_problem: {e}")
 
 
-async def retrieve_by_exam_problem_id(exam_id: str, problem_id) -> dict:
+async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
     """
     Retrieve a exam_problem with a matching exam_id and problem_id
     :param exam_id: str
