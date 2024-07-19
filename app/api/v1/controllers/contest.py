@@ -71,7 +71,7 @@ async def retrieve_contest(id: str) -> dict:
         logger.error(f"Error when retrieve contest: {e}")
 
 
-async def retrieve_contest_detail(id: str):
+async def retrieve_contest_detail(id: str) -> dict:
     """
     Retrieve a contest with a matching ID, including exams
     :param id: str
