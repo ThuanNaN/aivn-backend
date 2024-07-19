@@ -5,11 +5,19 @@ from app.api.v1.controllers.contest import (
     retrieve_contests,
     retrieve_contest,
     update_contest,
-    delete_contest
+    delete_contest,
+)
+from app.api.v1.controllers.exam_problem import (
+    add_exam_problem,
+    retrieve_by_exam_problem_id,
+    delete_exam_problem
 )
 from app.schemas.contest import (
     ContestSchema,
     UpdateContestSchema,
+)
+from app.schemas.exam_problem import (
+    ExamProblemDB
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -31,6 +39,22 @@ async def create_contest(contest: ContestSchema):
     new_contest = await add_contest(contest_dict)
     return DictResponseModel(data=new_contest,
                              message="Contest created successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.post("/exam/{exam_id}/problems",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add a new exam_problem")
+async def create_exam_problem(exam_id: str,
+                              problem_id: str,
+                              clerk_user_id=Depends(is_authenticated)):
+    exam_problem_dict = ExamProblemDB(exam_id=exam_id,
+                                      problem_id=problem_id,
+                                      creator_id=clerk_user_id)
+    new_exam_problem = await add_exam_problem(exam_problem_dict.model_dump())
+    return DictResponseModel(data=new_exam_problem,
+                             message="ExamProblem added successfully.",
                              code=status.HTTP_200_OK)
 
 
@@ -75,6 +99,23 @@ async def update_contest_data(id: str, contest: UpdateContestSchema):
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="Error when update contest.",
                               message="Contest not found.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+
+@router.delete("/exam/{exam_id}/problems/{problem_id}",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
+               description="Remove exam-problem")
+async def delete_exam_problem_data(exam_id: str, problem_id: str):
+    exam_problem = await retrieve_by_exam_problem_id(exam_id, problem_id)
+    if exam_problem:
+        deleted = await delete_exam_problem(exam_problem["id"])
+        if deleted:
+            return ListResponseModel(data=[],
+                                     message="ExamProblem deleted successfully.",
+                                     code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="Error when delete exam_problem.",
+                              message="ExamProblem not found.",
                               code=status.HTTP_404_NOT_FOUND)
 
 
