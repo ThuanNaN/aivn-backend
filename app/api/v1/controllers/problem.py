@@ -1,3 +1,4 @@
+import asyncio
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -130,12 +131,13 @@ async def retrieve_search_filter_pagination(pipeline: list,
         total_pages = (total_problems + per_page - 1) // per_page
         result_data = []
         for result in results:  
-            problem_id = str(result["_id"])
+            problem_info = user_problem_helper(result) if role != "admin" else problem_helper(result)
+            problem_id = problem_info["id"]
+
             problem_categories = await retrieve_by_problem_id(problem_id)
             category_ids = [problem_category["category_id"] for problem_category in problem_categories]
-            categories = [await retrieve_category(category_id) for category_id in category_ids]
-
-            problem_info = user_problem_helper(result) if role != "admin" else problem_helper(result)
+            categories = await asyncio.gather(*[retrieve_category(category_id) for category_id in category_ids])
+            
             return_dict = {
                 **problem_info,
                 "categories": categories
@@ -150,8 +152,6 @@ async def retrieve_search_filter_pagination(pipeline: list,
         }
     except Exception as e:
         logger.error(f"Error when retrieve problems with search, filter and pagination: {e}")
-
-
 
 
 async def update_problem(id: str, data: dict):
