@@ -89,8 +89,6 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
                        page: int = Query(1, ge=1),
                        per_page: int = Query(10, ge=1, le=100)):
     
-    categories = ["6699cd6da68124e8119e90a0"]
-
     cur_user = await retrieve_user(user_clerk_id)
     match_stage = {"$match": {}}
     if search:
