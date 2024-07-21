@@ -1,6 +1,12 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
+from app.api.v1.controllers.problem_category import (
+    retrieve_by_problem_id
+)
+from app.api.v1.controllers.category import (
+    retrieve_category
+)
 
 logger = Logger("controllers/problem", log_file="problem.log")
 
@@ -45,7 +51,6 @@ def user_problem_helper(problem) -> dict:
         "description": problem["description"],
         "slug": problem["slug"],
         "difficulty": problem["difficulty"],
-        "categories": problem["categories"],
         "admin_template": problem["admin_template"],
         "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
@@ -108,7 +113,8 @@ async def retrieve_problem(id: str, role: str = None) -> dict:
 async def retrieve_search_filter_pagination(pipeline: list,
                                             match_stage: dict,
                                             page: int,
-                                            per_page: int
+                                            per_page: int, 
+                                            role: str = None
                                             ) -> dict:
     """
     Retrieve all problems with search, filter and pagination.
@@ -119,7 +125,29 @@ async def retrieve_search_filter_pagination(pipeline: list,
     :return: dict
     """
     try:
-        pass
+        results = await problem_collection.aggregate(pipeline).to_list(length=None)
+        total_problems = await problem_collection.count_documents(match_stage["$match"])
+        total_pages = (total_problems + per_page - 1) // per_page
+        result_data = []
+        for result in results:  
+            problem_id = str(result["_id"])
+            problem_categories = await retrieve_by_problem_id(problem_id)
+            category_ids = [problem_category["category_id"] for problem_category in problem_categories]
+            categories = [await retrieve_category(category_id) for category_id in category_ids]
+
+            problem_info = user_problem_helper(result) if role != "admin" else problem_helper(result)
+            return_dict = {
+                **problem_info,
+                "categories": categories
+            }
+            result_data.append(return_dict)
+        return {
+            "problems_data": result_data,
+            "total_problems": total_problems,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": per_page
+        }
     except Exception as e:
         logger.error(f"Error when retrieve problems with search, filter and pagination: {e}")
 

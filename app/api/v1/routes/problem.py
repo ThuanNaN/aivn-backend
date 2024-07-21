@@ -1,15 +1,18 @@
+from typing import Optional, List
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, Query, status
+from bson.objectid import ObjectId
 from app.api.v1.controllers.problem import (
     add_problem,
-    retrieve_problems,
     retrieve_problem,
     update_problem,
-    delete_problem
+    delete_problem,
+    retrieve_search_filter_pagination,
 )
 from app.api.v1.controllers.problem_category import (
     add_problem_category,
     retrieve_by_problem_category_id,
+    retrieve_by_categories,
     delete_problem_category
 )
 from app.schemas.problem import (
@@ -61,14 +64,61 @@ async def create_problem_category(id: str, category_id: str):
                              code=status.HTTP_200_OK)
 
 
+# @router.get("/problems",
+#             description="Retrieve all problems")
+# async def get_problems(user_clerk_id: str = Depends(is_authenticated)):
+#     cur_user = await retrieve_user(user_clerk_id)
+#     role = cur_user["role"]
+#     problems = await retrieve_problems(role)
+#     if problems:
+#         return ListResponseModel(data=problems,
+#                                  message="Problems retrieved successfully.",
+#                                  code=status.HTTP_200_OK)
+#     return ListResponseModel(data=[],
+#                              message="No problems exist.",
+#                              code=status.HTTP_404_NOT_FOUND)
+
+
 @router.get("/problems",
             description="Retrieve all problems")
-async def get_problems(user_clerk_id: str = Depends(is_authenticated)):
+async def get_problems(user_clerk_id: str = Depends(is_authenticated),
+                       search: Optional[str] = Query(None, 
+                                                     description="Search by problem title or description"),
+                       categories: Optional[List[str]] = Query([], 
+                                                               description="Filter by categories"),
+                       page: int = Query(1, ge=1),
+                       per_page: int = Query(10, ge=1, le=100)):
+    
+    categories = ["6699cd6da68124e8119e90a0"]
+
     cur_user = await retrieve_user(user_clerk_id)
-    role = cur_user["role"]
-    problems = await retrieve_problems(role)
+    match_stage = {"$match": {}}
+    if search:
+        match_stage["$match"]["$or"] = [
+            {"problem_info.difficulty": {"$regex": search, "$options": "i"}},
+            {"problem_info.category": {"$regex": search, "$options": "i"}}
+        ]
+    if len(categories) > 0:
+        problem_categories = await retrieve_by_categories(categories)
+        if not problem_categories:
+            return ListResponseModel(data=[],
+                                     message="No problems match with categories.",
+                                     code=status.HTTP_404_NOT_FOUND)
+        problem_ids = [ObjectId(problem_category["problem_id"]) for problem_category in problem_categories]
+        match_stage["$match"]["_id"] = {"$in": problem_ids}
+
+    pipeline = [
+        match_stage,
+        {
+            "$skip": (page - 1) * per_page
+        },
+        {
+            "$limit": per_page
+        }
+    ]
+    problems = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page, cur_user["role"])
     if problems:
-        return ListResponseModel(data=problems,
+        return DictResponseModel(data=problems,
                                  message="Problems retrieved successfully.",
                                  code=status.HTTP_200_OK)
     return ListResponseModel(data=[],
