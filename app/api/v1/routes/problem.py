@@ -11,6 +11,7 @@ from app.api.v1.controllers.problem import (
 )
 from app.api.v1.controllers.problem_category import (
     add_problem_category,
+    add_more_problem_category,
     retrieve_by_problem_category_id,
     retrieve_by_categories,
     delete_problem_category
@@ -42,8 +43,24 @@ logger = Logger("routes/problem", log_file="problem.log")
              description="Add a new problem")
 async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is_authenticated)):
     problem_dict = problem.model_dump()
-    problem_db = ProblemSchemaDB(**problem_dict, creator_id=user_clerk_id)
+    category_ids = problem_dict.pop("category_ids", [])
+
+    problem_db = ProblemSchemaDB(
+        **problem_dict, 
+        creator_id=user_clerk_id
+    )
     new_problem = await add_problem(problem_db.model_dump())
+
+    new_problem_categories = []
+    if len(category_ids)  > 0:
+        problem_categories: List[dict] = [
+            ProblemCategory(problem_id = new_problem["id"], 
+                            category_id = category_id).model_dump() 
+            for category_id in category_ids
+        ]
+        new_problem_categories = await add_more_problem_category(problem_categories)
+
+    new_problem["categories"] = new_problem_categories
     return DictResponseModel(data=new_problem,
                              message="Problem added successfully.",
                              code=status.HTTP_200_OK)
@@ -57,8 +74,8 @@ async def create_problem_category(id: str, category_id: str):
     problem_category_dict = ProblemCategory(
         problem_id=id,
         category_id=category_id
-    )
-    new_problem_category = await add_problem_category(problem_category_dict.model_dump())
+    ).model_dump()
+    new_problem_category = await add_problem_category(problem_category_dict)
     return DictResponseModel(data=new_problem_category,
                              message="Problem-Category added successfully.",
                              code=status.HTTP_200_OK)

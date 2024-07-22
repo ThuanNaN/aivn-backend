@@ -45,6 +45,26 @@ async def add_problem_category(problem_category_data: dict) -> dict:
         logger.error(f"Error when add_problem_category: {e}")
 
 
+async def add_more_problem_category(problem_category_data: List[dict]) -> list:
+    """
+    Add more problem_category to database
+    :param problem_category_data: List[dict]
+    :return: list
+    """
+    try:
+        problem_category_data = [ObjectId_helper(problem_category) for problem_category in problem_category_data]
+        problem_category = await problem_category_collection.insert_many(problem_category_data)
+
+        new_problem_categories = []
+        async for problem_category in problem_category_collection.find(
+            {"_id": {"$in": problem_category.inserted_ids}}
+        ):
+            new_problem_categories.append(problem_category_helper(problem_category))
+        return new_problem_categories
+    except Exception as e:
+        logger.error(f"Error when add_more_problem_category: {e}")
+
+
 async def retrieve_problem_categories() -> list:
     """
     Retrieve all problem_categories
