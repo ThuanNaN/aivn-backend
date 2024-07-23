@@ -105,6 +105,8 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
                                                                description="Filter by categories"),
                        difficulty: Optional[str] = Query(None,
                                                          description="Filter by difficulty"),
+                       is_published: Optional[bool] = Query(None,
+                                                            description="Filter by is_published"),
                        page: int = Query(1, ge=1),
                        per_page: int = Query(10, ge=1, le=100)):
     
@@ -117,6 +119,9 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
         ]
     if difficulty is not None:
         match_stage["$match"]["difficulty"] = difficulty
+    
+    if is_published is not None:
+        match_stage["$match"]["is_published"] = is_published
 
     if len(categories) > 0:
         problem_categories = await retrieve_by_categories(categories)
