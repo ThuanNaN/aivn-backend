@@ -4,6 +4,9 @@ from bson.objectid import ObjectId
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id,
 )
+from app.api.v1.controllers.problem import (
+    retrieve_problems_by_ids
+)
 
 logger = Logger("controllers/exam", log_file="exam.log")
 
@@ -78,8 +81,16 @@ async def retrieve_exam_detail(id: str) -> dict:
     try:
         exam = await retrieve_exam(id)
         if exam:
-            problems = await retrieve_by_exam_id(exam["id"])
-            exam["problems"] = problems
+            exam_problems = await retrieve_by_exam_id(exam["id"])
+            problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
+            enriched_problems = await retrieve_problems_by_ids(problem_ids)
+            for exam_problem in exam_problems:
+                problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
+                if problem:
+                    exam_problem["problem"] = problem
+                else:
+                    exam_problem["problem"] = {}
+            exam["problems"] = exam_problems
             return exam
 
     except Exception as e:
