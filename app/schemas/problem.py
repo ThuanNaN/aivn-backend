@@ -7,8 +7,7 @@ from .difficulty import DifficultyEnum
 
 class TestCase(BaseModel):
     testcase_id: UUID = Field(default_factory=uuid4)
-    init_kwargs: str | None = None
-    input_kwargs: str | None = None
+    input: str
     expected_output: str
 
 
@@ -57,16 +56,14 @@ class ProblemSchema(BaseModel):
                     "public_testcases": [
                         {
                             "testcase_id": uuid4(),
-                            "init_kwargs": "a=1\nb=2",
-                            "input_kwargs": "",
+                            "input": "a=1\nb=2",
                             "expected_output": "3"
                         }
                     ],
                     "private_testcases": [
                         {
                             "testcase_id": uuid4(),
-                            "init_kwargs": "a=2\nb=2",
-                            "input_kwargs": "",
+                            "input": "a=2\nb=2",
                             "expected_output": "4"
                         }
                     ],
@@ -133,16 +130,14 @@ class UpdateProblemSchema(BaseModel):
                     "public_testcases": [
                         {
                             "testcase_id": uuid4(),
-                            "init_kwargs": "a=1\nb=2",
-                            "input_kwargs": "",
+                            "input": "a=1\nb=2",
                             "expected_output": "3"
                         }
                     ],
                     "private_testcases": [
                         {
                             "testcase_id": uuid4(),
-                            "init_kwargs": "a=2\nb=2",
-                            "input_kwargs": "",
+                            "input": "a=2\nb=2",
                             "expected_output": "4"
                         }
                     ],
