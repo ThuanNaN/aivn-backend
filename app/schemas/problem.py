@@ -124,7 +124,7 @@ class UpdateProblemSchema(BaseModel):
                     "title": "Add two numbers",
                     "description": "Add two numbers and return the sum",
                     "slug": "add-two-numbers",
-                    "difficulty": DifficultyEnum.EASY,
+                    "difficulty": DifficultyEnum.EASY.value,
                     "category_ids": ["6699cd6da68124e8119e90a0"],
                     "is_published": False,
                     "admin_template": "import numpy as np",
