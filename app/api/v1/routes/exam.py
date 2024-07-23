@@ -133,9 +133,9 @@ async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
         #     "index": 1
         # }
         exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
-                                                         problem_id=order["problem_id"])
+                                                         problem_id=order.problem_id)
         new_exam_problem = UpdateExamProblem(
-            index=order["index"]
+            index=order.index
         )
         updated = await update_exam_problem(exam_problem["id"],
                                             new_exam_problem.model_dump())
