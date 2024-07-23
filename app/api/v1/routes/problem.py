@@ -110,8 +110,9 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
     match_stage = {"$match": {}}
     if search:
         match_stage["$match"]["$or"] = [
-            {"problem_info.difficulty": {"$regex": search, "$options": "i"}},
-            {"problem_info.category": {"$regex": search, "$options": "i"}}
+            {"title": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}},
+            {"difficulty": {"$regex": search, "$options": "i"}},
         ]
     if len(categories) > 0:
         problem_categories = await retrieve_by_categories(categories)
