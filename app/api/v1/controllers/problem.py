@@ -94,6 +94,20 @@ async def retrieve_problems(role: str = None) -> list:
     except Exception as e:
         logger.error(f"Error when retrieve problems: {e}")
 
+async def retrieve_problems_by_ids(ids: list) -> list:
+    """
+    Retrieve problems with a matching IDs
+    :param ids: list
+    :return: list
+    """
+    try:
+        problems = []
+        async for problem in problem_collection.find({"_id": {"$in": ids}}):
+            problems.append(problem_helper(problem))
+        return problems
+    except Exception as e:
+        logger.error(f"Error when retrieve problems: {e}")
+
 
 async def retrieve_problem(id: str, role: str = None) -> dict:
     """
