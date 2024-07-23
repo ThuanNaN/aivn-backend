@@ -18,9 +18,3 @@ class ProblemCategory(BaseModel):
             }
         }
     }
-
-
-class UpdateProblemCategory(BaseModel):
-    problem_id: str
-    category_id: str
-    updated_at: datetime = datetime.now()

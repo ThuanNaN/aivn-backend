@@ -112,20 +112,6 @@ async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> 
         logger.error(f"Error when retrieve_by_problem_category_id: {e}")
 
 
-async def delete_problem_category(id: str) -> bool:
-    """
-    Delete a delete_problem_category with a matching ID
-    :param id: str
-    """
-    try:
-        delete = await problem_category_collection.delete_one({"_id": ObjectId(id)})
-        if delete:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error when delete_problem_category: {e}")
-
-
 async def retrieve_by_categories(category_ids: List[str]) -> list:
     """
     Retrieve all problem_category with a matching category_id
@@ -160,3 +146,48 @@ async def retrieve_by_problem_id(problem_id: str) -> list:
     except Exception as e:
         logger.error(f"Error when retrieve_by_problem_id: {e}")
 
+
+async def delete_problem_category(id: str) -> bool:
+    """
+    Delete a delete_problem_category with a matching ID
+    :param id: str
+    """
+    try:
+        delete = await problem_category_collection.delete_one({"_id": ObjectId(id)})
+        if delete:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error when delete_problem_category: {e}")
+
+
+async def delete_all_by_problem_id(problem_id: str) -> bool:
+    """
+    Delete all problem_category with a matching problem_id
+    :param problem_id: str
+    """
+    try:
+        delete = await problem_category_collection.delete_many({"problem_id": ObjectId(problem_id)})
+        if delete:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error when delete_all_by_problem_id: {e}")
+
+
+
+async def update_problem_category_problem_id(problem_id: str) -> bool:
+    """
+    Update a problem_category with a matching problem_id.
+    - Delete all problem_category with a matching problem_id
+    - Create new problem_category with a problem_id
+    :param id: str
+    :param data: dict
+    :return: bool
+    """
+    try:
+        problem_categories = await retrieve_by_problem_id(problem_id)
+        for problem_category in problem_categories:
+            await delete_problem_category(problem_category["id"])
+    except Exception as e:
+        logger.error(f"Error when update_problem_category: {e}")

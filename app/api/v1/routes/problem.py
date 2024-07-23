@@ -14,7 +14,8 @@ from app.api.v1.controllers.problem_category import (
     add_more_problem_category,
     retrieve_by_problem_category_id,
     retrieve_by_categories,
-    delete_problem_category
+    delete_problem_category,
+    delete_all_by_problem_id
 )
 from app.schemas.problem import (
     ProblemSchema,
@@ -59,6 +60,10 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
+        if not new_problem_categories:
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Problem-Category was not added.",
+                                      code=status.HTTP_404_NOT_FOUND)
 
     new_problem["categories"] = new_problem_categories
     return DictResponseModel(data=new_problem,
@@ -174,6 +179,26 @@ async def update_problem_data(id: str,
                               problem_data: UpdateProblemSchema = Body(...),
                               user_clerk_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
+    category_ids = problem_dict.pop("category_ids", [])
+
+    new_problem_categories = []
+    if len(category_ids)  > 0:
+        deleted = await delete_all_by_problem_id(id)
+        if not deleted:
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Problem-Category was not deleted.",
+                                      code=status.HTTP_404_NOT_FOUND)
+        problem_categories: List[dict] = [
+            ProblemCategory(problem_id = id, 
+                            category_id = category_id).model_dump() 
+            for category_id in category_ids
+        ]
+        new_problem_categories = await add_more_problem_category(problem_categories)
+        if not new_problem_categories:
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Problem-Category was not added.",
+                                      code=status.HTTP_404_NOT_FOUND)
+
     updated_data = UpdateProblemSchemaDB(**problem_dict,
                                          creator_id=user_clerk_id)
     updated = await update_problem(id, updated_data.model_dump())
