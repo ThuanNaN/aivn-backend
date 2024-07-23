@@ -103,6 +103,8 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
                                                      description="Search by problem title or description"),
                        categories: Optional[List[str]] = Query([], 
                                                                description="Filter by categories"),
+                       difficulty: Optional[str] = Query(None,
+                                                         description="Filter by difficulty"),
                        page: int = Query(1, ge=1),
                        per_page: int = Query(10, ge=1, le=100)):
     
@@ -112,8 +114,10 @@ async def get_problems(user_clerk_id: str = Depends(is_authenticated),
         match_stage["$match"]["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"description": {"$regex": search, "$options": "i"}},
-            {"difficulty": {"$regex": search, "$options": "i"}},
         ]
+    if difficulty is not None:
+        match_stage["$match"]["difficulty"] = difficulty
+
     if len(categories) > 0:
         problem_categories = await retrieve_by_categories(categories)
         if not problem_categories:
