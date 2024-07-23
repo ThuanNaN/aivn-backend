@@ -89,8 +89,8 @@ async def retrieve_exam_detail(id: str) -> dict:
                 if problem:
                     exam_problem["problem"] = problem
                 else:
-                    exam_problem["problem"] = {}
-            exam["problems"] = exam_problems
+                    exam_problem["problem"] = None
+            exam["problems"] = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
             return exam
 
     except Exception as e:
