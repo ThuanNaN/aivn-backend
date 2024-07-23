@@ -84,7 +84,13 @@ async def retrieve_exam_detail(id: str) -> dict:
             exam_problems = await retrieve_by_exam_id(exam["id"])
             problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
             enriched_problems = await retrieve_problems_by_ids(problem_ids)
-            exam["problems"] = enriched_problems
+            for exam_problem in exam_problems:
+                problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
+                if problem:
+                    exam_problem["problem"] = problem
+                else:
+                    exam_problem["problem"] = {}
+            exam["problems"] = exam_problems
             return exam
 
     except Exception as e:
