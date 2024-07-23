@@ -9,13 +9,13 @@ class TestCase(BaseModel):
     testcase_id: UUID = Field(default_factory=uuid4)
     init_kwargs: str | None = None
     input_kwargs: str | None = None
-    expected_output: str | None = None
+    expected_output: str
 
 
 class Choice(BaseModel):
     choice_id: UUID = Field(default_factory=uuid4)
-    answer: str | None = None
-    is_correct: bool | None = None
+    answer: str
+    is_correct: bool
 
 
 class ProblemSchema(BaseModel):
@@ -23,13 +23,13 @@ class ProblemSchema(BaseModel):
     description: str
     slug: str
     difficulty: str | None = DifficultyEnum.EASY.value
-    category_ids: List[str] | None = None
-    is_published: bool | None = False
+    category_ids: List[str] = []
+    is_published: bool = True
 
     # >>> code problems
-    admin_template: str | None = None
-    code_template: str | None
-    code_solution: str | None = None
+    admin_template: str
+    code_template: str
+    code_solution: str
     public_testcases: List[TestCase] | None = None
     private_testcases:  List[TestCase] | None = None
     # >>> code problems
@@ -85,12 +85,12 @@ class ProblemSchemaDB(BaseModel):
     description: str
     slug: str
     difficulty: str | None = DifficultyEnum.EASY.value
-    is_published: bool | None = False
+    is_published: bool = True
 
     # >>> code problems
-    admin_template: str | None = None
-    code_template: str | None
-    code_solution: str | None = None
+    admin_template: str 
+    code_template: str 
+    code_solution: str 
     public_testcases: List[TestCase] | None = None
     private_testcases:  List[TestCase] | None = None
     # >>> code problems
@@ -107,7 +107,7 @@ class UpdateProblemSchema(BaseModel):
     title: str | None = None
     description: str | None = None
     slug: str | None = None
-    difficulty: DifficultyEnum = DifficultyEnum.EASY.value
+    difficulty: str | None = DifficultyEnum.EASY.value
     category_ids: List[str] | None = None
     admin_template: str | None = None
     code_template: str | None = None
@@ -158,7 +158,7 @@ class UpdateProblemSchemaDB(BaseModel):
     title: str | None = None
     description: str | None = None
     slug: str | None = None
-    difficulty: DifficultyEnum = DifficultyEnum.EASY.value
+    difficulty: str | None = DifficultyEnum.EASY.value
     admin_template: str | None = None
     code_template: str | None = None
     code_solution: str | None = None
