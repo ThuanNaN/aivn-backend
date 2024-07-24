@@ -1,7 +1,6 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.run_code import TestPythonFunction
 from app.api.v1.controllers.user import retrieve_user
 
 logger = Logger("controllers/submission", log_file="submission.log")
@@ -19,16 +18,10 @@ def submission_helper(submission) -> dict:
     return {
         "id": str(submission["_id"]),
         "clerk_user_id": submission["clerk_user_id"],
-        "problems": submission["problems"],
+        "submitted_problems": submission["submitted_problems"],
         "created_at": str(submission["created_at"]),
     }
 
-# timer helper
-def timer_helper(timer) -> dict:
-    return {
-        "id": str(timer["_id"]),
-        "duration": str(timer["duration"]),
-    }
 
 async def add_submission(submission_data: dict) -> dict:
     """
@@ -155,83 +148,6 @@ async def delete_submission(id: str):
             return True
     except Exception as e:
         logger.error(f"Error when delete submission: {e}")
-
-
-async def run_testcases(admin_template: str, code: str, testcases: list):
-    """
-    Run testcases for a problem
-    :param admin_template: str
-    :param code: str
-    :param testcases: list
-    :return: list, bool
-    """
-    if not testcases:
-        return [], True
-    results_dict = await TestPythonFunction(admin_template,
-                                            code,
-                                            testcases,
-                                            return_testcase=True,
-                                            run_all=True
-                                            ).run_all_testcases()
-    return_dict = []
-    is_pass_testcases = True
-    for i, result in enumerate(results_dict["testcase_outputs"]):
-        return_dict.append(
-            {
-                "input": testcases[i]["input"],
-                "output": str(result["output"]),
-                "expected_output": testcases[i]["expected_output"],
-                "error": result["error"],
-                "is_pass": result["is_pass"]
-            }
-        )
-
-        if not result["is_pass"]:
-            is_pass_testcases = False
-
-    return return_dict, is_pass_testcases
-
-
-async def add_time_limit(time_data: dict) -> dict:
-    """
-    Add a new time limit to the database
-    :param time_data: dict
-    :return: dict
-    """
-    try:
-        time_limit = await setting_collection.insert_one(time_data)
-        new_time_limit = await setting_collection.find_one({"_id": time_limit.inserted_id})
-        return timer_helper(new_time_limit)
-    except Exception as e:
-        logger.error(f"Error when add time limit: {e}")
-
-
-async def retrieve_time_limits() -> list:
-    """
-    Retrieve all time limits from the database
-    :return: list[dict]
-    """
-    try:
-        time_limits = []
-        async for time_limit in setting_collection.find():
-            time_limits.append(timer_helper(time_limit))
-        return time_limits
-    except Exception as e:
-        logger.error(f"Error when retrieve time limits: {e}")
-
-
-async def retrieve_time_limit(id: str) -> dict:
-    """
-    Retrieve a time limit from the database
-    :param id: str
-    :return: dict
-    """
-    try:
-        time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
-        if time_limit:
-            return timer_helper(time_limit)
-    except Exception as e:
-        logger.error(f"Error when retrieve time limit: {e}")
 
 
 async def update_time_limit(id: str, data: dict) -> bool:
