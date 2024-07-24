@@ -106,6 +106,7 @@ class UpdateProblemSchema(BaseModel):
     slug: str | None = None
     difficulty: str | None = DifficultyEnum.EASY.value
     category_ids: List[str] | None = None
+    is_published: bool = True
     admin_template: str | None = None
     code_template: str | None = None
     code_solution: str | None = None
@@ -154,6 +155,7 @@ class UpdateProblemSchemaDB(BaseModel):
     description: str | None = None
     slug: str | None = None
     difficulty: str | None = DifficultyEnum.EASY.value
+    is_published: bool = True
     admin_template: str | None = None
     code_template: str | None = None
     code_solution: str | None = None

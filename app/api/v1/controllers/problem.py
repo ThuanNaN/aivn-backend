@@ -27,6 +27,7 @@ def problem_helper(problem) -> dict:
         "description": problem["description"],
         "slug": problem["slug"],
         "difficulty": problem["difficulty"],
+        "is_published": problem["is_published"],
         "admin_template": problem["admin_template"],
         "code_template": problem["code_template"],
         "code_solution": problem["code_solution"],
@@ -34,8 +35,7 @@ def problem_helper(problem) -> dict:
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
         "created_at": str( problem["created_at"]),
-        "updated_at": str(problem["updated_at"]),
-        "is_published": problem["is_published"]
+        "updated_at": str(problem["updated_at"])
     }
 
 # helper (user)
@@ -54,6 +54,7 @@ def user_problem_helper(problem) -> dict:
         "description": problem["description"],
         "slug": problem["slug"],
         "difficulty": problem["difficulty"],
+        "is_published": problem["is_published"],
         "admin_template": problem["admin_template"],
         "code_template": problem["code_template"],
         "public_testcases": problem["public_testcases"],
@@ -61,7 +62,6 @@ def user_problem_helper(problem) -> dict:
         "choices": problem["choices"],
         "created_at": str( problem["created_at"]),
         "updated_at": str(problem["updated_at"]),
-        "is_published": problem["is_published"]
     }
 
 async def add_problem(problem_data: dict) -> dict:
