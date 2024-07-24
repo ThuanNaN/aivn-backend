@@ -31,7 +31,7 @@ class BuildObject:
             # logger.error("Too long to execute the code.")
             error = "Too long to execute the code."
         except Exception as e:
-            # logger.error(f"Error convert to variable: {e}")
+            logger.error(f"Error convert to variable: {e}")
             # error = f"{type(e).__name__}: {e}"
             track_error = traceback.format_exc()
             error = track_error.split("exec(str_input, global_vars, local_vars)\n")[-1]
@@ -108,34 +108,21 @@ class TestPythonFunction:
         if self.return_testcase:
             testcase_output["expected_output"] = testcase["expected_output"]
 
-        # get testcase input
-        extracted_text = re.findall(r'{(.*?)}', testcase["input"])
-        init_kwargs_str = extracted_text[0].replace("|", "\n")
-        input_kwargs_str = extracted_text[1].replace("|", "\n")
-
-        # init_kwargs
-        build_init_kwargs = await BuildObject.exec_code(init_kwargs_str, self.admin_vars)
-        if build_init_kwargs["error"] is not None:
-            testcase_output["error"] = build_init_kwargs["error"]
-            return testcase_output
-
-        init_kwargs = build_init_kwargs["local_vars"]
-
         # input_kwargs
-        build_input_kwargs = await BuildObject.exec_code(input_kwargs_str, self.admin_vars)
+        build_input_kwargs = await BuildObject.exec_code(testcase["input"], self.admin_vars)
         if build_input_kwargs["error"] is not None:
             testcase_output["error"] = build_input_kwargs["error"]
             return testcase_output
         input_kwargs = build_input_kwargs["local_vars"]
 
         # get expected output
-        testcase_output_str = testcase["expected_output"]
+        testcase_output_str = "expected_output = " + testcase["expected_output"]
         build_testcase_output = await BuildObject.exec_code(testcase_output_str, self.admin_vars)
 
         if build_testcase_output["error"] is not None:
             testcase_output["error"] = build_testcase_output["error"]
             return testcase_output
-        expected_output = build_testcase_output["local_vars"].get("output")
+        expected_output = build_testcase_output["local_vars"].get("expected_output")
 
         # get object variables
         build_object_vars = await BuildObject.exec_code(self.code_str, self.admin_vars)
@@ -147,7 +134,7 @@ class TestPythonFunction:
         
         # build object
         try:
-            my_object = object_vars.get(self.class_name)(**init_kwargs)
+            my_object = object_vars.get(self.class_name)()
         except Exception as e:
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
