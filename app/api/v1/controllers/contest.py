@@ -57,6 +57,24 @@ async def retrieve_contests() -> list[dict]:
         logger.error(f"Error when retrieve contests: {e}")
 
 
+async def retrieve_available_contests() -> dict:
+    """
+    Retrieve all available contests
+    :return: list[dict]
+    """
+    try:
+        contests = []
+        async for contest in contest_collection.find({"is_active": True}):
+            contest_detail = await retrieve_contest_detail(contest["_id"])
+            if contest_detail:
+                if len(contest_detail["exams"]) > 0:
+                    # TODO: Add logic to select available exam later
+                    contest_detail["available_exam"] = contest_detail["exams"][0]
+                contests.append(contest_detail)
+        return contests
+    except Exception as e:
+        logger.error(f"Error when retrieve available contests: {e}")
+
 async def retrieve_contest(id: str) -> dict:
     """
     Retrieve a contest with a matching ID
@@ -86,6 +104,9 @@ async def retrieve_contest_detail(id: str) -> dict:
                 problems = await retrieve_by_exam_id(exam["id"])
                 exam["problems"] = problems
                 results.append(exam)
+        if len(results) > 0:
+            # TODO: Add logic to select available exam later
+            contest["available_exam"] = results[0]
         contest["exams"] = results
         return contest
     except Exception as e:

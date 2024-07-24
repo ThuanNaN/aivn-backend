@@ -7,6 +7,7 @@ from app.api.v1.controllers.contest import (
     retrieve_contest_detail,
     update_contest,
     delete_contest,
+    retrieve_available_contests
 )
 from app.api.v1.controllers.exam_problem import (
     add_exam_problem,
@@ -66,6 +67,19 @@ async def create_exam_problem(exam_id: str,
             description="Retrieve all contests")
 async def get_contests():
     contests = await retrieve_contests()
+    if contests:
+        return ListResponseModel(data=contests,
+                                 message="Contests retrieved successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="Error when retrieve contests.",
+                              message="Contests not found.",
+                              code=status.HTTP_404_NOT_FOUND)
+
+@router.get("/available",
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve all available contests")
+async def get_available_contests():
+    contests = await retrieve_available_contests()
     if contests:
         return ListResponseModel(data=contests,
                                  message="Contests retrieved successfully.",
