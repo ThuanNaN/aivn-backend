@@ -34,7 +34,8 @@ def problem_helper(problem) -> dict:
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
         "created_at": str( problem["created_at"]),
-        "updated_at": str(problem["updated_at"])
+        "updated_at": str(problem["updated_at"]),
+        "is_published": problem["is_published"]
     }
 
 # helper (user)
@@ -59,7 +60,8 @@ def user_problem_helper(problem) -> dict:
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
         "created_at": str( problem["created_at"]),
-        "updated_at": str(problem["updated_at"])
+        "updated_at": str(problem["updated_at"]),
+        "is_published": problem["is_published"]
     }
 
 async def add_problem(problem_data: dict) -> dict:
