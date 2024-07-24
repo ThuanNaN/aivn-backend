@@ -10,10 +10,12 @@ except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
+
 # helper 
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
+        "exam_id": timer["exam_id"],
         "clerk_user_id": timer["clerk_user_id"],
         "start_time": timer["start_time"]
     }
@@ -47,7 +49,21 @@ async def retrieve_timer_by_user_id(clerk_user_id: str) -> dict:
         logger.error(f"Error when retrieve timer: {e}")
 
 
-async def delete_timer_by_user_id(clerk_user_id: str) -> dict:
+async def retrieve_timer_by_exam_id(exam_id: str) -> dict:
+    """
+    Retrieve a timer from the database
+    :param exam_id: str
+    :return: dict
+    """
+    try:
+        timer = await timer_collection.find_one({"exam_id": exam_id})
+        if timer:
+            return timer_helper(timer)
+    except Exception as e:
+        logger.error(f"Error when retrieve timer: {e}")
+
+
+async def delete_timer_by_user_id(clerk_user_id: str) -> bool:
     """
     Delete a timer from the database
     :param clerk_user_id: str
@@ -57,6 +73,19 @@ async def delete_timer_by_user_id(clerk_user_id: str) -> dict:
         timer = await timer_collection.find_one({"clerk_user_id": clerk_user_id})
         if timer:
             await timer_collection.delete_one({"clerk_user_id": clerk_user_id})
+            return True
+    except Exception as e:
+        logger.error(f"Error when delete timer: {e}")
+
+
+async def delete_timer_by_exam_id(exam_id: str) -> bool:
+    """
+    Delete a timer from the database
+    """
+    try:
+        timer = await timer_collection.find_one({"exam_id": exam_id})
+        if timer:
+            await timer_collection.delete_one({"exam_id": exam_id})
             return True
     except Exception as e:
         logger.error(f"Error when delete timer: {e}")
