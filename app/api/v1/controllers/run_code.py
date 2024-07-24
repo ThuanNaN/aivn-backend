@@ -200,3 +200,38 @@ class TestPythonFunction:
             return torch.equal(expected_output, output)
         else:
             raise TypeError(f"Unsupported input type: {type(expected_output)}")
+
+async def run_testcases(admin_template: str, code: str, testcases: list):
+    """
+    Run testcases for a problem
+    :param admin_template: str
+    :param code: str
+    :param testcases: list
+    :return: list, bool
+    """
+    if not testcases:
+        return [], True
+    results_dict = await TestPythonFunction(admin_template,
+                                            code,
+                                            testcases,
+                                            return_testcase=True,
+                                            run_all=True
+                                            ).run_all_testcases()
+    return_dict = []
+    is_pass_testcases = True
+    for i, result in enumerate(results_dict["testcase_outputs"]):
+        return_dict.append(
+            {
+                "input": testcases[i]["input"],
+                "output": str(result["output"]),
+                "expected_output": testcases[i]["expected_output"],
+                "error": result["error"],
+                "is_pass": result["is_pass"]
+            }
+        )
+
+        if not result["is_pass"]:
+            is_pass_testcases = False
+
+    return return_dict, is_pass_testcases
+
