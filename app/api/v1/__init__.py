@@ -52,5 +52,5 @@ router.include_router(submission_router,
 
 router.include_router(timer_router,
                       dependencies=[Depends(is_authenticated)],
-                      prefix="/time",
+                      prefix="/timer",
                       tags=["Timer"])

@@ -81,11 +81,29 @@ async def delete_timer_by_user_id(clerk_user_id: str) -> bool:
 async def delete_timer_by_exam_id(exam_id: str) -> bool:
     """
     Delete a timer from the database
+    :param exam_id: str
+    :return: bool
     """
     try:
         timer = await timer_collection.find_one({"exam_id": exam_id})
         if timer:
             await timer_collection.delete_one({"exam_id": exam_id})
+            return True
+    except Exception as e:
+        logger.error(f"Error when delete timer: {e}")
+
+
+async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool:
+    """
+    Delete a timer with matching exam_id and user_id from the database
+    :param exam_id: str
+    :param clerk_user_id: str
+    :return: bool
+    """
+    try:
+        timer = await timer_collection.find_one({"exam_id": exam_id, "clerk_user_id": clerk_user_id})
+        if timer:
+            await timer_collection.delete_one({"exam_id": exam_id, "clerk_user_id": clerk_user_id})
             return True
     except Exception as e:
         logger.error(f"Error when delete timer: {e}")
