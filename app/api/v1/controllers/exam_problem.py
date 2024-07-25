@@ -15,13 +15,18 @@ except Exception as e:
 def exam_problem_helper(exam_problem) -> dict:
     return {
         "id": str(exam_problem["_id"]),
-        "exam_id": exam_problem["exam_id"],
-        "problem_id": exam_problem["problem_id"],
+        "exam_id": str(exam_problem["exam_id"]),
+        "problem_id": str(exam_problem["problem_id"]),
         "index": exam_problem["index"],
         "creator_id": exam_problem["creator_id"],
         "created_at": exam_problem["created_at"],
         "updated_at": exam_problem["updated_at"]
     }
+
+def ObjectId_helper(exam_problem_data: dict) -> dict:
+    exam_problem_data["exam_id"] = ObjectId(exam_problem_data["exam_id"])
+    exam_problem_data["problem_id"] = ObjectId(exam_problem_data["problem_id"])
+    return exam_problem_data
 
 
 async def add_exam_problem(exam_problem_data: dict) -> dict:
@@ -31,6 +36,7 @@ async def add_exam_problem(exam_problem_data: dict) -> dict:
     :return: dict
     """
     try:
+        exam_problem_data = ObjectId_helper(exam_problem_data)
         exam_problem = await exam_problem_collection.insert_one(exam_problem_data)
         new_exam_problem = await exam_problem_collection.find_one(
             {"_id": exam_problem.inserted_id}

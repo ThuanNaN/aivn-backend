@@ -21,7 +21,7 @@ except Exception as e:
 def exam_helper(exam: dict) -> dict:
     return {
         "id": str(exam["_id"]),
-        "contest_id": exam["contest_id"],
+        "contest_id": str(exam["contest_id"]),
         "title": exam["title"],
         "description": exam["description"],
         "is_active": exam["is_active"],
@@ -38,6 +38,7 @@ async def add_exam(exam_data: dict) -> dict:
     :return: dict
     """
     try:
+        exam_data["contest_id"] = ObjectId(exam_data["contest_id"])
         exam = await exam_collection.insert_one(exam_data)
         new_exam = await exam_collection.find_one({"_id": exam.inserted_id})
         return exam_helper(new_exam)
