@@ -7,7 +7,6 @@ logger = Logger("controllers/submission", log_file="submission.log")
 
 try:
     submission_collection = mongo_db["submissions"]
-    setting_collection = mongo_db["setting"]
 except Exception as e:
     logger.error(f"Error when connect to submissions: {e}")
     exit(1)
@@ -17,6 +16,7 @@ except Exception as e:
 def submission_helper(submission) -> dict:
     return {
         "id": str(submission["_id"]),
+        "exam_id": str(submission["exam_id"]),
         "clerk_user_id": submission["clerk_user_id"],
         "submitted_problems": submission["submitted_problems"],
         "created_at": str(submission["created_at"]),
@@ -30,6 +30,7 @@ async def add_submission(submission_data: dict) -> dict:
     :return: dict
     """
     try:
+        submission_data["exam_id"] = ObjectId(submission_data["exam_id"])
         submission = await submission_collection.insert_one(submission_data)
         new_submission = await submission_collection.find_one(
             {"_id": submission.inserted_id}
@@ -148,23 +149,3 @@ async def delete_submission(id: str):
             return True
     except Exception as e:
         logger.error(f"Error when delete submission: {e}")
-
-
-async def update_time_limit(id: str, data: dict) -> bool:
-    """
-    Update a time limit with a matching ID
-    :param id: str
-    :param data: dict
-    :return: bool
-    """
-    try:
-        time_limit = await setting_collection.find_one({"_id": ObjectId(id)})
-        if time_limit:
-            updated = await setting_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": data}
-            )
-            if updated:
-                return True
-            return False
-    except Exception as e:
-        logger.error(f"Error when update time limit: {e}")

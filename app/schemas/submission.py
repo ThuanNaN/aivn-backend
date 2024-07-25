@@ -16,7 +16,6 @@ class Submission(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "exam_id": "6698b45cb077395367734a15",
                     "submitted_problems": [
                         {
                             "problem_id": "66988270a478a22b8a94a985",
@@ -40,10 +39,12 @@ class SubmittedResult(SubmittedProblem):
     is_pass_problem: bool = False
 
 
-class SubmissionDB(Submission):
+class SubmissionDB(BaseModel):
     exam_id: str
     clerk_user_id: str
     submitted_problems: List[SubmittedResult]
+    created_at: datetime = datetime.now()
+
 
 
 

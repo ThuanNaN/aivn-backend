@@ -6,6 +6,9 @@ from app.schemas.exam import (
     UpdateExamSchema,
     OrderSchema
 )
+from app.schemas.timer import (
+    TimerSchemaDB
+)
 from app.schemas.exam_problem import (
     UpdateExamProblem
 )
@@ -22,6 +25,12 @@ from app.api.v1.controllers.exam import (
     retrieve_exam_detail,
     update_exam,
     delete_exam
+)
+from app.api.v1.controllers.timer import (
+    retrieve_timer_by_user_id,
+    retrieve_timer_by_exam_id,
+    add_timer,
+    delete_timer_by_exam_user_id
 )
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_problem_id,
@@ -46,6 +55,31 @@ async def create_exam(exam: ExamSchema):
     return ErrorResponseModel(error="An error occurred",
                               message="An error occurred",
                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/{exam_id}/timer",
+             description="Add a new timer")
+async def create_timer(exam_id: str,
+                       start_time: str,
+                       clerk_user_id: str = Depends(is_authenticated)):
+    current_timer = await retrieve_timer_by_user_id(clerk_user_id)
+    if current_timer:
+        return ErrorResponseModel(error="An error occurred.",
+                                  code=status.HTTP_400_BAD_REQUEST,
+                                  message="Timer already exists.")
+    # create new
+    timer_data = TimerSchemaDB(
+        exam_id=exam_id,
+        clerk_user_id=clerk_user_id,
+        start_time=start_time)
+    new_timer = await add_timer(timer_data.model_dump())
+    if new_timer:
+        return DictResponseModel(data=new_timer,
+                                 message="Timer added successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              code=status.HTTP_404_NOT_FOUND,
+                              message="There was an error adding the timer.")
 
 
 @router.get("/exams",
@@ -74,6 +108,19 @@ async def get_exam_by_id(id: str):
     return ErrorResponseModel(error="An error occurred",
                               message="An error occurred",
                               code=status.HTTP_404_NOT_FOUND)
+
+
+@router.get("/{exam_id}/timer",
+            description="Retrieve a problem with a matching user_id ID")
+async def get_problem(exam_id: str):
+    timer = await retrieve_timer_by_exam_id(exam_id)
+    if timer:
+        return DictResponseModel(data=timer,
+                                 message="Timer retrieved successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              code=status.HTTP_404_NOT_FOUND,
+                              message="Timer does not exist.")
 
 
 @router.get("/{id}/detail",
@@ -121,17 +168,26 @@ async def delete_exam_data(id: str):
                               code=status.HTTP_404_NOT_FOUND)
 
 
+@router.delete("/{exam_id}/timer",
+               description="Delete a timer with a matching user_id")
+async def delete_timer(exam_id: str,
+                       clerk_user_id: str = Depends(is_authenticated)):
+    timer = await delete_timer_by_exam_user_id(exam_id, clerk_user_id)
+    if timer:
+        return DictResponseModel(data=timer,
+                                 message="Timer deleted successfully.",
+                                 code=status.HTTP_200_OK)
+    return ErrorResponseModel(error="An error occurred.",
+                              code=status.HTTP_404_NOT_FOUND,
+                              message="Timer does not exist.")
+
+
 @router.put("/{id}/order-problem",
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Order problems in an exam by index")
 async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
     for order in orders:
-        # order -> {
-        #     "exam_id": "6698921e0ab511463f14d0a9",
-        #     "problem_id": "6698921e0ab511463f14d0a9",
-        #     "index": 1
-        # }
         exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
                                                          problem_id=order.problem_id)
         new_exam_problem = UpdateExamProblem(
