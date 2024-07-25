@@ -103,17 +103,14 @@ async def create_problem_category(id: str, category_id: str):
 
 @router.get("/problems",
             description="Retrieve all problems")
-async def get_problems(user_clerk_id: str = Depends(is_authenticated),
-                       search: Optional[str] = Query(None, 
-                                                     description="Search by problem title or description"),
-                       categories: Optional[List[str]] = Query([], 
-                                                               description="Filter by categories"),
-                       difficulty: Optional[str] = Query(None,
-                                                         description="Filter by difficulty"),
-                       is_published: Optional[bool] = Query(None,
-                                                            description="Filter by is_published"),
-                       page: int = Query(1, ge=1),
-                       per_page: int = Query(10, ge=1, le=100)):
+async def get_problems(
+    user_clerk_id: str = Depends(is_authenticated),
+    search: Optional[str] = Query(None, description="Search by problem title or description"),
+    categories: Optional[List[str]] = Query([], description="Filter by categories"),
+    difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
+    is_published: Optional[bool] = Query(None, description="Filter by is_published"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100)):
     
     cur_user = await retrieve_user(user_clerk_id)
     match_stage = {"$match": {}}
