@@ -12,7 +12,7 @@ from app.api.v1.controllers.submission import (
     retrieve_submissions,
     retrieve_all_search_pagination,
     retrieve_submission,
-    retrieve_submission_by_user,
+    retrieve_submission_by_exam_user_id,
     delete_submission,
 )
 from app.api.v1.controllers.timer import (
@@ -100,9 +100,10 @@ logger = Logger("routes/submission", log_file="submission.log")
 #                          code=status.HTTP_404_NOT_FOUND)
 
 
-@router.get("/my-submission", description="Retrieve a submission by user ID")
-async def get_submission_by_user(user_id: str = Depends(is_authenticated)):
-    submission = await retrieve_submission_by_user(user_id)
+@router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
+async def get_submission_by_user(exam_id: str, 
+                                 clerk_user_id: str = Depends(is_authenticated)):
+    submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
     if submission:
         return DictResponseModel(data=submission,
                              message="Your submission retrieved successfully.",

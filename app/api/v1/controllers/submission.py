@@ -120,11 +120,14 @@ async def retrieve_submission(id: str) -> dict:
         logger.error(f"Error when retrieve submission: {e}")
 
 
-async def retrieve_submission_by_user(user_id: str) -> dict:
+async def retrieve_submission_by_exam_user_id(exam_id: str, 
+                                              clerk_user_id) -> dict:
     try:
-        submission = await submission_collection.find_one({"user_id": user_id})
+        submission = await submission_collection.find_one(
+            {"exam_id": ObjectId(exam_id), "clerk_user_id": clerk_user_id}
+        )
         if submission:
-            user_info = await retrieve_user(submission["user_id"])
+            user_info = await retrieve_user(submission["clerk_user_id"])
             return_dict = {
                 "username": user_info["username"],
                 "email": user_info["email"],
@@ -133,7 +136,8 @@ async def retrieve_submission_by_user(user_id: str) -> dict:
             }
             return return_dict
     except Exception as e:
-        logger.error(f"Error retrieve_submission_by_user: {e}")
+        logger.error(f"Error retrieve_submission_by_exam_user_id: {e}")
+
 
 
 async def delete_submission(id: str):
