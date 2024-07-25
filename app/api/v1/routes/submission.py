@@ -11,7 +11,7 @@ from app.schemas.response import (
 from app.api.v1.controllers.submission import (
     retrieve_submissions,
     retrieve_all_search_pagination,
-    retrieve_submission,
+    retrieve_submission_by_id,
     retrieve_submission_by_exam_user_id,
     delete_submission,
 )
@@ -39,31 +39,31 @@ logger = Logger("routes/submission", log_file="submission.log")
 #     match_stage = {"$match": {}}
 #     if search:
 #         match_stage["$match"]["$or"] = [
-#             {"user_info.email": {"$regex": search, "$options": "i"}},  
-#             {"user_info.username": {"$regex": search, "$options": "i"}} 
+#             {"user_info.email": {"$regex": search, "$options": "i"}},
+#             {"user_info.username": {"$regex": search, "$options": "i"}}
 #         ]
 #     pipeline = [
 #         {
 #             "$lookup": {
-#                 "from": "users", 
-#                 "localField": "clerk_user_id",  
-#                 "foreignField": "clerk_user_id",  
-#                 "as": "user_info" 
+#                 "from": "users",
+#                 "localField": "clerk_user_id",
+#                 "foreignField": "clerk_user_id",
+#                 "as": "user_info"
 #             }
 #         },
 #         {
-#             "$unwind": "$user_info" 
+#             "$unwind": "$user_info"
 #         },
 #         {
 #             "$lookup": {
-#                 "from": "exams", 
-#                 "localField": "exam_id",  
-#                 "foreignField": "_id",  
-#                 "as": "exam_info" 
+#                 "from": "exams",
+#                 "localField": "exam_id",
+#                 "foreignField": "_id",
+#                 "as": "exam_info"
 #             }
 #         },
 #         {
-#             "$unwind": "$exam_info" 
+#             "$unwind": "$exam_info"
 #         },
 #         {
 #             "$match": {
@@ -101,13 +101,13 @@ logger = Logger("routes/submission", log_file="submission.log")
 
 
 @router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
-async def get_submission_by_user(exam_id: str, 
+async def get_submission_by_user(exam_id: str,
                                  clerk_user_id: str = Depends(is_authenticated)):
     submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
     if submission:
         return DictResponseModel(data=submission,
-                             message="Your submission retrieved successfully.",
-                             code=status.HTTP_200_OK)
+                                 message="Your submission retrieved successfully.",
+                                 code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Your submission was not retrieved.",
                               code=status.HTTP_404_NOT_FOUND)
@@ -115,11 +115,11 @@ async def get_submission_by_user(exam_id: str,
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
-    submission = await retrieve_submission(id)
+    submission = await retrieve_submission_by_id(id)
     if submission:
         return DictResponseModel(data=submission,
-                             message="Submission retrieved successfully.",
-                             code=status.HTTP_200_OK)
+                                 message="Submission retrieved successfully.",
+                                 code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Submission was not retrieved.",
                               code=status.HTTP_404_NOT_FOUND)
@@ -129,15 +129,14 @@ async def get_submission(id: str):
                dependencies=[Depends(is_admin)],
                description="Delete a submission with a matching ID")
 async def delete_submission_data(id: str):
-    submission_info = await retrieve_submission(id)
-    user_id = submission_info["user_id"]
-    deleted_timer = await delete_timer_by_user_id(user_id)
+    submission_info = await retrieve_submission_by_id(id)
+    clerk_user_id = submission_info["clerk_user_id"]
+    deleted_timer = await delete_timer_by_user_id(clerk_user_id)
     deleted_submission = await delete_submission(id)
     if deleted_submission and deleted_timer:
         return ListResponseModel(data=[],
-                             message="Submission deleted successfully.",
-                             code=status.HTTP_200_OK)
+                                 message="Submission deleted successfully.",
+                                 code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               message="Submission was not deleted.",
                               code=status.HTTP_404_NOT_FOUND)
-

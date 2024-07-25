@@ -2,6 +2,8 @@ from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.user import retrieve_user
+from app.api.v1.controllers.exam import retrieve_exam
+from app.api.v1.controllers.contest import retrieve_contest
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -100,7 +102,7 @@ async def retrieve_all_search_pagination(pipeline: list,
             f"Error when retrieve submissions with search filter and pagination: {e}")
 
 
-async def retrieve_submission(id: str) -> dict:
+async def retrieve_submission_by_id(id: str) -> dict:
     """
     Retrieve a submission with a matching ID
     :param id: str
@@ -108,14 +110,17 @@ async def retrieve_submission(id: str) -> dict:
     """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
-        user_info = await retrieve_user(submission["user_id"])
-        return_dict = {
-            "username": user_info["username"],
-            "email": user_info["email"],
-            "avatar": user_info["avatar"],
-            **submission_helper(submission)
+        user_info = await retrieve_user(submission["clerk_user_id"])
+        exam_info = await retrieve_exam(submission["exam_id"])
+        contest_info = await retrieve_contest(exam_info["contest_id"])
+
+        return_data = submission_helper(submission)
+        return_data["user"] = user_info
+        return_data["exam"] = {
+            **exam_info,
+            "contest": contest_info
         }
-        return return_dict
+        return return_data
     except Exception as e:
         logger.error(f"Error when retrieve submission: {e}")
 
