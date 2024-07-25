@@ -188,12 +188,19 @@ class TestPythonFunction:
         else:
             raise TypeError(f"Unsupported input type: {type(expected_output)}")
 
-async def run_testcases(admin_template: str, code: str, testcases: list):
+async def run_testcases(admin_template: str, 
+                        code: str, 
+                        testcases: list,
+                        return_testcase: bool = True,
+                        run_all: bool = True, 
+                        return_details: bool = True) -> list:
     """
     Run testcases for a problem
     :param admin_template: str
     :param code: str
     :param testcases: list
+    :param return_testcase: bool
+    :param run_all: bool
     :return: list, bool
     """
     if not testcases:
@@ -201,9 +208,14 @@ async def run_testcases(admin_template: str, code: str, testcases: list):
     results_dict = await TestPythonFunction(admin_template,
                                             code,
                                             testcases,
-                                            return_testcase=True,
-                                            run_all=True
+                                            return_testcase=return_testcase,
+                                            run_all=run_all
                                             ).run_all_testcases()
+    if not return_details:
+        result = results_dict["testcase_outputs"]
+        error = results_dict["error"]
+        return result, error
+
     return_dict = []
     is_pass_testcases = True
     for i, result in enumerate(results_dict["testcase_outputs"]):

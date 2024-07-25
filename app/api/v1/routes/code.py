@@ -5,7 +5,9 @@ from app.schemas.response import (
     ErrorResponseModel
 )
 from app.api.v1.controllers.problem import retrieve_problem
-from app.api.v1.controllers.run_code import TestPythonFunction
+from app.api.v1.controllers.run_code import (
+    run_testcases
+)
 from app.utils.logger import Logger
 
 router = APIRouter()
@@ -25,29 +27,21 @@ async def run_code(code_inputs: CodeSchema):
     public_testcases = problem_info.get("public_testcases", [])
     private_testcases = problem_info.get("private_testcases", [])
 
-    async def run_testcases(admin_template: str, code: str, testcases, return_testcase):
-        if not testcases:
-            return [], None
-        results_dict = await TestPythonFunction(admin_template, 
-                                                code, 
-                                                testcases, 
-                                                return_testcase=True,
-                                                run_all=True
-                                                ).run_all_testcases()
-        
-        result = results_dict["testcase_outputs"]
-        error = results_dict["error"]
-        return result, error
+    public_results, public_error = await run_testcases(
+        admin_template,
+        code_inputs.code,
+        public_testcases,
+        return_testcase=True,
+        run_all=True,
+        return_details=False
+    )
 
-    public_results, public_error = await run_testcases(admin_template,
-                                                       code_inputs.code,
-                                                       public_testcases,
-                                                       True)
-
-    private_results, private_error = await run_testcases(admin_template,
-                                                         code_inputs.code,
-                                                         private_testcases,
-                                                         False)
+    private_results, private_error = await run_testcases(
+        admin_template,
+        code_inputs.code,
+        private_testcases,
+        return_testcase=False
+    )
 
     return DictResponseModel(
         data={
