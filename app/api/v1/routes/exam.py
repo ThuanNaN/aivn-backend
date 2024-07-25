@@ -1,12 +1,14 @@
 from typing import List
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
+from bson import ObjectId as Objectid
 from app.schemas.exam import (
     ExamSchema,
     UpdateExamSchema,
     OrderSchema
 )
 from app.schemas.timer import (
+    TimerSchema,
     TimerSchemaDB
 )
 from app.schemas.exam_problem import (
@@ -60,7 +62,7 @@ async def create_exam(exam: ExamSchema):
 @router.post("/{exam_id}/timer",
              description="Add a new timer")
 async def create_timer(exam_id: str,
-                       start_time: str,
+                       start_time: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)):
     current_timer = await retrieve_timer_by_user_id(clerk_user_id)
     if current_timer:
@@ -69,9 +71,9 @@ async def create_timer(exam_id: str,
                                   message="Timer already exists.")
     # create new
     timer_data = TimerSchemaDB(
-        exam_id=exam_id,
-        clerk_user_id=clerk_user_id,
-        start_time=start_time)
+        **start_time.model_dump(),
+        exam_id=Objectid(exam_id),
+    )
     new_timer = await add_timer(timer_data.model_dump())
     if new_timer:
         return DictResponseModel(data=new_timer,

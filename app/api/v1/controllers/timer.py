@@ -15,7 +15,7 @@ except Exception as e:
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
-        "exam_id": timer["exam_id"],
+        "exam_id": str(timer["exam_id"]),
         "clerk_user_id": timer["clerk_user_id"],
         "start_time": timer["start_time"]
     }
