@@ -78,7 +78,7 @@ async def create_exam_problem(exam_id: str,
 
 @router.post("/exam/{exam_id}/submit",
                 dependencies=[Depends(is_authenticated)],
-                description="Submit code to a contest")
+                description="Submit problems to a contest")
 async def create_submission(exam_id: str,
                             submission_data: Submission,
                             clerk_user_id: str = Depends(is_authenticated)):
