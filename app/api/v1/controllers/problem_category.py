@@ -22,7 +22,7 @@ def problem_category_helper(problem_category) -> dict:
         "updated_at": problem_category["updated_at"]
     }
 
-def ObjectId_helper(problem_category_data: str) -> dict:
+def ObjectId_helper(problem_category_data: dict) -> dict:
     problem_category_data["problem_id"] = ObjectId(problem_category_data["problem_id"])
     problem_category_data["category_id"] = ObjectId(problem_category_data["category_id"])
     return problem_category_data
