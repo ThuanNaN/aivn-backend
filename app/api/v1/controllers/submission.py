@@ -54,13 +54,10 @@ async def retrieve_submissions() -> list:
             if not user_info:
                 raise Exception(
                     f'User with ID: {submission["user_id"]} not found.')
-            return_dict = {
-                "username": user_info["username"],
-                "email": user_info["email"],
-                "avatar": user_info["avatar"],
-                **submission_helper(submission)
-            }
-            submissions.append(return_dict)
+            
+            return_data = submission_helper(submission)
+            return_data["user"] = user_info
+            submissions.append(return_data)
         return submissions
     except Exception as e:
         logger.error(f"Error when retrieve submissions: {e}")
@@ -80,18 +77,14 @@ async def retrieve_all_search_pagination(pipeline: list,
         total_submissions = await submission_collection.count_documents(match_stage["$match"])
         total_pages = (total_submissions + per_page - 1) // per_page
 
-        result_data = []
+        submissions_data = []
         for result in results:
             user_info = await retrieve_user(result["user_id"])
-            return_dict = {
-                "username": user_info["username"],
-                "email": user_info["email"],
-                "avatar": user_info["avatar"],
-                **submission_helper(result)
-            }
-            result_data.append(return_dict)
+            return_data = submission_helper(result)
+            return_data["user"] = user_info
+            submissions_data.append(return_data)
         return {
-            "submissions_data": result_data,
+            "submissions_data": submissions_data,
             "total_submissions": total_submissions,
             "total_pages": total_pages,
             "current_page": page,
@@ -131,15 +124,11 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         submission = await submission_collection.find_one(
             {"exam_id": ObjectId(exam_id), "clerk_user_id": clerk_user_id}
         )
+        return_data = submission_helper(submission)
         if submission:
             user_info = await retrieve_user(submission["clerk_user_id"])
-            return_dict = {
-                "username": user_info["username"],
-                "email": user_info["email"],
-                "avatar": user_info["avatar"],
-                **submission_helper(submission)
-            }
-            return return_dict
+            return_data["user"] = user_info
+            return return_data
     except Exception as e:
         logger.error(f"Error retrieve_submission_by_exam_user_id: {e}")
 
