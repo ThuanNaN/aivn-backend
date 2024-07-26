@@ -5,6 +5,9 @@ from bson.objectid import ObjectId
 from app.api.v1.controllers.category import (
     category_helper
 )
+from app.api.v1.controllers.problem_category import (
+    delete_all_by_problem_id
+)
 
 logger = Logger("controllers/problem", log_file="problem.log")
 
@@ -142,6 +145,15 @@ async def retrieve_search_filter_pagination(pipeline: list,
     try:
         pipeline_results = await problem_collection.aggregate(pipeline).to_list(length=None)
         problems = pipeline_results[0]["problems"]
+        if len(problems) < 1:
+            return {
+                "problems_data": [],
+                "total_problems": 0,
+                "total_pages": 0,
+                "current_page": page,
+                "per_page": per_page
+            }
+
         total_problems = pipeline_results[0]["total"][0]["count"]
         total_pages = (total_problems + per_page - 1) // per_page
 
@@ -198,8 +210,18 @@ async def delete_problem(id: str):
     """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
-        if problem:
-            await problem_collection.delete_one({"_id": ObjectId(id)})
-            return True
+        if not problem:
+            raise Exception("Problem not found")
+        
+        deleted_problem = await problem_collection.delete_one({"_id": ObjectId(id)})
+        if not deleted_problem:
+            raise Exception("Error when delete problem")
+
+        # Delete in problem_category collection
+        deleted_problem_category = await delete_all_by_problem_id(id)
+        if not deleted_problem_category:
+            raise Exception("Error when delete problem_category")
+
+        return True
     except Exception as e:
         logger.error(f"Error when delete problem: {e}")
