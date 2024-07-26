@@ -1,8 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
-from app.schemas.submission import (
-    Submission
-)
+from bson.objectid import ObjectId
 from app.schemas.response import (
     ListResponseModel,
     DictResponseModel,
@@ -10,7 +8,7 @@ from app.schemas.response import (
 )
 from app.api.v1.controllers.submission import (
     retrieve_submissions,
-    retrieve_all_search_pagination,
+    retrieve_search_filter_pagination,
     retrieve_submission_by_id,
     retrieve_submission_by_exam_user_id,
     delete_submission,
@@ -25,79 +23,87 @@ router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
 
 
-# @router.get("/submissions",
-#             dependencies=[Depends(is_admin)],
-#             tags=["Admin"],
-#             description="Get all submissions")
-# async def get_submissions(
-#     search: Optional[str] = Query(None, description="Search by user or email"),
-#     # contest: Optional[str] = Query(None, description="Filter by contest name"),
-#     exam: Optional[str] = Query(None, description="Filter by exam name"),
-#     page: int = Query(1, ge=1),
-#     per_page: int = Query(10, ge=1, le=100)
-# ):
-#     match_stage = {"$match": {}}
-#     if search:
-#         match_stage["$match"]["$or"] = [
-#             {"user_info.email": {"$regex": search, "$options": "i"}},
-#             {"user_info.username": {"$regex": search, "$options": "i"}}
-#         ]
-#     pipeline = [
-#         {
-#             "$lookup": {
-#                 "from": "users",
-#                 "localField": "clerk_user_id",
-#                 "foreignField": "clerk_user_id",
-#                 "as": "user_info"
-#             }
-#         },
-#         {
-#             "$unwind": "$user_info"
-#         },
-#         {
-#             "$lookup": {
-#                 "from": "exams",
-#                 "localField": "exam_id",
-#                 "foreignField": "_id",
-#                 "as": "exam_info"
-#             }
-#         },
-#         {
-#             "$unwind": "$exam_info"
-#         },
-#         {
-#             "$match": {
-#                 "exam_info.title": {"$regex": exam, "$options": "i"} if exam else {"$exists": True}
-#             }
-#         },
-#         match_stage,
-#         {
-#             "$project": {
-#                 "clerk_user_id": "$user_info.clerk_user_id",
-#                 "username": "$user_info.username",
-#                 "email": "$user_info.email",
-#                 "avatar": "$user_info.avatar",
-#                 "exam_id": "$exam_info._id",
-#                 "submitted_problems": 1,
-#                 "created_at": 1
-#             }
-#         },
-#         {
-#             "$skip": (page - 1) * per_page
-#         },
-#         {
-#             "$limit": per_page
-#         }
-#     ]
+@router.get("/submissions",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Get all submissions")
+async def get_submissions(
+    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
+    exam_id: Optional[str] = Query(None, description="Filter by exam id"),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100)
+):
+    match_stage = {"$match": {}}
+    if search:
+        match_stage["$match"]["$or"] = [
+            {"user_info.email": {"$regex": search, "$options": "i"}},
+            {"user_info.username": {"$regex": search, "$options": "i"}},
+            {"exam_info.title": {"$regex": search, "$options": "i"}},
+            {"contest_info.title": {"$regex": search, "$options": "i"}}
+        ]
 
-#     submissions = await retrieve_all_search_pagination(pipeline, match_stage, page, per_page)
-#     if submissions:
-#         return DictResponseModel(data=submissions,
-#                              message="Submissions retrieved successfully.",
-#                              code=status.HTTP_200_OK)
-#     return ListResponseModel(data=[],
-#                          message="No submissions exist.",
-#                          code=status.HTTP_404_NOT_FOUND)
+    if user_id is not None:
+        match_stage["$match"]["clerk_user_id"] = user_id
+    
+    if exam_id is not None:
+        match_stage["$match"]["exam_id"] = ObjectId(exam_id)
+    
+    if contest_id is not None:
+        match_stage["$match"]["exam_info.contest_id"] = ObjectId(contest_id)
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "clerk_user_id",
+                "foreignField": "clerk_user_id",
+                "as": "user_info"
+            }
+        },
+        {
+            "$unwind": "$user_info"
+        },
+        {
+            "$lookup": {
+                "from": "exams",
+                "localField": "exam_id",
+                "foreignField": "_id",
+                "as": "exam_info"
+            }
+        },
+        {
+            "$unwind": "$exam_info"
+        },
+        {
+            "$lookup": {
+                "from": "contests",
+                "localField": "exam_info.contest_id",
+                "foreignField": "_id",
+                "as": "contest_info"
+            }
+        },
+        {
+            "$unwind": "$contest_info"
+        },
+        match_stage,
+        {
+            "$skip": (page - 1) * per_page
+        },
+        {
+            "$limit": per_page
+        }
+    ]
+
+    submissions = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page)
+    if submissions:
+        return DictResponseModel(data=submissions,
+                             message="Submissions retrieved successfully.",
+                             code=status.HTTP_200_OK)
+    return ListResponseModel(data=[],
+                         message="No submissions exist.",
+                         code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")

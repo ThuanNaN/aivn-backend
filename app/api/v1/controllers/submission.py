@@ -50,11 +50,11 @@ async def retrieve_submissions() -> list:
     try:
         submissions = []
         async for submission in submission_collection.find():
-            user_info = await retrieve_user(submission["user_id"])
+            user_info = await retrieve_user(submission["clerk_user_id"])
             if not user_info:
                 raise Exception(
-                    f'User with ID: {submission["user_id"]} not found.')
-            
+                    f'User with ID: {submission["clerk_user_id"]} not found.')
+
             return_data = submission_helper(submission)
             return_data["user"] = user_info
             submissions.append(return_data)
@@ -63,11 +63,11 @@ async def retrieve_submissions() -> list:
         logger.error(f"Error when retrieve submissions: {e}")
 
 
-async def retrieve_all_search_pagination(pipeline: list,
-                                         match_stage: dict,
-                                         page: int,
-                                         per_page: int
-                                         ) -> dict:
+async def retrieve_search_filter_pagination(pipeline: list,
+                                            match_stage: dict,
+                                            page: int,
+                                            per_page: int
+                                            ) -> dict:
     """
     Retrieve all submissions with search filter and pagination
     :param pipeline: list
@@ -77,12 +77,7 @@ async def retrieve_all_search_pagination(pipeline: list,
         total_submissions = await submission_collection.count_documents(match_stage["$match"])
         total_pages = (total_submissions + per_page - 1) // per_page
 
-        submissions_data = []
-        for result in results:
-            user_info = await retrieve_user(result["user_id"])
-            return_data = submission_helper(result)
-            return_data["user"] = user_info
-            submissions_data.append(return_data)
+        submissions_data = [submission_helper(result) for result in results]
         return {
             "submissions_data": submissions_data,
             "total_submissions": total_submissions,
@@ -118,7 +113,7 @@ async def retrieve_submission_by_id(id: str) -> dict:
         logger.error(f"Error when retrieve submission: {e}")
 
 
-async def retrieve_submission_by_exam_user_id(exam_id: str, 
+async def retrieve_submission_by_exam_user_id(exam_id: str,
                                               clerk_user_id) -> dict:
     try:
         submission = await submission_collection.find_one(
@@ -131,7 +126,6 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
             return return_data
     except Exception as e:
         logger.error(f"Error retrieve_submission_by_exam_user_id: {e}")
-
 
 
 async def delete_submission(id: str):
