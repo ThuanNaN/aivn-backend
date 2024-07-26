@@ -153,7 +153,10 @@ async def get_problems(
             }
         },
         {
-            "$unwind": "$problem_categories"
+            "$unwind": {
+                "path": "$problem_categories",
+                "preserveNullAndEmptyArrays": True
+            }
         },
         {
             "$lookup": {
@@ -164,7 +167,10 @@ async def get_problems(
             }
         },
         {
-            "$unwind": "$category_info"
+            "$unwind": {
+                "path": "$category_info",
+                "preserveNullAndEmptyArrays": True
+            }
         },
         {
             "$group": {
@@ -236,14 +242,13 @@ async def update_problem_data(id: str,
                               user_clerk_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
     category_ids = problem_dict.pop("category_ids", [])
-
+    deleted = await delete_all_by_problem_id(id)
+    if not deleted:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Problem-Category was not deleted.",
+                                  code=status.HTTP_404_NOT_FOUND)
     new_problem_categories = []
     if len(category_ids) > 0:
-        deleted = await delete_all_by_problem_id(id)
-        if not deleted:
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Problem-Category was not deleted.",
-                                      code=status.HTTP_404_NOT_FOUND)
         problem_categories: List[dict] = [
             ProblemCategory(problem_id=id,
                             category_id=category_id).model_dump()
