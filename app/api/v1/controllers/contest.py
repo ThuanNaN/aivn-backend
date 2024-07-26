@@ -3,9 +3,10 @@ from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam import (
     retrieve_exam_by_contest,
+    delete_all_by_contest_id
 )
 from app.api.v1.controllers.exam_problem import (
-    retrieve_by_exam_id,
+    retrieve_by_exam_id
 )
 
 logger = Logger("controllers/contest", log_file="contest.log")
@@ -124,13 +125,14 @@ async def update_contest(id: str, data: dict) -> bool:
         if len(data) < 1:
             return False
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
-        if contest:
-            updated_contest = await contest_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": data}
-            )
-            if updated_contest:
-                return True
-            return False
+        if not contest:
+            raise Exception("Contest not found")
+        updated_contest = await contest_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": data}
+        )
+        if not updated_contest:
+            raise Exception("Update contest failed")
+        return True
     except Exception as e:
         logger.error(f"Error when update contest: {e}")
 
@@ -143,9 +145,18 @@ async def delete_contest(id: str) -> bool:
     """
     try:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
-        if contest:
-            await contest_collection.delete_one({"_id": ObjectId(id)})
-            return True
+        if not contest:
+            raise Exception("Contest not found")
+        
+        deleted_contest = await contest_collection.delete_one({"_id": ObjectId(id)})
+        if not deleted_contest:
+            raise Exception("Delete contest failed")
+
+        # Delete all exam 
+        deleted_exams = await delete_all_by_contest_id(id)
+        if not deleted_exams:
+            raise Exception("Delete exams failed")
+
     except Exception as e:
         logger.error(f"Error when delete contest: {e}")
 

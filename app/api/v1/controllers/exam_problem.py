@@ -135,7 +135,27 @@ async def delete_exam_problem(id: str) -> bool:
     try:
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
         if exam_problem:
-            await exam_problem_collection.delete_one({"_id": ObjectId(id)})
-            return True
+            deleted = await exam_problem_collection.delete_one({"_id": ObjectId(id)})
+            if deleted:
+                return True
+            return False
     except Exception as e:
         logger.error(f"Error when delete_exam_problem: {e}")
+
+
+async def delete_all_by_exam_id(exam_id: str) -> bool:
+    """"
+    Delete all exam_problems with a matching exam_id
+    """
+    try:
+        exam_problems = await retrieve_by_exam_id(exam_id)
+        exam_problems_id = [ObjectId(exam_problem["exam_id"]) for exam_problem in exam_problems]
+        if exam_problems:
+            deleted = await exam_problem_collection.delete_many(
+                {"exam_id": {"$in": exam_problems_id}}
+            )
+            if deleted:
+                return True
+            return False
+    except Exception as e:
+        logger.error(f"Error when delete_all_by_exam_id: {e}")

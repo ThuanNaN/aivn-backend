@@ -3,6 +3,7 @@ from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id,
+    delete_all_by_exam_id
 )
 from app.api.v1.controllers.problem import (
     retrieve_problems_by_ids
@@ -146,8 +147,28 @@ async def delete_exam(id: str) -> bool:
     try:
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
         if exam:
-            await exam_collection.delete_one({"_id": ObjectId(id)})
-            return True
+            # delete all exam_problem in exam_problem collection
+            deleted_exam_problems = await delete_all_by_exam_id(id)
+            deleted_exam = await exam_collection.delete_one({"_id": ObjectId(id)})
+            if deleted_exam and deleted_exam_problems:
+                return True
+            return False
     except Exception as e:
         logger.error(f"Error when delete exam: {e}")
-        return False
+
+
+async def delete_all_by_contest_id(contest_id: str) -> bool:
+    """
+    Delete all exams with a matching contest ID
+    :param contest_id: str
+    :return: bool
+    """
+    try:
+        exams = await retrieve_exam_by_contest(contest_id)
+        if not exams:
+            raise Exception("Exams not found")
+        for exam in exams:
+            await delete_exam(exam["id"])
+        return True
+    except Exception as e:
+        logger.error(f"Error when delete all exam by contest: {e}")
