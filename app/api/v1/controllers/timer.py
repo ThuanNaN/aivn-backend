@@ -28,6 +28,7 @@ async def add_timer(timer_data: dict) -> dict:
     :return: dict
     """
     try:
+        timer_data["exam_id"] = ObjectId(timer_data["exam_id"])
         timer = await timer_collection.insert_one(timer_data)
         new_timer = await timer_collection.find_one({"_id": timer.inserted_id})
         return timer_helper(new_timer)
@@ -56,7 +57,23 @@ async def retrieve_timer_by_exam_id(exam_id: str) -> dict:
     :return: dict
     """
     try:
-        timer = await timer_collection.find_one({"exam_id": exam_id})
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id)})
+        if timer:
+            return timer_helper(timer)
+    except Exception as e:
+        logger.error(f"Error when retrieve timer: {e}")
+
+
+async def retrieve_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> dict:
+    """
+    Retrieve a timer with matching exam_id and user_id from the database
+    :param exam_id: str
+    :param clerk_user_id: str
+    :return: dict
+    """
+    try:
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id), 
+                                                 "clerk_user_id": clerk_user_id})
         if timer:
             return timer_helper(timer)
     except Exception as e:
@@ -85,9 +102,9 @@ async def delete_timer_by_exam_id(exam_id: str) -> bool:
     :return: bool
     """
     try:
-        timer = await timer_collection.find_one({"exam_id": exam_id})
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id)})
         if timer:
-            await timer_collection.delete_one({"exam_id": exam_id})
+            await timer_collection.delete_one({"exam_id": ObjectId(exam_id)})
             return True
     except Exception as e:
         logger.error(f"Error when delete timer: {e}")
@@ -101,9 +118,11 @@ async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool
     :return: bool
     """
     try:
-        timer = await timer_collection.find_one({"exam_id": exam_id, "clerk_user_id": clerk_user_id})
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id), 
+                                                 "clerk_user_id": clerk_user_id})
         if timer:
-            await timer_collection.delete_one({"exam_id": exam_id, "clerk_user_id": clerk_user_id})
+            await timer_collection.delete_one({"exam_id": ObjectId(exam_id), 
+                                               "clerk_user_id": clerk_user_id})
             return True
     except Exception as e:
         logger.error(f"Error when delete timer: {e}")
