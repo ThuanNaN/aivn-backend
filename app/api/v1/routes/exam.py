@@ -1,7 +1,6 @@
 from typing import List
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
-from bson import ObjectId as Objectid
 from app.schemas.exam import (
     ExamSchema,
     UpdateExamSchema,
@@ -29,7 +28,7 @@ from app.api.v1.controllers.exam import (
     delete_exam
 )
 from app.api.v1.controllers.timer import (
-    retrieve_timer_by_user_id,
+    retrieve_timer_by_exam_user_id,
     retrieve_timer_by_exam_id,
     add_timer,
     delete_timer_by_exam_user_id
@@ -64,7 +63,8 @@ async def create_exam(exam: ExamSchema):
 async def create_timer(exam_id: str,
                        start_time: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)):
-    current_timer = await retrieve_timer_by_user_id(clerk_user_id)
+    current_timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
+    print("current_timer: ", current_timer)
     if current_timer:
         return ErrorResponseModel(error="An error occurred.",
                                   code=status.HTTP_400_BAD_REQUEST,
@@ -72,7 +72,8 @@ async def create_timer(exam_id: str,
     # create new
     timer_data = TimerSchemaDB(
         **start_time.model_dump(),
-        exam_id=Objectid(exam_id),
+        exam_id=exam_id,
+        clerk_user_id=clerk_user_id
     )
     new_timer = await add_timer(timer_data.model_dump())
     if new_timer:
