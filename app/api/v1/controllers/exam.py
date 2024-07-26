@@ -108,7 +108,7 @@ async def retrieve_exam_by_contest(contest_id: str) -> list:
     """
     try:
         exams = []
-        async for exam in exam_collection.find({"contest_id": contest_id}):
+        async for exam in exam_collection.find({"contest_id": ObjectId(contest_id)}):
             exams.append(exam_helper(exam))
         return exams
     except Exception as e:

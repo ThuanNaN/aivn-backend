@@ -83,7 +83,7 @@ async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
     """
     try:
         exam_problem = await exam_problem_collection.find_one(
-            {"exam_id": exam_id, "problem_id": problem_id}
+            {"exam_id": ObjectId(exam_id), "problem_id": ObjectId(problem_id)}
         )
         if exam_problem:
             return exam_problem_helper(exam_problem)
@@ -99,7 +99,7 @@ async def retrieve_by_exam_id(exam_id: str) -> list:
     """
     try:
         exam_problems = []
-        async for exam_problem in exam_problem_collection.find({"exam_id": exam_id}):
+        async for exam_problem in exam_problem_collection.find({"exam_id": ObjectId(exam_id)}):
             exam_problems.append(exam_problem_helper(exam_problem))
         return exam_problems
     except Exception as e:

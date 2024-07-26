@@ -104,7 +104,7 @@ async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> 
     """
     try:
         problem_category = await problem_category_collection.find_one(
-            {"problem_id": problem_id, "category_id": category_id}
+            {"problem_id": ObjectId(problem_id), "category_id": ObjectId(category_id)}
         )
         if problem_category:
             return problem_category_helper(problem_category)
