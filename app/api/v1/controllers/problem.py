@@ -2,11 +2,8 @@ import asyncio
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.problem_category import (
-    retrieve_by_problem_id
-)
 from app.api.v1.controllers.category import (
-    retrieve_category
+    category_helper
 )
 
 logger = Logger("controllers/problem", log_file="problem.log")
@@ -143,21 +140,17 @@ async def retrieve_search_filter_pagination(pipeline: list,
     :return: dict
     """
     try:
-        results = await problem_collection.aggregate(pipeline).to_list(length=None)
-        total_problems = await problem_collection.count_documents(match_stage["$match"])
+        pipeline_results = await problem_collection.aggregate(pipeline).to_list(length=None)
+        problems = pipeline_results[0]["problems"]
+        total_problems = pipeline_results[0]["total"][0]["count"]
         total_pages = (total_problems + per_page - 1) // per_page
-        result_data = []
-        for result in results:  
-            problem_info = user_problem_helper(result) if role != "admin" else problem_helper(result)
-            problem_id = problem_info["id"]
 
-            problem_categories = await retrieve_by_problem_id(problem_id)
-            category_ids = [problem_category["category_id"] for problem_category in problem_categories]
-            categories = await asyncio.gather(*[retrieve_category(category_id) for category_id in category_ids])
-            
+        result_data = []
+        for problem in problems:  
+            problem_info = user_problem_helper(problem) if role != "admin" else problem_helper(problem)
             return_dict = {
                 **problem_info,
-                "categories": categories
+                "categories": [category_helper(category) for category in problem["category_info"]]
             }
             result_data.append(return_dict)
         return {

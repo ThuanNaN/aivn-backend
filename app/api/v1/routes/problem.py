@@ -118,7 +118,11 @@ async def get_problems(
         match_stage["$match"]["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"description": {"$regex": search, "$options": "i"}},
+            {"difficulty": {"$regex": search, "$options": "i"}},
+            {"category_info.category_name": {"$regex": search, "$options": "i"}},
+
         ]
+        
     if difficulty is not None:
         match_stage["$match"]["difficulty"] = difficulty
     
@@ -135,13 +139,63 @@ async def get_problems(
         match_stage["$match"]["_id"] = {"$in": problem_ids}
 
     pipeline = [
-        match_stage,
         {
-            "$skip": (page - 1) * per_page
+            "$lookup": {
+                "from": "problem_category",
+                "localField": "_id",
+                "foreignField": "problem_id",
+                "as": "problem_categories"
+            }
         },
         {
-            "$limit": per_page
-        }
+            "$unwind": "$problem_categories"
+        },
+        {
+            "$lookup": {
+                "from": "categories",
+                "localField": "problem_categories.category_id",
+                "foreignField": "_id",
+                "as": "category_info"
+            }
+        },
+        {
+            "$unwind": "$category_info"
+        },
+        {
+            "$group": {
+                "_id": "$_id",
+                "problem_data": { "$first": "$$ROOT" },
+                "category_info": { "$push": "$category_info" }
+            }
+        },
+        {
+            "$replaceRoot": {
+                "newRoot": {
+                    "$mergeObjects": ["$problem_data", { "category_info": "$category_info" }]
+                }
+            }
+        },
+        {
+        "$sort": { "_id": 1 }
+    },
+        match_stage,
+        {
+            "$facet": {
+                "problems": [
+                    {
+                        "$skip": (page - 1) * per_page
+                    },
+                    {
+                        "$limit": per_page
+                    }
+                ],
+                "total": [
+                    {
+                        "$count": "count"
+                    }
+                ]
+            }
+        },
     ]
     problems = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page, cur_user["role"])
     if problems:
