@@ -47,16 +47,16 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
     category_ids = problem_dict.pop("category_ids", [])
 
     problem_db = ProblemSchemaDB(
-        **problem_dict, 
+        **problem_dict,
         creator_id=user_clerk_id
     )
     new_problem = await add_problem(problem_db.model_dump())
 
     new_problem_categories = []
-    if len(category_ids)  > 0:
+    if len(category_ids) > 0:
         problem_categories: List[dict] = [
-            ProblemCategory(problem_id = new_problem["id"], 
-                            category_id = category_id).model_dump() 
+            ProblemCategory(problem_id=new_problem["id"],
+                            category_id=category_id).model_dump()
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
@@ -104,14 +104,18 @@ async def create_problem_category(id: str, category_id: str):
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
-    user_clerk_id: str = Depends(is_authenticated),
-    search: Optional[str] = Query(None, description="Search by problem title or description"),
-    categories: Optional[List[str]] = Query([], description="Filter by categories"),
-    difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
-    is_published: Optional[bool] = Query(None, description="Filter by is_published"),
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100)):
-    
+        user_clerk_id: str = Depends(is_authenticated),
+        search: Optional[str] = Query(
+            None, description="Search by problem title or description"),
+        categories: Optional[List[str]] = Query(
+            [], description="Filter by categories"),
+        difficulty: Optional[str] = Query(
+            None, description="Filter by difficulty"),
+        is_published: Optional[bool] = Query(
+            None, description="Filter by is_published"),
+        page: int = Query(1, ge=1),
+        per_page: int = Query(10, ge=1, le=100)):
+
     cur_user = await retrieve_user(user_clerk_id)
     match_stage = {"$match": {}}
     if search:
@@ -122,10 +126,10 @@ async def get_problems(
             {"category_info.category_name": {"$regex": search, "$options": "i"}},
 
         ]
-        
+
     if difficulty is not None:
         match_stage["$match"]["difficulty"] = difficulty
-    
+
     if is_published is not None:
         match_stage["$match"]["is_published"] = is_published
 
@@ -135,7 +139,8 @@ async def get_problems(
             return ListResponseModel(data=[],
                                      message="No problems match with categories.",
                                      code=status.HTTP_404_NOT_FOUND)
-        problem_ids = [ObjectId(problem_category["problem_id"]) for problem_category in problem_categories]
+        problem_ids = [ObjectId(problem_category["problem_id"])
+                       for problem_category in problem_categories]
         match_stage["$match"]["_id"] = {"$in": problem_ids}
 
     pipeline = [
@@ -164,20 +169,20 @@ async def get_problems(
         {
             "$group": {
                 "_id": "$_id",
-                "problem_data": { "$first": "$$ROOT" },
-                "category_info": { "$push": "$category_info" }
+                "problem_data": {"$first": "$$ROOT"},
+                "category_info": {"$push": "$category_info"}
             }
         },
         {
             "$replaceRoot": {
                 "newRoot": {
-                    "$mergeObjects": ["$problem_data", { "category_info": "$category_info" }]
+                    "$mergeObjects": ["$problem_data", {"category_info": "$category_info"}]
                 }
             }
         },
         {
-        "$sort": { "_id": 1 }
-    },
+            "$sort": {"_id": 1}
+        },
         match_stage,
         {
             "$facet": {
@@ -233,15 +238,15 @@ async def update_problem_data(id: str,
     category_ids = problem_dict.pop("category_ids", [])
 
     new_problem_categories = []
-    if len(category_ids)  > 0:
+    if len(category_ids) > 0:
         deleted = await delete_all_by_problem_id(id)
         if not deleted:
             return ErrorResponseModel(error="An error occurred.",
                                       message="Problem-Category was not deleted.",
                                       code=status.HTTP_404_NOT_FOUND)
         problem_categories: List[dict] = [
-            ProblemCategory(problem_id = id, 
-                            category_id = category_id).model_dump() 
+            ProblemCategory(problem_id=id,
+                            category_id=category_id).model_dump()
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
