@@ -89,11 +89,22 @@ async def get_submissions(
         },
         match_stage,
         {
-            "$skip": (page - 1) * per_page
+            "$facet": {
+                "submissions": [
+                    {
+                        "$skip": (page - 1) * per_page
+                    },
+                    {
+                        "$limit": per_page
+                    }
+                ],
+                "total": [
+                    {
+                        "$count": "count"
+                    }
+                ]
+            }
         },
-        {
-            "$limit": per_page
-        }
     ]
 
     submissions = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page)

@@ -1,9 +1,9 @@
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.user import retrieve_user
-from app.api.v1.controllers.exam import retrieve_exam
-from app.api.v1.controllers.contest import retrieve_contest
+from app.api.v1.controllers.user import retrieve_user, user_helper
+from app.api.v1.controllers.exam import retrieve_exam, exam_helper
+from app.api.v1.controllers.contest import retrieve_contest, contest_helper
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -73,11 +73,30 @@ async def retrieve_search_filter_pagination(pipeline: list,
     :param pipeline: list
     """
     try:
-        results = await submission_collection.aggregate(pipeline).to_list(length=None)
-        total_submissions = await submission_collection.count_documents(match_stage["$match"])
+        pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
+        submissions = pipeline_results[0]["submissions"]
+        if len(submissions) < 1:
+            return {
+                "submissions_data": [],
+                "total_submissions": 0,
+                "total_pages": 0,
+                "current_page": page,
+                "per_page": per_page
+            }
+        
+        total_submissions = pipeline_results[0]["total"][0]["count"]
         total_pages = (total_submissions + per_page - 1) // per_page
 
-        submissions_data = [submission_helper(result) for result in results]
+        submissions_data = []
+        for submission in submissions:
+            submissions_data.append(
+                {
+                    **submission_helper(submission),
+                    "contest_info": contest_helper(submission["contest_info"]),
+                    "exam_info": exam_helper(submission["exam_info"]),
+                    "user_info": user_helper(submission["user_info"])
+                }
+            )
         return {
             "submissions_data": submissions_data,
             "total_submissions": total_submissions,
