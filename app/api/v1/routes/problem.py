@@ -104,14 +104,10 @@ async def create_problem_category(id: str, category_id: str):
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
-        search: Optional[str] = Query(
-            None, description="Search by problem title or description"),
-        categories: Optional[List[str]] = Query(
-            [], description="Filter by categories"),
-        difficulty: Optional[str] = Query(
-            None, description="Filter by difficulty"),
-        is_published: Optional[bool] = Query(
-            None, description="Filter by is_published"),
+        search: Optional[str] = Query(None, description="Search by problem title or description"),
+        categories: Optional[str] = Query(None, description="Filter by categories (comma separated)"),
+        difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
+        is_published: Optional[bool] = Query(None, description="Filter by is_published"),
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100)):
 
@@ -122,7 +118,6 @@ async def get_problems(
             {"description": {"$regex": search, "$options": "i"}},
             {"difficulty": {"$regex": search, "$options": "i"}},
             {"category_info.category_name": {"$regex": search, "$options": "i"}},
-
         ]
 
     if difficulty is not None:
@@ -131,7 +126,10 @@ async def get_problems(
     if is_published is not None:
         match_stage["$match"]["is_published"] = is_published
 
-    if len(categories) > 0:
+    if categories is not None:
+        categories = categories.split(",")
+
+        print(categories)
         problem_categories = await retrieve_by_categories(categories)
         if not problem_categories:
             return ListResponseModel(data=[],
