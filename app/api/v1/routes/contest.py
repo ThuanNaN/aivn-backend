@@ -89,7 +89,7 @@ async def create_submission(exam_id: str,
     total_score = 0
     for submitted_problem in submitted_problems:
         problem_id = submitted_problem["problem_id"]
-        problem_info = await retrieve_problem(problem_id)
+        problem_info = await retrieve_problem(problem_id, full_return=True)
         if not problem_info:
             logger.error(f'Problem with ID {problem_id} not found.')
             return ErrorResponseModel(error="Error when submit code.",
@@ -103,6 +103,9 @@ async def create_submission(exam_id: str,
             public_testcases = problem_info.get("public_testcases", [])
             private_testcases = problem_info.get("private_testcases", [])
 
+            print("private_results: ", private_testcases)
+
+
             public_results, is_pass_public = await run_testcases(
                 admin_template,
                 submitted_code,
@@ -114,6 +117,8 @@ async def create_submission(exam_id: str,
                 submitted_code,
                 private_testcases
             )
+            print("private_results: ", private_results)
+
 
             is_pass_problem = is_pass_public and is_pass_private
             total_score += int(is_pass_problem)

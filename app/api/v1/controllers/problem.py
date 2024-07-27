@@ -39,7 +39,7 @@ def problem_helper(problem) -> dict:
     }
 
 # helper (user)
-def user_problem_helper(problem) -> dict:
+def hide_problem_helper(problem) -> dict:
     if problem["choices"] is not None:
         for i in range(len(problem["choices"])):
             problem["choices"][i]["is_correct"] = False
@@ -57,6 +57,7 @@ def user_problem_helper(problem) -> dict:
         "is_published": problem["is_published"],
         "admin_template": problem["admin_template"],
         "code_template": problem["code_template"],
+        "code_solution": "",
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
@@ -80,64 +81,70 @@ async def add_problem(problem_data: dict) -> dict:
         logger.error(f"Error when add problem: {e}")
 
 
-async def retrieve_problems(role: str = None) -> list:
+async def retrieve_problems(full_return: bool = False) -> list:
     """
     Retrieve all problems from the database
+    :param full_return: bool
     :return: list
     """
     try:
         problems = []
         async for problem in problem_collection.find():
-            if role == "admin":
-                problems.append(problem_helper(problem))
+            if full_return:
+                problem_data = problem_helper(problem)
             else:
-                problems.append(user_problem_helper(problem))
+                problem_data = hide_problem_helper(problem)
+            problems.append(problem_data)
         return problems
     except Exception as e:
         logger.error(f"Error when retrieve problems: {e}")
 
-async def retrieve_problems_by_ids(ids: list) -> list:
+
+async def retrieve_problems_by_ids(ids: list, full_return: bool = False) -> list:
     """
     Retrieve problems with a matching IDs
     :param ids: list
+    :param full_return: bool
     :return: list
     """
     try:
         problems = []
         async for problem in problem_collection.find({"_id": {"$in": ids}}):
-            problems.append(problem_helper(problem))
+            if full_return:
+                problem_data = problem_helper(problem)
+            else:
+                problem_data = hide_problem_helper(problem)
+            problems.append(problem_data)
         return problems
     except Exception as e:
         logger.error(f"Error when retrieve problems: {e}")
 
 
-async def retrieve_problem(id: str, role: str = None) -> dict:
+async def retrieve_problem(id: str, full_return: bool = False) -> dict:
     """
     Retrieve a problem with a matching ID
     :param id: str
+    :param full_return: bool
     :return: dict
     """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if problem:
-            if role == "admin":
+            if full_return:
                 return problem_helper(problem)
             else:
-                return user_problem_helper(problem)
+                return hide_problem_helper(problem)
     except Exception as e:
         logger.error(f"Error when retrieve problem: {e}")
 
 
 async def retrieve_search_filter_pagination(pipeline: list,
-                                            match_stage: dict,
                                             page: int,
                                             per_page: int, 
-                                            role: str = None
                                             ) -> dict:
     """
     Retrieve all problems with search, filter and pagination.
     :param pipeline: list
-    :param match_stage: dict
     :param page: int
     :param per_page: int
     :return: dict
@@ -159,7 +166,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
         result_data = []
         for problem in problems:  
-            problem_info = user_problem_helper(problem) if role != "admin" else problem_helper(problem)
+            problem_info = hide_problem_helper(problem)
             return_dict = {
                 **problem_info,
                 "categories": [category_helper(category) for category in problem["category_info"]]

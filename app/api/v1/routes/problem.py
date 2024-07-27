@@ -104,7 +104,6 @@ async def create_problem_category(id: str, category_id: str):
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
-        user_clerk_id: str = Depends(is_authenticated),
         search: Optional[str] = Query(
             None, description="Search by problem title or description"),
         categories: Optional[List[str]] = Query(
@@ -116,7 +115,6 @@ async def get_problems(
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100)):
 
-    cur_user = await retrieve_user(user_clerk_id)
     match_stage = {"$match": {}}
     if search:
         match_stage["$match"]["$or"] = [
@@ -208,7 +206,7 @@ async def get_problems(
             }
         },
     ]
-    problems = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page, cur_user["role"])
+    problems = await retrieve_search_filter_pagination(pipeline, page, per_page)
     if problems:
         return DictResponseModel(data=problems,
                                  message="Problems retrieved successfully.",
@@ -220,10 +218,8 @@ async def get_problems(
 
 @router.get("/{id}",
             description="Retrieve a problem with a matching ID")
-async def get_problem(id: str, user_clerk_id: str = Depends(is_authenticated)):
-    cur_user = await retrieve_user(user_clerk_id)
-    role = cur_user["role"]
-    problem = await retrieve_problem(id, role)
+async def get_problem(id: str):
+    problem = await retrieve_problem(id)
     if problem:
         return DictResponseModel(data=problem,
                                  message="Problem retrieved successfully.",
