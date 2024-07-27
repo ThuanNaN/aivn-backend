@@ -167,24 +167,30 @@ class TestPythonFunction:
         testcase_output["is_pass"] = is_correct
         return testcase_output
 
-    def check_output(self, output, expected_output) -> bool:
+    def check_output(self, output, expected_output, eps=1e-5) -> bool:
+        # Mapping of expected_output and output
+        # if isinstance(expected_output, (int, np.integer)) and isinstance(output, (int, np.integer)):
+        #     return int(expected_output) == int(output)
+
         if type(expected_output) != type(output):
             raise TypeError(
-                f"Expected output type {type(expected_output)} does not match Output type {type(output)}")
-        if isinstance(expected_output, (int, float)):
+                f'"expected output" type {type(expected_output)} does not match "output" type {type(output)}')
+        if isinstance(expected_output, int):
             return expected_output == output
+        elif isinstance(expected_output, str):
+            return expected_output == output
+        elif isinstance(expected_output, (np.ndarray, float)):
+            # return np.array_equal(expected_output, output)
+            return np.allclose(expected_output, output, atol=eps) 
+        elif isinstance(expected_output, torch.Tensor):
+            # return torch.equal(expected_output, output)
+            return torch.allclose(expected_output, output, atol=eps) 
         elif isinstance(expected_output, (list, tuple)):
             return all(self.check_output(i, o) for i, o in zip(expected_output, output))
-        elif isinstance(expected_output, np.ndarray):
-            return np.array_equal(expected_output, output)
         elif isinstance(expected_output, dict):
             if expected_output.keys() != output.keys():
                 return False
             return all(self.check_output(expected_output[k], output[k]) for k in expected_output)
-        elif isinstance(expected_output, str):
-            return expected_output == output
-        elif isinstance(expected_output, torch.Tensor):
-            return torch.equal(expected_output, output)
         else:
             raise TypeError(f"Unsupported input type: {type(expected_output)}")
 
