@@ -138,8 +138,8 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         submission = await submission_collection.find_one(
             {"exam_id": ObjectId(exam_id), "clerk_user_id": clerk_user_id}
         )
-        return_data = submission_helper(submission)
         if submission:
+            return_data = submission_helper(submission)
             user_info = await retrieve_user(submission["clerk_user_id"])
             return_data["user"] = user_info
             return return_data
