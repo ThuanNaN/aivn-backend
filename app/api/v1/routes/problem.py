@@ -53,7 +53,7 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
     new_problem = await add_problem(problem_db.model_dump())
 
     new_problem_categories = []
-    if len(category_ids) > 0:
+    if category_ids > 0:
         problem_categories: List[dict] = [
             ProblemCategory(problem_id=new_problem["id"],
                             category_id=category_id).model_dump()
@@ -128,8 +128,6 @@ async def get_problems(
 
     if categories is not None:
         categories = categories.split(",")
-
-        print(categories)
         problem_categories = await retrieve_by_categories(categories)
         if not problem_categories:
             return ListResponseModel(data=[],
