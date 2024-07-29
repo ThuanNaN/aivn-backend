@@ -13,6 +13,10 @@ from app.schemas.timer import (
 from app.schemas.exam_problem import (
     UpdateExamProblem
 )
+from app.schemas.retake import (
+    RetakeSchema,
+    RetakeSchemaDB
+)
 from app.schemas.response import (
     ListResponseModel,
     DictResponseModel,
@@ -32,6 +36,11 @@ from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_id,
     add_timer,
     delete_timer_by_exam_user_id
+)
+from app.api.v1.controllers.retake import (
+    add_retake,
+    retrieve_retake_by_exam_id,
+    delete_retake_by_id
 )
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_problem_id,
@@ -85,6 +94,23 @@ async def create_timer(exam_id: str,
                               message="There was an error adding the timer.")
 
 
+@router.post("/{exam_id}/retake",
+             description="Add a new retake")
+async def create_retake(exam_id: str, retake_data: RetakeSchema):
+    retake_db = RetakeSchemaDB(
+        **retake_data.model_dump(),
+        exam_id=exam_id
+    ).model_dump()
+    new_retake = await add_retake(retake_db)
+    if isinstance(new_retake, Exception):
+        return ErrorResponseModel(error=str(new_retake),
+                                  code=status.HTTP_404_NOT_FOUND,
+                                  message="An error occurred.")
+    return DictResponseModel(data=new_retake,
+                             message="Retake added successfully.",
+                             code=status.HTTP_200_OK)
+
+
 @router.get("/exams",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all exams")
@@ -114,8 +140,8 @@ async def get_exam_by_id(id: str):
 
 
 @router.get("/{exam_id}/timer",
-            description="Retrieve a problem with a matching user_id ID")
-async def get_problem(exam_id: str):
+            description="Retrieve a timer with a matching exam_id ID")
+async def get_timer(exam_id: str):
     timer = await retrieve_timer_by_exam_id(exam_id)
     if timer:
         return DictResponseModel(data=timer,
@@ -124,6 +150,19 @@ async def get_problem(exam_id: str):
     return ErrorResponseModel(error="An error occurred.",
                               code=status.HTTP_404_NOT_FOUND,
                               message="Timer does not exist.")
+
+
+@router.get("/{exam_id}/retake",
+            description="Retrieve a problem with a matching exam_id ID")
+async def get_retake(exam_id: str):
+    retake = await retrieve_retake_by_exam_id(exam_id)
+    if isinstance(retake, Exception):
+        return ErrorResponseModel(error=str(retake),
+                                  code=status.HTTP_404_NOT_FOUND,
+                                  message="An error occurred.")
+    return ListResponseModel(data=retake,
+                             message="Retake retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}/detail",
@@ -175,14 +214,27 @@ async def delete_exam_data(id: str):
                description="Delete a timer with a matching user_id")
 async def delete_timer(exam_id: str,
                        clerk_user_id: str = Depends(is_authenticated)):
-    timer = await delete_timer_by_exam_user_id(exam_id, clerk_user_id)
-    if timer:
-        return DictResponseModel(data=timer,
+    deleted_timer = await delete_timer_by_exam_user_id(exam_id, clerk_user_id)
+    if deleted_timer:
+        return DictResponseModel(data=[],
                                  message="Timer deleted successfully.",
                                  code=status.HTTP_200_OK)
     return ErrorResponseModel(error="An error occurred.",
                               code=status.HTTP_404_NOT_FOUND,
                               message="Timer does not exist.")
+
+
+@router.delete("/{exam_id}/retake",
+               description="Delete a retake with a matching exam_id")
+async def delete_retake(retake_id: str):
+    deleted_retake = await delete_retake_by_id(retake_id)
+    if isinstance(deleted_retake, Exception):
+        return ErrorResponseModel(error=str(deleted_retake),
+                                  code=status.HTTP_404_NOT_FOUND,
+                                  message="An error occurred.")
+    return ListResponseModel(data=[],
+                             message="Retake deleted successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.put("/{id}/order-problem",
