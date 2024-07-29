@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from app.api.v1.routes.visualize import router as visualize_router
 from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.contest import router as contest_router
 from app.api.v1.routes.exam import router as exam_router
@@ -13,6 +14,11 @@ from app.core.security import (
 )
 
 router = APIRouter()
+
+router.include_router(visualize_router,
+                      dependencies=[Depends(is_authenticated)],
+                      prefix="/visualize",
+                      tags=["Visualize"])
 
 router.include_router(user_router,
                       dependencies=[Depends(is_authenticated)],
