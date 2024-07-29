@@ -1,4 +1,3 @@
-import asyncio
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
