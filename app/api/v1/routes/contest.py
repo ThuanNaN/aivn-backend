@@ -189,8 +189,8 @@ async def get_contests():
 @router.get("/available",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all available contests")
-async def get_available_contests():
-    contests = await retrieve_available_contests()
+async def get_available_contests(user_clerk_id: str = Depends(is_authenticated)):
+    contests = await retrieve_available_contests(user_clerk_id)
     if contests:
         return ListResponseModel(data=contests,
                                  message="Contests retrieved successfully.",
@@ -217,8 +217,8 @@ async def get_contest(id: str):
 @router.get("/{id}/details",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve a contest with a matching ID and its details")
-async def get_contest_detail(id: str):
-    contest_details = await retrieve_contest_detail(id)
+async def get_contest_detail(id: str, user_clerk_id: str = Depends(is_authenticated)):
+    contest_details = await retrieve_contest_detail(id, user_clerk_id)
     if contest_details:
         return DictResponseModel(data=contest_details,
                                  message="Contest retrieved successfully.",
