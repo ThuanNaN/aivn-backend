@@ -8,6 +8,9 @@ from app.api.v1.controllers.exam import (
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id
 )
+from app.api.v1.controllers.retake import (
+    retrieve_retake_by_user_clerk_id
+)
 
 logger = Logger("controllers/contest", log_file="contest.log")
 
@@ -58,7 +61,7 @@ async def retrieve_contests() -> list[dict]:
         logger.error(f"Error when retrieve contests: {e}")
 
 
-async def retrieve_available_contests() -> dict:
+async def retrieve_available_contests(user_clerk_id: str) -> dict:
     """
     Retrieve all available contests
     :return: list[dict]
@@ -66,15 +69,13 @@ async def retrieve_available_contests() -> dict:
     try:
         contests = []
         async for contest in contest_collection.find({"is_active": True}):
-            contest_detail = await retrieve_contest_detail(contest["_id"])
+            contest_detail = await retrieve_contest_detail(contest["_id"], user_clerk_id)
             if contest_detail:
-                if len(contest_detail["exams"]) > 0:
-                    # TODO: Add logic to select available exam later
-                    contest_detail["available_exam"] = contest_detail["exams"][0]
                 contests.append(contest_detail)
         return contests
     except Exception as e:
         logger.error(f"Error when retrieve available contests: {e}")
+
 
 async def retrieve_contest(id: str) -> dict:
     """
@@ -90,25 +91,44 @@ async def retrieve_contest(id: str) -> dict:
         logger.error(f"Error when retrieve contest: {e}")
 
 
-async def retrieve_contest_detail(id: str) -> dict:
+async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
     """
-    Retrieve a contest with a matching ID, including exams
+    Retrieve a contest with a matching contest_id (id),
+    including exams with available for user_clerk_id.
     :param id: str
     :return: list
     """
     try:
-        results = []
         contest = await retrieve_contest(id)
-        if contest:
-            exams = await retrieve_exam_by_contest(contest["id"])
-            for exam in exams:
-                problems = await retrieve_by_exam_id(exam["id"])
-                exam["problems"] = problems
-                results.append(exam)
-        if len(results) > 0:
-            # TODO: Add logic to select available exam later
-            contest["available_exam"] = results[0]
-        contest["exams"] = results
+        if not contest:
+            raise Exception("Contest not found")
+        
+        retakes = await retrieve_retake_by_user_clerk_id(user_clerk_id)
+        if isinstance(retakes, Exception):
+            raise retakes
+        exam_retake_ids = []
+        if retakes:
+            exam_retake_ids = [retake["exam_id"] for retake in retakes]
+
+        all_exam = await retrieve_exam_by_contest(contest["id"])
+        all_exam_detail = []
+        default_exam_detail = []
+        retake_exam_detail = []
+        for idx, exam in enumerate(all_exam):
+            exam_id = exam["id"]
+            if idx == 0:
+                exam_problems = await retrieve_by_exam_id(exam_id)
+                exam["exam_problems"] = exam_problems
+                default_exam_detail.append(exam)
+            else:
+                if exam_id in exam_retake_ids:
+                    exam_problems = await retrieve_by_exam_id(exam_id)
+                    exam["exam_problems"] = exam_problems
+                    retake_exam_detail.append(exam)
+            all_exam_detail.append(exam)
+    
+        contest["available_exam"] = default_exam_detail + retake_exam_detail
+        contest["exams"] = all_exam_detail
         return contest
     except Exception as e:
         logger.error(f"Error when retrieve contest detail: {e}")
