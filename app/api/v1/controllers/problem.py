@@ -67,10 +67,8 @@ def hide_problem_helper(problem) -> dict:
 async def add_problem(problem_data: dict) -> dict:
     """
     Add a new problem to the database
-    Args:
-        problem_data (dict): problem data
-    Returns:
-        dict: problem data
+    :param problem_data : dict
+    :return: dict
     """
     try:
         problem = await problem_collection.insert_one(problem_data)
