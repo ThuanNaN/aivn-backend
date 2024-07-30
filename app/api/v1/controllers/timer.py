@@ -17,6 +17,7 @@ def timer_helper(timer) -> dict:
         "id": str(timer["_id"]),
         "exam_id": str(timer["exam_id"]),
         "clerk_user_id": timer["clerk_user_id"],
+        "retake_id": str(timer["retake_id"]),
         "start_time": timer["start_time"]
     }
 
