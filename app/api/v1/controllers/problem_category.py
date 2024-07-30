@@ -18,8 +18,8 @@ def problem_category_helper(problem_category) -> dict:
         "id": str(problem_category["_id"]),
         "problem_id": str(problem_category["problem_id"]),
         "category_id": str(problem_category["category_id"]),
-        "created_at": problem_category["created_at"],
-        "updated_at": problem_category["updated_at"]
+        "created_at": str(problem_category["created_at"]),
+        "updated_at": str(problem_category["updated_at"])
     }
 
 def ObjectId_helper(problem_category_data: dict) -> dict:

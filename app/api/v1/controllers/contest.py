@@ -1,3 +1,4 @@
+from datetime import datetime
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -31,6 +32,10 @@ def contest_helper(contest) -> dict:
         "created_at": str(contest["created_at"]),
         "updated_at": str(contest["updated_at"])
     }
+
+def to_datetime(date_str: str) -> datetime:
+    return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
+
 
 
 async def add_contest(contest_data: dict) -> dict:
@@ -70,11 +75,13 @@ async def retrieve_available_contests(user_clerk_id: str) -> dict:
         contests = []
         async for contest in contest_collection.find({"is_active": True}):
             contest_detail = await retrieve_contest_detail(contest["_id"], user_clerk_id)
-            if contest_detail:
-                contests.append(contest_detail)
+            if isinstance(contest_detail, Exception):
+                raise contest_detail
+            contests.append(contest_detail)
         return contests
     except Exception as e:
         logger.error(f"Error when retrieve available contests: {e}")
+        return e
 
 
 async def retrieve_contest(id: str) -> dict:
@@ -111,25 +118,36 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
             exam_retake_ids = [retake["exam_id"] for retake in retakes]
             
         all_exam = await retrieve_exam_by_contest(contest["id"])
+        if len(all_exam) < 1:
+            raise Exception("Exams not found")
+        
         all_exam_detail = []
-        default_exam_detail = []
         retake_exam_detail = []
-        for idx, exam in enumerate(all_exam):
+        for exam in all_exam:
             exam_id = exam["id"]
             exam_problems = await retrieve_by_exam_id(exam_id)
             exam["problems"] = exam_problems
-            if idx == 0:
-                default_exam_detail.append(exam)
-            else:
-                if exam_id in exam_retake_ids:
-                    retake_exam_detail.append(exam)
             all_exam_detail.append(exam)
 
-        contest["available_exam"] = retake_exam_detail[0] if retake_exam_detail else default_exam_detail[0]
+            if exam_id in exam_retake_ids:
+                retake_exam_detail.append(exam)
+
+        if len(retake_exam_detail) < 1:
+            contest["available_exam"] = all_exam_detail[0]
+        elif len(retake_exam_detail) > 1:
+            newest_retake = retake_exam_detail[0]
+            for retake in retake_exam_detail[1:]:
+                if to_datetime(retake["created_at"]) > to_datetime(newest_retake["created_at"]):
+                    newest_retake = retake
+            contest["available_exam"] = newest_retake
+        else:
+            contest["available_exam"] = retake_exam_detail[0]
+
         contest["exams"] = all_exam_detail
         return contest
     except Exception as e:
         logger.error(f"Error when retrieve contest detail: {e}")
+        return e
 
 
 async def update_contest(id: str, data: dict) -> bool:

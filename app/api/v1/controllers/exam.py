@@ -27,8 +27,8 @@ def exam_helper(exam: dict) -> dict:
         "description": exam["description"],
         "is_active": exam["is_active"],
         "duration": exam["duration"],
-        "created_at": exam["created_at"],
-        "updated_at": exam["updated_at"]
+        "created_at": str(exam["created_at"]),
+        "updated_at": str(exam["updated_at"])
     }
 
 
@@ -89,10 +89,7 @@ async def retrieve_exam_detail(id: str) -> dict:
             enriched_problems = await retrieve_problems_by_ids(problem_ids, full_return=True)
             for exam_problem in exam_problems:
                 problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
-                if problem:
-                    exam_problem["problem"] = problem
-                else:
-                    exam_problem["problem"] = None
+                exam_problem["problem"] = problem if problem else None
             exam["problems"] = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
             return exam
 
