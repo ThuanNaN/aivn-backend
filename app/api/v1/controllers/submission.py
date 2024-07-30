@@ -1,9 +1,19 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.user import retrieve_user, user_helper
-from app.api.v1.controllers.exam import retrieve_exam, exam_helper
-from app.api.v1.controllers.contest import retrieve_contest, contest_helper
+from app.api.v1.controllers.user import (
+    retrieve_user, 
+    user_helper
+)
+from app.api.v1.controllers.exam import (
+    retrieve_exam, 
+    exam_helper
+)
+from app.api.v1.controllers.contest import (
+    retrieve_contest, 
+    contest_helper
+)
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -41,7 +51,8 @@ async def add_submission(submission_data: dict) -> dict:
         )
         return submission_helper(new_submission)
     except Exception as e:
-        logger.error(f"Error when add submission: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_submissions() -> list:
@@ -53,20 +64,18 @@ async def retrieve_submissions() -> list:
         submissions = []
         async for submission in submission_collection.find():
             user_info = await retrieve_user(submission["clerk_user_id"])
-            if not user_info:
-                raise Exception(
-                    f'User with ID: {submission["clerk_user_id"]} not found.')
-
+            if isinstance(user_info, Exception):
+                raise user_info
             return_data = submission_helper(submission)
             return_data["user"] = user_info
             submissions.append(return_data)
         return submissions
     except Exception as e:
-        logger.error(f"Error when retrieve submissions: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_search_filter_pagination(pipeline: list,
-                                            match_stage: dict,
                                             page: int,
                                             per_page: int
                                             ) -> dict:
@@ -107,8 +116,8 @@ async def retrieve_search_filter_pagination(pipeline: list,
             "per_page": per_page
         }
     except Exception as e:
-        logger.error(
-            f"Error when retrieve submissions with search filter and pagination: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_submission_by_id(id: str) -> dict:
@@ -119,9 +128,20 @@ async def retrieve_submission_by_id(id: str) -> dict:
     """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
+        if not submission:
+            raise Exception("Submission not found")
+        
         user_info = await retrieve_user(submission["clerk_user_id"])
+        if isinstance(user_info, Exception):
+            raise user_info
+        
         exam_info = await retrieve_exam(submission["exam_id"])
+        if isinstance(exam_info, Exception):
+            raise exam_info
+        
         contest_info = await retrieve_contest(exam_info["contest_id"])
+        if isinstance(contest_info, Exception):
+            raise contest_info
 
         return_data = submission_helper(submission)
         return_data["user"] = user_info
@@ -131,11 +151,11 @@ async def retrieve_submission_by_id(id: str) -> dict:
         }
         return return_data
     except Exception as e:
-        logger.error(f"Error when retrieve submission: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def retrieve_submission_by_exam_user_id(exam_id: str,
-                                              clerk_user_id) -> dict:
+async def retrieve_submission_by_exam_user_id(exam_id: str, clerk_user_id) -> dict:
     try:
         submission = await submission_collection.find_one(
             {"exam_id": ObjectId(exam_id), "clerk_user_id": clerk_user_id}
@@ -143,13 +163,16 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         if submission:
             return_data = submission_helper(submission)
             user_info = await retrieve_user(submission["clerk_user_id"])
+            if isinstance(user_info, Exception):
+                raise user_info
             return_data["user"] = user_info
             return return_data
     except Exception as e:
-        logger.error(f"Error retrieve_submission_by_exam_user_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def delete_submission(id: str):
+async def delete_submission(id: str) -> bool:
     """
     Delete a submission with a matching ID
     :param id: str
@@ -157,8 +180,13 @@ async def delete_submission(id: str):
     """
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
-        if submission:
-            await submission_collection.delete_one({"_id": ObjectId(id)})
-            return True
+        if not submission:
+            raise Exception("Submission not found")
+        deleted_submission = await submission_collection.delete_one(
+            {"_id": ObjectId(id)})
+        if deleted_submission.deleted_count == 1:
+            return True 
+        return False
     except Exception as e:
-        logger.error(f"Error when delete submission: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e

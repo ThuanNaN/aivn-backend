@@ -32,7 +32,6 @@ from app.schemas.response import (
     ErrorResponseModel
 )
 from app.core.security import is_admin, is_authenticated
-from app.api.v1.controllers.user import retrieve_user
 
 router = APIRouter()
 logger = Logger("routes/problem", log_file="problem.log")
@@ -51,7 +50,10 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
         creator_id=user_clerk_id
     )
     new_problem = await add_problem(problem_db.model_dump())
-
+    if isinstance(new_problem, Exception):
+        return ErrorResponseModel(error=str(new_problem),
+                                  message="An error occurred while adding problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
     new_problem_categories = []
     if category_ids > 0:
         problem_categories: List[dict] = [
@@ -60,9 +62,9 @@ async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
-        if not new_problem_categories:
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Problem-Category was not added.",
+        if isinstance(new_problem_categories, Exception):
+            return ErrorResponseModel(error=str(new_problem_categories),
+                                      message="An error occurred while adding problem-category.",
                                       code=status.HTTP_404_NOT_FOUND)
 
     new_problem["categories"] = new_problem_categories
@@ -81,33 +83,26 @@ async def create_problem_category(id: str, category_id: str):
         category_id=category_id
     ).model_dump()
     new_problem_category = await add_problem_category(problem_category_dict)
+    if isinstance(new_problem_category, Exception):
+        return ErrorResponseModel(error=str(new_problem_category),
+                                  message="An error occurred while adding problem-category.",
+                                  code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=new_problem_category,
                              message="Problem-Category added successfully.",
                              code=status.HTTP_200_OK)
 
 
-# @router.get("/problems",
-#             description="Retrieve all problems")
-# async def get_problems(user_clerk_id: str = Depends(is_authenticated)):
-#     cur_user = await retrieve_user(user_clerk_id)
-#     role = cur_user["role"]
-#     problems = await retrieve_problems(role)
-#     if problems:
-#         return ListResponseModel(data=problems,
-#                                  message="Problems retrieved successfully.",
-#                                  code=status.HTTP_200_OK)
-#     return ListResponseModel(data=[],
-#                              message="No problems exist.",
-#                              code=status.HTTP_404_NOT_FOUND)
-
-
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
-        search: Optional[str] = Query(None, description="Search by problem title or description"),
-        categories: Optional[str] = Query(None, description="Filter by categories (comma separated)"),
-        difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
-        is_published: Optional[bool] = Query(None, description="Filter by is_published"),
+        search: Optional[str] = Query(
+            None, description="Search by problem title or description"),
+        categories: Optional[str] = Query(
+            None, description="Filter by categories (comma separated)"),
+        difficulty: Optional[str] = Query(
+            None, description="Filter by difficulty"),
+        is_published: Optional[bool] = Query(
+            None, description="Filter by is_published"),
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100)):
 
@@ -129,6 +124,10 @@ async def get_problems(
     if categories is not None:
         categories = categories.split(",")
         problem_categories = await retrieve_by_categories(categories)
+        if isinstance(problem_categories, Exception):
+            return ErrorResponseModel(error=str(problem_categories),
+                                      message="An error occurred while retrieving problem-categories.",
+                                      code=status.HTTP_404_NOT_FOUND)
         if not problem_categories:
             return ListResponseModel(data=[],
                                      message="No problems match with categories.",
@@ -203,26 +202,26 @@ async def get_problems(
         },
     ]
     problems = await retrieve_search_filter_pagination(pipeline, page, per_page)
-    if problems:
-        return DictResponseModel(data=problems,
-                                 message="Problems retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ListResponseModel(data=[],
-                             message="No problems exist.",
-                             code=status.HTTP_404_NOT_FOUND)
+    if isinstance(problems, Exception):
+        return ErrorResponseModel(error=str(problems),
+                                  message="An error occurred while retrieving problems.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=problems,
+                             message="Problems retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}",
             description="Retrieve a problem with a matching ID")
 async def get_problem(id: str):
     problem = await retrieve_problem(id)
-    if problem:
-        return DictResponseModel(data=problem,
-                                 message="Problem retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Problem was not retrieved.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(problem, Exception):
+        return ErrorResponseModel(error=str(problem),
+                                  message="An error occurred while retrieving problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=problem,
+                             message="Problem retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.patch("/{id}",
@@ -234,10 +233,14 @@ async def update_problem_data(id: str,
                               user_clerk_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
     category_ids = problem_dict.pop("category_ids", [])
-    deleted = await delete_all_by_problem_id(id)
-    if not deleted:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Problem-Category was not deleted.",
+    deleted_problem_category = await delete_all_by_problem_id(id)
+    if isinstance(deleted_problem_category, Exception):
+        return ErrorResponseModel(error=str(deleted_problem_category),
+                                  message="An error occurred while deleting problem-category.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not deleted_problem_category:
+        return ErrorResponseModel(error="No problem-category deleted.",
+                                  message="An error occurred while deleting problem-category.",
                                   code=status.HTTP_404_NOT_FOUND)
     new_problem_categories = []
     if len(category_ids) > 0:
@@ -247,21 +250,25 @@ async def update_problem_data(id: str,
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
-        if not new_problem_categories:
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Problem-Category was not added.",
+        if isinstance(new_problem_categories, Exception):
+            return ErrorResponseModel(error=str(new_problem_categories),
+                                      message="An error occurred while adding problem-category.",
                                       code=status.HTTP_404_NOT_FOUND)
 
     updated_data = UpdateProblemSchemaDB(**problem_dict,
                                          creator_id=user_clerk_id)
-    updated = await update_problem(id, updated_data.model_dump())
-    if updated:
-        return ListResponseModel(data=[],
-                                 message="Problem data updated successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Problem data was not updated.",
-                              code=status.HTTP_404_NOT_FOUND)
+    updated_problem = await update_problem(id, updated_data.model_dump())
+    if isinstance(updated_problem, Exception):
+        return ErrorResponseModel(error=str(updated_problem),
+                                  message="An error occurred while updating problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not updated_problem:
+        return ErrorResponseModel(error="An error occurred while updating problem.",
+                                  message="No problem data was not updated.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=updated_problem,
+                             message="Problem updated successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.delete("/{id}/categories/{category_id}",
@@ -270,15 +277,22 @@ async def update_problem_data(id: str,
                description="Remove a problem-category")
 async def delete_problem_category_data(id: str, category_id: str):
     problem_category = await retrieve_by_problem_category_id(id, category_id)
-    if problem_category:
-        deleted = await delete_problem_category(problem_category["id"])
-        if deleted:
-            return ListResponseModel(data=[],
-                                     message="Problem-Category deleted successfully.",
-                                     code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Problem-Category was not deleted.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(problem_category, Exception):
+        return ErrorResponseModel(error=str(problem_category),
+                                  message="An error occurred while retrieving problem-category.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    deleted_problem_category = await delete_problem_category(problem_category["id"])
+    if isinstance(deleted_problem_category, Exception):
+        return ErrorResponseModel(error=str(deleted_problem_category),
+                                  message="An error occurred while deleting problem-category.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not delete_problem_category:
+        return ErrorResponseModel(error="No problem-category deleted.",
+                                  message="An error occurred while deleting problem-category.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="Problem-Category deleted successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.delete("/{id}",
@@ -287,10 +301,14 @@ async def delete_problem_category_data(id: str, category_id: str):
                description="Delete a problem with a matching ID")
 async def delete_problem_data(id: str):
     deleted = await delete_problem(id)
-    if deleted:
-        return ListResponseModel(data=[],
-                                 message="Problem deleted successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Problem was not deleted.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(deleted, Exception):
+        return ErrorResponseModel(error=str(deleted),
+                                  message="An error occurred while deleting problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not deleted:
+        return ErrorResponseModel(error="An error occurred while deleting problem.",
+                                  message="No problem was deleted.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                                message="Problem deleted successfully.",
+                                code=status.HTTP_200_OK)

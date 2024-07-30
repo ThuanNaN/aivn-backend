@@ -1,3 +1,4 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -43,7 +44,9 @@ async def add_exam_problem(exam_problem_data: dict) -> dict:
         )
         return exam_problem_helper(new_exam_problem)
     except Exception as e:
-        logger.error(f"Error when add_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def retrieve_exam_problems() -> list:
@@ -57,7 +60,8 @@ async def retrieve_exam_problems() -> list:
             exam_problems.append(exam_problem_helper(exam_problem))
         return exam_problems
     except Exception as e:
-        logger.error(f"Error when retrieve exam_problems: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_exam_problem(id: str) -> dict:
@@ -71,7 +75,8 @@ async def retrieve_exam_problem(id: str) -> dict:
         if exam_problem:
             return exam_problem_helper(exam_problem)
     except Exception as e:
-        logger.error(f"Error when retrieve_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
@@ -88,7 +93,8 @@ async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
         if exam_problem:
             return exam_problem_helper(exam_problem)
     except Exception as e:
-        logger.error(f"Error when retrieve_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_exam_id(exam_id: str) -> list:
@@ -103,7 +109,9 @@ async def retrieve_by_exam_id(exam_id: str) -> list:
             exam_problems.append(exam_problem_helper(exam_problem))
         return exam_problems
     except Exception as e:
-        logger.error(f"Error when retrieve_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def update_exam_problem(id: str, data: dict) -> bool:
@@ -114,17 +122,19 @@ async def update_exam_problem(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data provided to update")
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
-        if exam_problem:
-            updated_exam_problem = await exam_problem_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": data}
-            )
-            if updated_exam_problem:
-                return True
-            return False
+        if not exam_problem:
+            raise Exception("Exam_problem not found")
+        updated_exam_problem = await exam_problem_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": data}
+        )
+        if updated_exam_problem.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_exam_problem(id: str) -> bool:
@@ -134,28 +144,36 @@ async def delete_exam_problem(id: str) -> bool:
     """
     try:
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
-        if exam_problem:
-            deleted = await exam_problem_collection.delete_one({"_id": ObjectId(id)})
-            if deleted:
-                return True
-            return False
+        if not exam_problem:
+            raise Exception("Exam_problem not found")
+        deleted_exam_problem = await exam_problem_collection.delete_one({"_id": ObjectId(id)})
+        if deleted_exam_problem.deleted_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete_exam_problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_all_by_exam_id(exam_id: str) -> bool:
     """"
     Delete all exam_problems with a matching exam_id
+    :param exam_id: str
+    :return: bool
     """
     try:
         exam_problems = await retrieve_by_exam_id(exam_id)
+        if isinstance(exam_problems, Exception):
+            return exam_problems
         exam_problems_id = [ObjectId(exam_problem["exam_id"]) for exam_problem in exam_problems]
         if exam_problems:
-            deleted = await exam_problem_collection.delete_many(
+            delete_result = await exam_problem_collection.delete_many(
                 {"exam_id": {"$in": exam_problems_id}}
             )
-            if deleted:
+            if delete_result.deleted_count > 0:
                 return True
             return False
     except Exception as e:
-        logger.error(f"Error when delete_all_by_exam_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+

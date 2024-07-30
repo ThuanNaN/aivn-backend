@@ -1,3 +1,4 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -36,7 +37,7 @@ async def add_retake(retake_data: dict) -> dict:
         new_retake = await retake_collection.find_one({"_id": retake.inserted_id})
         return retake_helper(new_retake)
     except Exception as e:
-        logger.error(f"Error when add retake: {e}")
+        logger.error(f"{traceback.format_exc()}")
         return e
 
 
@@ -50,7 +51,8 @@ async def retrieve_retakes() -> list:
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
-        logger.error(f"Error when retrieve retakes: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_retake_by_id(id: str) -> list:
@@ -65,7 +67,8 @@ async def retrieve_retake_by_id(id: str) -> list:
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
-        logger.error(f"Error when retrieve retakes: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
     
 
 async def retrieve_retakes_by_ids(ids: list) -> list:
@@ -80,7 +83,8 @@ async def retrieve_retakes_by_ids(ids: list) -> list:
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
-        logger.error(f"Error when retrieve retakes: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_retake_by_user_clerk_id(user_clerk_id: str) -> list:
@@ -95,8 +99,9 @@ async def retrieve_retake_by_user_clerk_id(user_clerk_id: str) -> list:
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
-        logger.error(f"Error when retrieve retakes: {e}")
+        logger.error(f"{traceback.format_exc()}")
         return e
+
 
 async def retrieve_retake_by_exam_id(exam_id: str) -> list:
     """
@@ -110,43 +115,51 @@ async def retrieve_retake_by_exam_id(exam_id: str) -> list:
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
-        logger.error(f"Error when retrieve retakes: {e}")
+        logger.error(f"{traceback.format_exc()}")
         return e
     
-async def update_retake(id: str, retake_data: dict) -> dict:
+
+async def update_retake(id: str, retake_data: dict) -> bool:
     """
     Update a retake with a matching ID
     :param id: str
     :param retake_data: dict
-    :return: dict
+    :return: bool
     """
     try:
+        if len(retake_data) < 1:
+            raise Exception("No data to update")
+        
         retake = await retake_collection.find_one({"_id": ObjectId(id)})
-        if retake:
-            updated_retake = await retake_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": retake_data}
-            )
-            if updated_retake:
-                return await retake_collection.find_one({"_id": ObjectId(id)})
+        if not retake:
+            raise Exception("Retake not found")
+        
+        updated_retake = await retake_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": retake_data}
+        )
+        if updated_retake.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update retake: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def delete_retake_by_id(id: str):
+async def delete_retake_by_id(id: str) -> bool:
     """
     Delete a retake with a matching ID
     :param id: str
-    :return: dict
+    :return: bool
     """
     try:
         retake = await retake_collection.find_one({"_id": ObjectId(id)})
         if not retake:
             raise Exception("Retake not found")
-        deleted = await retake_collection.delete_one({"_id": ObjectId(id)})
-        if not deleted:
-            raise Exception("Error when delete retake")
-        return True
-
+        
+        deleted_retake = await retake_collection.delete_one({"_id": ObjectId(id)})
+        if deleted_retake.deleted_count == 1:
+            return True
+        return False
     except Exception as e:
         logger.error(f"Error when delete retake: {e}")
         return e

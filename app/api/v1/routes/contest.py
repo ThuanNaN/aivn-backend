@@ -53,6 +53,10 @@ logger = Logger("routes/contest", log_file="contest.log")
 async def create_contest(contest: ContestSchema):
     contest_dict = contest.model_dump()
     new_contest = await add_contest(contest_dict)
+    if isinstance(new_contest, Exception):
+        return ErrorResponseModel(error=str(new_contest),
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=new_contest,
                              message="Contest created successfully.",
                              code=status.HTTP_200_OK)
@@ -71,6 +75,10 @@ async def create_exam_problem(exam_id: str,
                                       index=index,
                                       creator_id=clerk_user_id)
     new_exam_problem = await add_exam_problem(exam_problem_dict.model_dump())
+    if isinstance(new_exam_problem, Exception):
+        return ErrorResponseModel(error=str(new_exam_problem),
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=new_exam_problem,
                              message="ExamProblem added successfully.",
                              code=status.HTTP_200_OK)
@@ -90,10 +98,9 @@ async def create_submission(exam_id: str,
     for submitted_problem in submitted_problems:
         problem_id = submitted_problem["problem_id"]
         problem_info = await retrieve_problem(problem_id, full_return=True)
-        if not problem_info:
-            logger.error(f'Problem with ID {problem_id} not found.')
-            return ErrorResponseModel(error="Error when submit code.",
-                                      message="Problem not found.",
+        if isinstance(problem_info, Exception):
+            return ErrorResponseModel(error=str(problem_info),
+                                      message="An error occurred while retrieve problem.",
                                       code=status.HTTP_404_NOT_FOUND)
 
         submitted_code = submitted_problem.get("submitted_code", None)
@@ -102,7 +109,7 @@ async def create_submission(exam_id: str,
             admin_template = problem_info.get("admin_template", "")
             public_testcases = problem_info.get("public_testcases", [])
             private_testcases = problem_info.get("private_testcases", [])
-            
+
             public_results, is_pass_public = await run_testcases(
                 admin_template,
                 submitted_code,
@@ -154,7 +161,11 @@ async def create_submission(exam_id: str,
     )
 
     try:
-        _ = await add_submission(submission_db.model_dump())
+        new_submission = await add_submission(submission_db.model_dump())
+        if isinstance(new_submission, Exception):
+            return ErrorResponseModel(error=str(new_submission),
+                                      message="An error occurred while create submission.",
+                                      code=status.HTTP_404_NOT_FOUND)
         return DictResponseModel(
             data={
                 "total_score": total_score,
@@ -174,13 +185,13 @@ async def create_submission(exam_id: str,
             description="Retrieve all contests")
 async def get_contests():
     contests = await retrieve_contests()
-    if contests:
-        return ListResponseModel(data=contests,
-                                 message="Contests retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when retrieve contests.",
-                              message="Contests not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(contests, Exception):
+        return ErrorResponseModel(error=str(contests),
+                                  message="Error when retrieve contests.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=contests,
+                             message="Contests retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/available",
@@ -202,13 +213,13 @@ async def get_available_contests(user_clerk_id: str = Depends(is_authenticated))
             description="Retrieve a contest with a matching ID")
 async def get_contest(id: str):
     contest = await retrieve_contest(id)
-    if contest:
-        return DictResponseModel(data=contest,
-                                 message="Contest retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when retrieve contest.",
-                              message="Contest not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(contest, Exception):
+        return ErrorResponseModel(error=str(contest),
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=contest,
+                             message="Contest retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}/details",
@@ -231,14 +242,18 @@ async def get_contest_detail(id: str, user_clerk_id: str = Depends(is_authentica
             description="Update a contest with a matching ID")
 async def update_contest_data(id: str, contest: UpdateContestSchema):
     contest_dict = contest.model_dump()
-    updated = await update_contest(id, contest_dict)
-    if updated:
-        return ListResponseModel(data=[],
-                                 message="Contest updated successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when update contest.",
-                              message="Contest not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    updated_contest = await update_contest(id, contest_dict)
+    if isinstance(updated_contest, Exception):
+        return ErrorResponseModel(error=str(updated_contest),
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not updated_contest:
+        return ErrorResponseModel(error="No contests were updated.",
+                                  message="An error occurred when update contest.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="Contest updated successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.delete("/exam/{exam_id}/problems/{problem_id}",
@@ -247,15 +262,22 @@ async def update_contest_data(id: str, contest: UpdateContestSchema):
                description="Remove exam-problem")
 async def delete_exam_problem_data(exam_id: str, problem_id: str):
     exam_problem = await retrieve_by_exam_problem_id(exam_id, problem_id)
-    if exam_problem:
-        deleted = await delete_exam_problem(exam_problem["id"])
-        if deleted:
-            return ListResponseModel(data=[],
-                                     message="ExamProblem deleted successfully.",
-                                     code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when delete exam_problem.",
-                              message="ExamProblem not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(exam_problem, Exception):
+        return ErrorResponseModel(error=str(exam_problem),
+                                  message="An error occurred while retrieve exam-problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    deleted_exam_problem = await delete_exam_problem(exam_problem["id"])
+    if isinstance(deleted_exam_problem, Exception):
+        return ErrorResponseModel(error=str(deleted_exam_problem),
+                                  message="An error occurred while delete exam-problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not deleted_exam_problem:
+        return ErrorResponseModel(error="No exam-problems were deleted.",
+                                  message="An error occurred when delete exam-problem.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="Exam-problem deleted successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.delete("/{id}",
@@ -263,11 +285,15 @@ async def delete_exam_problem_data(exam_id: str, problem_id: str):
                tags=["Admin"],
                description="Delete a contest with a matching ID")
 async def delete_contest_data(id: str):
-    deleted = await delete_contest(id)
-    if deleted:
-        return ListResponseModel(data=[],
-                                 message="Contest deleted successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when delete contest.",
-                              message="Contest not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    delete_result = await delete_contest(id)
+    if isinstance(delete_result, Exception):
+        return ErrorResponseModel(error=str(delete_result),
+                                  message="An error occurred when delete contest.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not delete_result:
+        return ErrorResponseModel(error="No contests were updated.",
+                                  message="An error occurred when delete contest.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="Contest deleted successfully.",
+                             code=status.HTTP_200_OK)

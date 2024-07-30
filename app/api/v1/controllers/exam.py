@@ -1,3 +1,4 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -44,7 +45,8 @@ async def add_exam(exam_data: dict) -> dict:
         new_exam = await exam_collection.find_one({"_id": exam.inserted_id})
         return exam_helper(new_exam)
     except Exception as e:
-        logger.error(f"Error when create exam: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_exams() -> list:
@@ -58,7 +60,8 @@ async def retrieve_exams() -> list:
             exams.append(exam_helper(exam))
         return exams
     except Exception as e:
-        logger.error(f"Error when retrieve exams: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_exam(id: str) -> dict:
@@ -72,7 +75,8 @@ async def retrieve_exam(id: str) -> dict:
         if exam:
             return exam_helper(exam)
     except Exception as e:
-        logger.error(f"Error when retrieve exam: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_exam_detail(id: str) -> dict:
@@ -83,18 +87,26 @@ async def retrieve_exam_detail(id: str) -> dict:
     """
     try:
         exam = await retrieve_exam(id)
-        if exam:
-            exam_problems = await retrieve_by_exam_id(exam["id"])
-            problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
-            enriched_problems = await retrieve_problems_by_ids(problem_ids, full_return=True)
-            for exam_problem in exam_problems:
-                problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
-                exam_problem["problem"] = problem if problem else None
-            exam["problems"] = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
-            return exam
+        if isinstance(exam, Exception):
+            raise exam
+        exam_problems = await retrieve_by_exam_id(exam["id"])
+        if isinstance(exam_problems, Exception):
+            raise exam_problems
+        problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
+        
+        enriched_problems = await retrieve_problems_by_ids(problem_ids, full_return=True)
+        if isinstance(enriched_problems, Exception):
+            raise enriched_problems
+        
+        for exam_problem in exam_problems:
+            problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
+            exam_problem["problem"] = problem if problem else None
+        exam["problems"] = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
+        return exam
 
     except Exception as e:
-        logger.error(f"Error when retrieve exam: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 
@@ -110,7 +122,8 @@ async def retrieve_exam_by_contest(contest_id: str) -> list:
             exams.append(exam_helper(exam))
         return exams
     except Exception as e:
-        logger.error(f"Error when retrieve exam by contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def update_exam(id: str, data: dict) -> bool:
@@ -122,17 +135,19 @@ async def update_exam(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data to update")
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
-        if exam:
-            updated_exam = await exam_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": data}
-            )
-            if updated_exam:
-                return True
-            return False
+        if not exam:
+            raise Exception("Exam not found")
+        updated_exam = await exam_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": data}
+        )
+        if updated_exam.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update exam: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_exam(id: str) -> bool:
@@ -143,15 +158,25 @@ async def delete_exam(id: str) -> bool:
     """
     try:
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
-        if exam:
-            # delete all exam_problem in exam_problem collection
-            deleted_exam_problems = await delete_all_by_exam_id(id)
-            deleted_exam = await exam_collection.delete_one({"_id": ObjectId(id)})
-            if deleted_exam and deleted_exam_problems:
-                return True
-            return False
+        if not exam:
+            raise Exception("Exam not found")
+        
+        # Delete all exam_problem in exam_problem collection
+        deleted_exam_problems = await delete_all_by_exam_id(id)
+        if isinstance(deleted_exam_problems, Exception):
+            raise deleted_exam_problems
+        if not deleted_exam_problems:
+            raise Exception("Delete exam_problem failed.")
+
+        # Delete exam in exam collection
+        deleted_exam = await exam_collection.delete_one({"_id": ObjectId(id)})
+        if deleted_exam.deleted_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete exam: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def delete_all_by_contest_id(contest_id: str) -> bool:
@@ -162,10 +187,15 @@ async def delete_all_by_contest_id(contest_id: str) -> bool:
     """
     try:
         exams = await retrieve_exam_by_contest(contest_id)
-        if not exams:
-            raise Exception("Exams not found")
+        if isinstance(exams, Exception):
+            raise exams
         for exam in exams:
-            await delete_exam(exam["id"])
+            delete_exam_result = await delete_exam(exam["id"])
+            if isinstance(delete_exam_result, Exception):
+                raise delete_exam_result
+            if not delete_exam_result:
+                raise Exception("Delete exam failed")
         return True
     except Exception as e:
-        logger.error(f"Error when delete all exam by contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e

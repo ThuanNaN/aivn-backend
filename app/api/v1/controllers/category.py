@@ -1,3 +1,4 @@
+import traceback
 from bson.objectid import ObjectId
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -32,7 +33,8 @@ async def add_category(category_data: dict) -> dict:
         )
         return category_helper(new_category)
     except Exception as e:
-        logger.error(f"Error when add category: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_categories() -> list:
@@ -46,7 +48,8 @@ async def retrieve_categories() -> list:
             categories.append(category_helper(category))
         return categories
     except Exception as e:
-        logger.error(f"Error when retrieve categories: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_category(id: str) -> dict:
@@ -60,8 +63,8 @@ async def retrieve_category(id: str) -> dict:
         if category:
             return category_helper(category)
     except Exception as e:
-        logger.error(f"Error when retrieve category: {e}")
-        return None
+        logger.error(f"{traceback.format_exc()}")
+        return e
     
 
 async def update_category(id: str, data: dict) -> bool:
@@ -73,7 +76,7 @@ async def update_category(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data provided to update.")
         update_result = await category_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
@@ -81,5 +84,5 @@ async def update_category(id: str, data: dict) -> bool:
             return True
         return False
     except Exception as e:
-        logger.error(f"Error when update category: {e}")
-        return False
+        logger.error(f"{traceback.format_exc()}")
+        return e

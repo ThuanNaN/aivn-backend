@@ -17,10 +17,9 @@ logger = Logger("routes/code", log_file="code.log")
 @router.post("/run", description="Run code from code block (string)")
 async def run_code(code_inputs: CodeSchema):
     problem_info = await retrieve_problem(code_inputs.problem_id)
-    if not problem_info:
-        logger.error(f"Problem with ID {code_inputs.problem_id} not found.")
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Problem not found.",
+    if isinstance(problem_info, Exception):
+        return ErrorResponseModel(error=str(problem_info),
+                                  message="An error occurred while retrieving problem.",
                                   code=status.HTTP_404_NOT_FOUND)
 
     admin_template = problem_info.get("admin_template", "")

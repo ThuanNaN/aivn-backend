@@ -7,7 +7,6 @@ from app.schemas.response import (
     ErrorResponseModel
 )
 from app.api.v1.controllers.submission import (
-    retrieve_submissions,
     retrieve_search_filter_pagination,
     retrieve_submission_by_id,
     retrieve_submission_by_exam_user_id,
@@ -28,8 +27,10 @@ logger = Logger("routes/submission", log_file="submission.log")
             tags=["Admin"],
             description="Get all submissions")
 async def get_submissions(
-    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
-    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
+    search: Optional[str] = Query(
+        None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(
+        None, description="Filter by contest id"),
     exam_id: Optional[str] = Query(None, description="Filter by exam id"),
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     page: int = Query(1, ge=1),
@@ -46,10 +47,10 @@ async def get_submissions(
 
     if user_id is not None:
         match_stage["$match"]["clerk_user_id"] = user_id
-    
+
     if exam_id is not None:
         match_stage["$match"]["exam_id"] = ObjectId(exam_id)
-    
+
     if contest_id is not None:
         match_stage["$match"]["exam_info.contest_id"] = ObjectId(contest_id)
 
@@ -107,39 +108,43 @@ async def get_submissions(
         },
     ]
 
-    submissions = await retrieve_search_filter_pagination(pipeline, match_stage, page, per_page)
-    if submissions:
-        return DictResponseModel(data=submissions,
+    submissions = await retrieve_search_filter_pagination(pipeline, page, per_page)
+    if isinstance(submissions, Exception):
+        return ErrorResponseModel(error=str(submissions),
+                                  message="An error occurred while retrieving submissions.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=submissions,
                              message="Submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
-    return ListResponseModel(data=[],
-                         message="No submissions exist.",
-                         code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
 async def get_submission_by_user(exam_id: str,
                                  clerk_user_id: str = Depends(is_authenticated)):
     submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
-    if submission:
-        return DictResponseModel(data=submission,
-                                 message="Your submission retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Your submission was not retrieved.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(submission, Exception):
+        return ErrorResponseModel(error=str(submission),
+                                  message="An error occurred while retrieving submission.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not submission:
+        return ErrorResponseModel(error="Submission not found.",
+                                  message="No submission found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=submission,
+                             message="Your submission retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
     submission = await retrieve_submission_by_id(id)
-    if submission:
-        return DictResponseModel(data=submission,
-                                 message="Submission retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Submission was not retrieved.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(submission, Exception):
+        return ErrorResponseModel(error=str(submission),
+                                  message="An error occurred while retrieving submission.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=submission,
+                             message="Submission retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.delete("/{id}",
@@ -147,13 +152,34 @@ async def get_submission(id: str):
                description="Delete a submission with a matching ID")
 async def delete_submission_data(id: str):
     submission_info = await retrieve_submission_by_id(id)
+    if isinstance(submission_info, Exception):
+        return ErrorResponseModel(error=str(submission_info),
+                                  message="An error occurred while retrieving submission.",
+                                  code=status.HTTP_404_NOT_FOUND)
     clerk_user_id = submission_info["clerk_user_id"]
+
+    # Delete timer
     deleted_timer = await delete_timer_by_user_id(clerk_user_id)
+    if isinstance(deleted_timer, Exception):
+        return ErrorResponseModel(error=str(deleted_timer),
+                                  message="An error occurred while deleting timer.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not deleted_timer:
+        return ErrorResponseModel(error="An error occurred while deleting timer.",
+                                  message="Timer was not deleted.",
+                                  code=status.HTTP_404_NOT_FOUND)
+
+    # Delete submission
     deleted_submission = await delete_submission(id)
-    if deleted_submission and deleted_timer:
-        return ListResponseModel(data=[],
-                                 message="Submission deleted successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="An error occurred.",
-                              message="Submission was not deleted.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(deleted_submission, Exception):
+        return ErrorResponseModel(error=str(deleted_submission),
+                                  message="An error occurred while deleting submission.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not deleted_submission:
+        return ErrorResponseModel(error="An error occurred while deleting submission.",
+                                  message="Submission was not deleted.",
+                                  code=status.HTTP_404_NOT_FOUND)
+
+    return ListResponseModel(data=[],
+                             message="Submission deleted successfully.",
+                             code=status.HTTP_200_OK)
