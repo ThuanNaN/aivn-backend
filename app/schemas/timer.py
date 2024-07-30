@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 class TimerSchema(BaseModel):
     start_time: str
+    retake_id: str | None = None
 
 
 class TimerSchemaDB(TimerSchema):

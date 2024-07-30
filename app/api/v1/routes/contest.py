@@ -154,6 +154,7 @@ async def create_submission(exam_id: str,
     submission_db = SubmissionDB(
         exam_id = exam_id,
         clerk_user_id=clerk_user_id,
+        retake_id=submission_dict.get("retake_id", None),
         submitted_problems = submitted_results
     )
 
