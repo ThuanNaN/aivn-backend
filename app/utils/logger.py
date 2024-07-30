@@ -30,7 +30,7 @@ class Logger(logging.Logger):
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         self.stream_formatter = logging.Formatter(
-            "%(levelname)s:  \t  -%(name)s- %(message)s"
+            "%(levelname)s: - %(name)s - %(message)s"
         )
 
     def _add_stream_handler(self):
