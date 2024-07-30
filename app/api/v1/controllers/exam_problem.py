@@ -19,8 +19,8 @@ def exam_problem_helper(exam_problem) -> dict:
         "problem_id": str(exam_problem["problem_id"]),
         "index": exam_problem["index"],
         "creator_id": exam_problem["creator_id"],
-        "created_at": exam_problem["created_at"],
-        "updated_at": exam_problem["updated_at"]
+        "created_at": str(exam_problem["created_at"]),
+        "updated_at": str(exam_problem["updated_at"])
     }
 
 def ObjectId_helper(exam_problem_data: dict) -> dict:
