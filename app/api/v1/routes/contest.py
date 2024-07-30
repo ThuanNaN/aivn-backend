@@ -77,14 +77,14 @@ async def create_exam_problem(exam_id: str,
 
 
 @router.post("/exam/{exam_id}/submit",
-                dependencies=[Depends(is_authenticated)],
-                description="Submit problems to a contest")
+             dependencies=[Depends(is_authenticated)],
+             description="Submit problems to a contest")
 async def create_submission(exam_id: str,
                             submission_data: Submission,
                             clerk_user_id: str = Depends(is_authenticated)):
     submission_dict = submission_data.model_dump()
     submitted_problems = submission_dict["submitted_problems"]
-    
+
     submitted_results = []
     total_score = 0
     for submitted_problem in submitted_problems:
@@ -95,17 +95,14 @@ async def create_submission(exam_id: str,
             return ErrorResponseModel(error="Error when submit code.",
                                       message="Problem not found.",
                                       code=status.HTTP_404_NOT_FOUND)
-       
+
         submitted_code = submitted_problem.get("submitted_code", None)
         public_results, private_results = None, None
         if submitted_code is not None:
             admin_template = problem_info.get("admin_template", "")
             public_testcases = problem_info.get("public_testcases", [])
             private_testcases = problem_info.get("private_testcases", [])
-
-            print("private_results: ", private_testcases)
-
-
+            
             public_results, is_pass_public = await run_testcases(
                 admin_template,
                 submitted_code,
@@ -117,12 +114,9 @@ async def create_submission(exam_id: str,
                 submitted_code,
                 private_testcases
             )
-            print("private_results: ", private_results)
-
 
             is_pass_problem = is_pass_public and is_pass_private
             total_score += int(is_pass_problem)
-
 
         submitted_choice = submitted_problem.get("submitted_choice", None)
         if submitted_choice is not None:
@@ -134,7 +128,8 @@ async def create_submission(exam_id: str,
             if len(choice_answers) != len(true_answers_id):
                 is_pass_problem = False
             else:
-                is_pass_problem = sorted(choice_answers) == sorted(true_answers_id)
+                is_pass_problem = sorted(
+                    choice_answers) == sorted(true_answers_id)
             total_score += int(is_pass_problem)
 
         submitted_results.append(
@@ -150,12 +145,12 @@ async def create_submission(exam_id: str,
                 is_pass_problem=is_pass_problem
             )
         )
-    
+
     submission_db = SubmissionDB(
-        exam_id = exam_id,
+        exam_id=exam_id,
         clerk_user_id=clerk_user_id,
         retake_id=submission_dict.get("retake_id", None),
-        submitted_problems = submitted_results
+        submitted_problems=submitted_results
     )
 
     try:
@@ -187,18 +182,19 @@ async def get_contests():
                               message="Contests not found.",
                               code=status.HTTP_404_NOT_FOUND)
 
+
 @router.get("/available",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all available contests")
 async def get_available_contests(user_clerk_id: str = Depends(is_authenticated)):
     contests = await retrieve_available_contests(user_clerk_id)
-    if contests:
-        return ListResponseModel(data=contests,
-                                 message="Contests retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when retrieve contests.",
-                              message="Contests not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(contests, Exception):
+        return ErrorResponseModel(error=str(contests),
+                                  message="Error when retrieve contests.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=contests,
+                             message="Contests retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}",
@@ -220,13 +216,13 @@ async def get_contest(id: str):
             description="Retrieve a contest with a matching ID and its details")
 async def get_contest_detail(id: str, user_clerk_id: str = Depends(is_authenticated)):
     contest_details = await retrieve_contest_detail(id, user_clerk_id)
-    if contest_details:
-        return DictResponseModel(data=contest_details,
-                                 message="Contest retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Error when retrieve contest.",
-                              message="Contest not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(contest_details, Exception):
+        return ErrorResponseModel(error=str(contest_details),
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=contest_details,
+                             message="Contest retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.put("/{id}",
