@@ -20,6 +20,7 @@ def submission_helper(submission) -> dict:
         "id": str(submission["_id"]),
         "exam_id": str(submission["exam_id"]),
         "clerk_user_id": submission["clerk_user_id"],
+        "retake_id": str(submission["retake_id"]),
         "submitted_problems": submission["submitted_problems"],
         "created_at": str(submission["created_at"]),
     }
@@ -33,6 +34,7 @@ async def add_submission(submission_data: dict) -> dict:
     """
     try:
         submission_data["exam_id"] = ObjectId(submission_data["exam_id"])
+        submission_data["retake_id"] = ObjectId(submission_data["retake_id"])
         submission = await submission_collection.insert_one(submission_data)
         new_submission = await submission_collection.find_one(
             {"_id": submission.inserted_id}
