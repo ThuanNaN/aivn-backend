@@ -109,25 +109,23 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         exam_retake_ids = []
         if retakes:
             exam_retake_ids = [retake["exam_id"] for retake in retakes]
-
+            
         all_exam = await retrieve_exam_by_contest(contest["id"])
         all_exam_detail = []
         default_exam_detail = []
         retake_exam_detail = []
         for idx, exam in enumerate(all_exam):
             exam_id = exam["id"]
+            exam_problems = await retrieve_by_exam_id(exam_id)
+            exam["problems"] = exam_problems
             if idx == 0:
-                exam_problems = await retrieve_by_exam_id(exam_id)
-                exam["exam_problems"] = exam_problems
                 default_exam_detail.append(exam)
             else:
                 if exam_id in exam_retake_ids:
-                    exam_problems = await retrieve_by_exam_id(exam_id)
-                    exam["exam_problems"] = exam_problems
                     retake_exam_detail.append(exam)
             all_exam_detail.append(exam)
-    
-        contest["available_exam"] = default_exam_detail + retake_exam_detail
+
+        contest["available_exam"] = retake_exam_detail[0] if retake_exam_detail else default_exam_detail[0]
         contest["exams"] = all_exam_detail
         return contest
     except Exception as e:

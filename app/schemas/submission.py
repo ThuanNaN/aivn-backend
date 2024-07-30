@@ -10,6 +10,7 @@ class SubmittedProblem(BaseModel):
 
 class Submission(BaseModel):
     submitted_problems: List[SubmittedProblem]
+    retake_id: str | None = None
     created_at: datetime = datetime.now()
 
     model_config = {
@@ -42,6 +43,7 @@ class SubmittedResult(SubmittedProblem):
 class SubmissionDB(BaseModel):
     exam_id: str
     clerk_user_id: str
+    retake_id: str | None = None
     submitted_problems: List[SubmittedResult]
     created_at: datetime = datetime.now()
 
