@@ -17,6 +17,7 @@ def retake_helper(retake) -> dict:
     return {
         "id": str(retake["_id"]),
         "user_clerk_id": retake["user_clerk_id"],
+        "creator_id": retake["creator_id"],
         "exam_id": str(retake["exam_id"]),
         "created_at": str(retake["created_at"]),
         "updated_at": str(retake["updated_at"])

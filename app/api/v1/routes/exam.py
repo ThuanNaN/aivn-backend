@@ -96,9 +96,12 @@ async def create_timer(exam_id: str,
 
 @router.post("/{exam_id}/retake",
              description="Add a new retake")
-async def create_retake(exam_id: str, retake_data: RetakeSchema):
+async def create_retake(exam_id: str, 
+                        retake_data: RetakeSchema,
+                        clerk_user_id: str = Depends(is_authenticated)):
     retake_db = RetakeSchemaDB(
         **retake_data.model_dump(),
+        creator_id=clerk_user_id,
         exam_id=exam_id
     ).model_dump()
     new_retake = await add_retake(retake_db)
