@@ -24,6 +24,7 @@ class Submission(BaseModel):
                             "submitted_choice": None
                         }
                     ],
+                    "retake_id": "66a8b8e5b743acd788da41da",
                     "created_at": datetime.now()
                 }
             ]
