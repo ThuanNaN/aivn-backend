@@ -26,11 +26,13 @@ except Exception as e:
 
 # submission helper
 def submission_helper(submission) -> dict:
+    retake_id = submission.get("retake_id", None)
+    retake_id = str(retake_id) if retake_id else None
     return {
         "id": str(submission["_id"]),
         "exam_id": str(submission["exam_id"]),
         "clerk_user_id": submission["clerk_user_id"],
-        "retake_id": str(submission["retake_id"]),
+        "retake_id": retake_id,
         "submitted_problems": submission["submitted_problems"],
         "created_at": str(submission["created_at"]),
     }

@@ -1,0 +1,19 @@
+name: AIVN Backend CI
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+concurrency: development
+
+jobs:
+  trigger-deploy:
+    name: Trigger deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name:
+        working-directory: .
+        run: curl "${{ secrets.RENDER_TRIGGER_URL }}"
