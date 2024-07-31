@@ -3,7 +3,9 @@ from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
     ExamSchema,
+    ExamSchemaDB,
     UpdateExamSchema,
+    UpdateExamSchemaDB,
     OrderSchema
 )
 from app.schemas.timer import (
@@ -56,7 +58,9 @@ logger = Logger("routes/exam", log_file="exam.log")
              tags=["Admin"],
              description="Add a new exam")
 async def create_exam(exam: ExamSchema):
-    exam_dict = exam.model_dump()
+    exam_dict = ExamSchemaDB(
+        **exam.model_dump()
+    ).model_dump()
     new_exam = await add_exam(exam_dict)
     if isinstance(new_exam, Exception):
         return ErrorResponseModel(error=str(new_exam),

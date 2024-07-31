@@ -27,6 +27,9 @@ class ExamSchema(BaseModel):
         }
     }
 
+class ExamSchemaDB(ExamSchema):
+    creator_id: str
+
 
 class UpdateExamSchema(BaseModel):
     contest_id: str

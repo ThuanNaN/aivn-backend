@@ -27,6 +27,7 @@ def exam_helper(exam: dict) -> dict:
         "title": exam["title"],
         "description": exam["description"],
         "is_active": exam["is_active"],
+        "creator_id": exam["creator_id"], # clerk_user_id
         "duration": exam["duration"],
         "created_at": str(exam["created_at"]),
         "updated_at": str(exam["updated_at"])
