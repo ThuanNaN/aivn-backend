@@ -57,7 +57,7 @@ async def create_contest(contest: ContestSchema,
     contest_dict = ContestSchemaDB(
         **contest.model_dump(), 
         creator_id=creator_id
-    )
+    ).model_dump()
     new_contest = await add_contest(contest_dict)
     if isinstance(new_contest, Exception):
         return ErrorResponseModel(error=str(new_contest),
@@ -252,7 +252,7 @@ async def update_contest_data(id: str,
     contest_dict = UpdateContestSchemaDB(
         **contest.model_dump(),
         creator_id=creator_id
-    )
+    ).model_dump()
     updated_contest = await update_contest(id, contest_dict)
     if isinstance(updated_contest, Exception):
         return ErrorResponseModel(error=str(updated_contest),
