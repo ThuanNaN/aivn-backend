@@ -45,3 +45,6 @@ class UpdateContestSchema(BaseModel):
             ]
         }
     }
+
+class UpdateContestSchemaDB(UpdateContestSchema):
+    creator_id: str

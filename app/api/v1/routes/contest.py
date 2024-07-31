@@ -32,6 +32,7 @@ from app.schemas.contest import (
     ContestSchema,
     ContestSchemaDB,
     UpdateContestSchema,
+    UpdateContestSchemaDB
 )
 from app.schemas.exam_problem import (
     ExamProblemDB
@@ -245,8 +246,13 @@ async def get_contest_detail(id: str, user_clerk_id: str = Depends(is_authentica
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Update a contest with a matching ID")
-async def update_contest_data(id: str, contest: UpdateContestSchema):
-    contest_dict = contest.model_dump()
+async def update_contest_data(id: str, 
+                              contest: UpdateContestSchema,
+                              creator_id=Depends(is_authenticated)):
+    contest_dict = UpdateContestSchemaDB(
+        **contest.model_dump(),
+        creator_id=creator_id
+    )
     updated_contest = await update_contest(id, contest_dict)
     if isinstance(updated_contest, Exception):
         return ErrorResponseModel(error=str(updated_contest),
