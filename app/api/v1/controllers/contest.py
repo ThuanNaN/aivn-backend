@@ -126,6 +126,7 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         exam_retake_ids = []
         if retakes: # not empty
             exam_retake_ids = [retake["exam_id"] for retake in retakes]
+            retake_ids = [retake["id"] for retake in retakes]
             
         all_exam = await retrieve_exam_by_contest(contest["id"])
         if isinstance(all_exam, Exception):
@@ -133,6 +134,9 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         
         all_exam_detail = []
         retake_exam_detail = [] 
+        retake_ids_exam = []
+        contest["available_exam"] = None
+        contest["retake_id"] = None
         if all_exam:
             for exam in all_exam:
                 exam_id = exam["id"]
@@ -143,20 +147,26 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
                 all_exam_detail.append(exam)
 
                 if exam_id in exam_retake_ids:
+                    retake_index = exam_retake_ids.index(exam_id)
+                    retake_ids_exam.append(retake_ids[retake_index])
                     retake_exam_detail.append(exam)
 
             if len(retake_exam_detail) < 1: # no retake exam
                 contest["available_exam"] = all_exam_detail[0]
+
             elif len(retake_exam_detail) > 1: # multiple retake exam
                 newest_retake = retake_exam_detail[0]
-                for retake in retake_exam_detail[1:]:
+                newest_retake_index = 0
+                for index, retake in enumerate(retake_exam_detail[1:]):
                     if to_datetime(retake["created_at"]) > to_datetime(newest_retake["created_at"]):
                         newest_retake = retake
+                        newest_retake_index = index + 1
                 contest["available_exam"] = newest_retake
+                contest["retake_id"] = retake_ids[newest_retake_index]
+
             else: # only one retake exam
                 contest["available_exam"] = retake_exam_detail[0]
-        else:
-            contest["available_exam"] = None
+                contest["retake_id"] = retake_ids_exam[0]
 
         contest["exams"] = all_exam_detail
         return contest
