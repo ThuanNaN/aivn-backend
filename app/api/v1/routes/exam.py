@@ -35,7 +35,6 @@ from app.api.v1.controllers.exam import (
 )
 from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_user_id,
-    retrieve_timer_by_exam_id,
     add_timer,
     delete_timer_by_exam_user_id
 )
@@ -150,8 +149,8 @@ async def get_exam_by_id(id: str):
 
 @router.get("/{exam_id}/timer",
             description="Retrieve a timer with a matching exam_id ID")
-async def get_timer(exam_id: str):
-    timer = await retrieve_timer_by_exam_id(exam_id)
+async def get_timer(exam_id: str, clerk_user_id: str = Depends(is_authenticated)):
+    timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
     if isinstance(timer, Exception):
         return ErrorResponseModel(error=str(timer),
                                   code=status.HTTP_404_NOT_FOUND,
