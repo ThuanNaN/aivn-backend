@@ -55,6 +55,10 @@ class UpdateExamSchema(BaseModel):
         }
     }
 
+class UpdateExamSchemaDB(UpdateExamSchema):
+    creator_id: str
+
+
 class OrderSchema(BaseModel):
     problem_id: str
     index: int

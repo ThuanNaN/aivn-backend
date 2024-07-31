@@ -57,9 +57,11 @@ logger = Logger("routes/exam", log_file="exam.log")
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Add a new exam")
-async def create_exam(exam: ExamSchema):
+async def create_exam(exam: ExamSchema,
+                      creator_id: str = Depends(is_authenticated)):
     exam_dict = ExamSchemaDB(
-        **exam.model_dump()
+        **exam.model_dump(),
+        creator_id=creator_id
     ).model_dump()
     new_exam = await add_exam(exam_dict)
     if isinstance(new_exam, Exception):
@@ -81,7 +83,7 @@ async def create_timer(exam_id: str,
         return ErrorResponseModel(error="Timer already exists.",
                                   code=status.HTTP_400_BAD_REQUEST,
                                   message="Timer already exists.")
-    
+
     # create new
     timer_data = TimerSchemaDB(
         **start_time.model_dump(),
@@ -194,8 +196,13 @@ async def get_exam_detail(id: str):
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Update a exam with a matching ID")
-async def update_exam_data(id: str, exam: UpdateExamSchema):
-    exam_dict = exam.model_dump()
+async def update_exam_data(id: str,
+                           exam: UpdateExamSchema,
+                           creator_id=Depends(is_authenticated)):
+    exam_dict = UpdateExamSchemaDB(
+        **exam.model_dump(),
+        creator_id=creator_id
+    ).model_dump()
     updated_exam = await update_exam(id, exam_dict)
     if isinstance(updated_exam, Exception):
         return ErrorResponseModel(error=str(updated_exam),
