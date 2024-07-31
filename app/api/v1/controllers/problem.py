@@ -143,6 +143,7 @@ async def retrieve_problem(id: str, full_return: bool = False) -> dict:
 async def retrieve_search_filter_pagination(pipeline: list,
                                             page: int,
                                             per_page: int, 
+                                            role: str
                                             ) -> dict:
     """
     Retrieve all problems with search, filter and pagination.
@@ -168,7 +169,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
         result_data = []
         for problem in problems:  
-            problem_info = hide_problem_helper(problem)
+            problem_info = problem_helper(problem) if role == "admin" else hide_problem_helper(problem)
             return_dict = {
                 **problem_info,
                 "categories": [category_helper(category) for category in problem["category_info"]]

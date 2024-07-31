@@ -9,6 +9,7 @@ from app.api.v1.controllers.problem import (
     delete_problem,
     retrieve_search_filter_pagination,
 )
+from app.api.v1.controllers.user import retrieve_user
 from app.api.v1.controllers.problem_category import (
     add_problem_category,
     add_more_problem_category,
@@ -95,6 +96,7 @@ async def create_problem_category(id: str, category_id: str):
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
+        user_clerk_id: str = Depends(is_authenticated),
         search: Optional[str] = Query(
             None, description="Search by problem title or description"),
         categories: Optional[str] = Query(
@@ -104,7 +106,8 @@ async def get_problems(
         is_published: Optional[bool] = Query(
             None, description="Filter by is_published"),
         page: int = Query(1, ge=1),
-        per_page: int = Query(10, ge=1, le=100)):
+        per_page: int = Query(10, ge=1, le=100)
+        ):
 
     match_stage = {"$match": {}}
     if search:
@@ -201,7 +204,10 @@ async def get_problems(
             }
         },
     ]
-    problems = await retrieve_search_filter_pagination(pipeline, page, per_page)
+
+    current_user = await retrieve_user(user_clerk_id)
+    role = current_user["role"]
+    problems = await retrieve_search_filter_pagination(pipeline, page, per_page, role)
     if isinstance(problems, Exception):
         return ErrorResponseModel(error=str(problems),
                                   message="An error occurred while retrieving problems.",
