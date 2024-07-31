@@ -30,6 +30,7 @@ from app.schemas.submission import (
 )
 from app.schemas.contest import (
     ContestSchema,
+    ContestSchemaDB,
     UpdateContestSchema,
 )
 from app.schemas.exam_problem import (
@@ -50,8 +51,12 @@ logger = Logger("routes/contest", log_file="contest.log")
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Create a new contest")
-async def create_contest(contest: ContestSchema):
-    contest_dict = contest.model_dump()
+async def create_contest(contest: ContestSchema, 
+                         creator_id=Depends(is_authenticated)):
+    contest_dict = ContestSchemaDB(
+        **contest.model_dump(), 
+        creator_id=creator_id
+    )
     new_contest = await add_contest(contest_dict)
     if isinstance(new_contest, Exception):
         return ErrorResponseModel(error=str(new_contest),

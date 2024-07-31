@@ -23,6 +23,9 @@ class ContestSchema(BaseModel):
         }
     }
 
+class ContestSchemaDB(ContestSchema):
+    creator_id: str
+
 
 class UpdateContestSchema(BaseModel):
     title: str | None = None

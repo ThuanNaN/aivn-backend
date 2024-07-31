@@ -30,9 +30,11 @@ def contest_helper(contest) -> dict:
         "title": contest["title"],
         "description": contest["description"],
         "is_active": contest["is_active"],
+        "creator_id": contest["creator_id"], # clerk_user_id
         "created_at": str(contest["created_at"]),
         "updated_at": str(contest["updated_at"])
     }
+
 
 def to_datetime(date_str: str) -> datetime:
     return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
