@@ -28,6 +28,10 @@ logger = Logger("routes/category", log_file="category.log")
 async def create_category(category: CategoryModel):
     category_dict = category.model_dump()
     new_category = await add_category(category_dict)
+    if isinstance(new_category, Exception):
+        return ErrorResponseModel(error=str(new_category),
+                                  message="Occur error when create category.",
+                                  code=status.HTTP_400_BAD_REQUEST)
     return DictResponseModel(data=new_category,
                              message="Category created successfully.",
                              code=status.HTTP_200_OK)
@@ -38,13 +42,13 @@ async def create_category(category: CategoryModel):
             description="Retrieve all categories")
 async def get_categories():
     categories = await retrieve_categories()
-    if categories:
-        return ListResponseModel(data=categories,
-                                 message="Categories retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Occur error when retrieve categories.", 
-        message="Categories not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(categories, Exception):
+        return ErrorResponseModel(error=str(categories),
+                                  message="Occur error when retrieve categories.",
+                                  code=status.HTTP_400_BAD_REQUEST)
+    return ListResponseModel(data=categories,
+                             message="Categories retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.get("/{id}",
@@ -52,13 +56,13 @@ async def get_categories():
             description="Retrieve a category with a matching ID")
 async def get_category(id: str):
     category = await retrieve_category(id)
-    if category:
-        return DictResponseModel(data=category,
-                                 message="Category retrieved successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Occur error when retrieve category.",
-        message="Category not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    if isinstance(category, Exception):
+        return ErrorResponseModel(error=str(category),
+                                  message="Occur error when retrieve category.",
+                                  code=status.HTTP_400_BAD_REQUEST)
+    return DictResponseModel(data=category,
+                             message="Category retrieved successfully.",
+                             code=status.HTTP_200_OK)
 
 
 @router.patch("/{id}",
@@ -66,11 +70,17 @@ async def get_category(id: str):
               description="Update a category with a matching ID")
 async def update_category_data(id: str, category: UpdateCategorySchema):
     category_dict = category.model_dump()
-    updated_category = await update_category(id, category_dict)
-    if updated_category:
-        return ListResponseModel(data=[],
-                                 message="Category updated successfully.",
-                                 code=status.HTTP_200_OK)
-    return ErrorResponseModel(error="Occur error when update category.",
-        message="Category not found.",
-                              code=status.HTTP_404_NOT_FOUND)
+    update_result = await update_category(id, category_dict)
+    if isinstance(update_result, Exception):
+        return ErrorResponseModel(error=str(update_result),
+                                  message="Occur error when update category.",
+                                  code=status.HTTP_400_BAD_REQUEST)
+
+    if not update_result:
+        return ErrorResponseModel(error="No documents were updated.",
+                                  message="Category update failed.",
+                                  code=status.HTTP_404_NOT_FOUND)
+
+    return ListResponseModel(data=[],
+                             message="Category updated successfully.",
+                             code=status.HTTP_200_OK)

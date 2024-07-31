@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -29,9 +30,11 @@ def contest_helper(contest) -> dict:
         "title": contest["title"],
         "description": contest["description"],
         "is_active": contest["is_active"],
+        "creator_id": contest["creator_id"], # clerk_user_id
         "created_at": str(contest["created_at"]),
         "updated_at": str(contest["updated_at"])
     }
+
 
 def to_datetime(date_str: str) -> datetime:
     return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
@@ -49,7 +52,9 @@ async def add_contest(contest_data: dict) -> dict:
         new_contest = await contest_collection.find_one({"_id": contest.inserted_id})
         return contest_helper(new_contest)
     except Exception as e:
-        logger.error(f"Error when add contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def retrieve_contests() -> list[dict]:
@@ -63,10 +68,12 @@ async def retrieve_contests() -> list[dict]:
             contests.append(contest_helper(contest))
         return contests
     except Exception as e:
-        logger.error(f"Error when retrieve contests: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def retrieve_available_contests(user_clerk_id: str) -> dict:
+
+async def retrieve_available_contests(user_clerk_id: str) -> list:
     """
     Retrieve all available contests
     :return: list[dict]
@@ -80,7 +87,7 @@ async def retrieve_available_contests(user_clerk_id: str) -> dict:
             contests.append(contest_detail)
         return contests
     except Exception as e:
-        logger.error(f"Error when retrieve available contests: {e}")
+        logger.error(f"{traceback.format_exc()}")
         return e
 
 
@@ -92,10 +99,13 @@ async def retrieve_contest(id: str) -> dict:
     """
     try:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
-        if contest:
-            return contest_helper(contest)
+        if not contest:
+            raise Exception("Contest not found")
+        return contest_helper(contest)
     except Exception as e:
-        logger.error(f"Error when retrieve contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
@@ -107,17 +117,19 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
     """
     try:
         contest = await retrieve_contest(id)
-        if not contest:
-            raise Exception("Contest not found")
-        
+        if isinstance(contest, Exception):
+            raise contest
+
         retakes = await retrieve_retake_by_user_clerk_id(user_clerk_id)
         if isinstance(retakes, Exception):
             raise retakes
         exam_retake_ids = []
-        if retakes:
+        if retakes: # not empty
             exam_retake_ids = [retake["exam_id"] for retake in retakes]
             
         all_exam = await retrieve_exam_by_contest(contest["id"])
+        if isinstance(all_exam, Exception):
+            raise all_exam
         if len(all_exam) < 1:
             raise Exception("Exams not found")
         
@@ -126,6 +138,8 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         for exam in all_exam:
             exam_id = exam["id"]
             exam_problems = await retrieve_by_exam_id(exam_id)
+            if isinstance(exam_problems, Exception):
+                raise exam_problems
             exam["problems"] = exam_problems
             all_exam_detail.append(exam)
 
@@ -146,7 +160,7 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         contest["exams"] = all_exam_detail
         return contest
     except Exception as e:
-        logger.error(f"Error when retrieve contest detail: {e}")
+        logger.error(f"{traceback.format_exc()}")
         return e
 
 
@@ -159,18 +173,20 @@ async def update_contest(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data to update")
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
             raise Exception("Contest not found")
         updated_contest = await contest_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if not updated_contest:
-            raise Exception("Update contest failed")
-        return True
+        if updated_contest.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 
 async def delete_contest(id: str) -> bool:
@@ -183,16 +199,20 @@ async def delete_contest(id: str) -> bool:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
             raise Exception("Contest not found")
-        
-        deleted_contest = await contest_collection.delete_one({"_id": ObjectId(id)})
-        if not deleted_contest:
-            raise Exception("Delete contest failed")
 
         # Delete all exam 
         deleted_exams = await delete_all_by_contest_id(id)
+        if isinstance(deleted_exams, Exception):
+            raise deleted_exams
         if not deleted_exams:
-            raise Exception("Delete exams failed")
+            raise Exception("Delete exam failed")
 
+        # Delete contest
+        deleted_contest = await contest_collection.delete_one({"_id": ObjectId(id)})
+        if deleted_contest.deleted_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete contest: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 

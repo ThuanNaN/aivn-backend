@@ -1,3 +1,4 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -34,7 +35,8 @@ async def add_timer(timer_data: dict) -> dict:
         new_timer = await timer_collection.find_one({"_id": timer.inserted_id})
         return timer_helper(new_timer)
     except Exception as e:
-        logger.error(f"Error when add timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_timer_by_user_id(clerk_user_id: str) -> dict:
@@ -48,7 +50,8 @@ async def retrieve_timer_by_user_id(clerk_user_id: str) -> dict:
         if timer:
             return timer_helper(timer)
     except Exception as e:
-        logger.error(f"Error when retrieve timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_timer_by_exam_id(exam_id: str) -> dict:
@@ -62,7 +65,8 @@ async def retrieve_timer_by_exam_id(exam_id: str) -> dict:
         if timer:
             return timer_helper(timer)
     except Exception as e:
-        logger.error(f"Error when retrieve timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> dict:
@@ -78,7 +82,8 @@ async def retrieve_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> di
         if timer:
             return timer_helper(timer)
     except Exception as e:
-        logger.error(f"Error when retrieve timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_timer_by_user_id(clerk_user_id: str) -> bool:
@@ -89,11 +94,17 @@ async def delete_timer_by_user_id(clerk_user_id: str) -> bool:
     """
     try:
         timer = await timer_collection.find_one({"clerk_user_id": clerk_user_id})
-        if timer:
-            await timer_collection.delete_one({"clerk_user_id": clerk_user_id})
+        if not timer:
+            raise Exception("Timer not found")
+        deleted_timer = await timer_collection.delete_one(
+            {"clerk_user_id": clerk_user_id}
+        )
+        if deleted_timer.deleted_count == 1:
             return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_timer_by_exam_id(exam_id: str) -> bool:
@@ -104,11 +115,16 @@ async def delete_timer_by_exam_id(exam_id: str) -> bool:
     """
     try:
         timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id)})
-        if timer:
-            await timer_collection.delete_one({"exam_id": ObjectId(exam_id)})
+        if not timer:
+            raise Exception("Timer not found")
+        deleted_timer = await timer_collection.delete_one(
+            {"exam_id": ObjectId(exam_id)})
+        if deleted_timer.deleted_count == 1:
             return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool:
@@ -121,9 +137,14 @@ async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool
     try:
         timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id), 
                                                  "clerk_user_id": clerk_user_id})
-        if timer:
-            await timer_collection.delete_one({"exam_id": ObjectId(exam_id), 
-                                               "clerk_user_id": clerk_user_id})
+        if not timer:
+            raise Exception("Timer not found")
+        deleted_timer = await timer_collection.delete_one(
+            {"exam_id": ObjectId(exam_id),
+             "clerk_user_id": clerk_user_id})
+        if deleted_timer.deleted_count == 1:
             return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete timer: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e

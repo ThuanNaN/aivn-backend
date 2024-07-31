@@ -8,4 +8,5 @@ class RetakeSchema(BaseModel):
 
 
 class RetakeSchemaDB(RetakeSchema):
+    creator_id: str
     exam_id: str

@@ -1,3 +1,4 @@
+import traceback
 from typing import List
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -30,7 +31,7 @@ def ObjectId_helper(problem_category_data: dict) -> dict:
 
 async def add_problem_category(problem_category_data: dict) -> dict:
     """
-    Add a new add_problem_category to database
+    Add a new problem_category to database
     :param problem_category_data: dict
     :return: dict
     """
@@ -42,7 +43,8 @@ async def add_problem_category(problem_category_data: dict) -> dict:
         )
         return problem_category_helper(new_problem_category)
     except Exception as e:
-        logger.error(f"Error when add_problem_category: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def add_more_problem_category(problem_category_data: List[dict]) -> list:
@@ -62,7 +64,8 @@ async def add_more_problem_category(problem_category_data: List[dict]) -> list:
             new_problem_categories.append(problem_category_helper(problem_category))
         return new_problem_categories
     except Exception as e:
-        logger.error(f"Error when add_more_problem_category: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_problem_categories() -> list:
@@ -76,7 +79,8 @@ async def retrieve_problem_categories() -> list:
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
     except Exception as e:
-        logger.error(f"Error when retrieve_problem_categories: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_id(id: str) -> dict:
@@ -92,7 +96,8 @@ async def retrieve_by_id(id: str) -> dict:
         if problem_category:
             return problem_category_helper(problem_category)
     except Exception as e:
-        logger.error(f"Error when retrieve_by_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> dict:
@@ -109,7 +114,8 @@ async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> 
         if problem_category:
             return problem_category_helper(problem_category)
     except Exception as e:
-        logger.error(f"Error when retrieve_by_problem_category_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_categories(category_ids: List[str]) -> list:
@@ -118,16 +124,17 @@ async def retrieve_by_categories(category_ids: List[str]) -> list:
     :param category_ids: List[str]
     :return: list
     """
-    problem_categories = []
-    category_ids = [ObjectId(category) for category in category_ids]
     try:
+        problem_categories = []
+        category_ids = [ObjectId(category) for category in category_ids]
         async for problem_category in problem_category_collection.find(
             {"category_id": {"$in": category_ids}}
         ):
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
     except Exception as e:
-        logger.error(f"Error when retrieve_by_categories: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_by_problem_id(problem_id: str) -> list:
@@ -136,29 +143,38 @@ async def retrieve_by_problem_id(problem_id: str) -> list:
     :param problem_id: str
     :return: list
     """
-    problem_categories = []
     try:
+        problem_categories = []
         async for problem_category in problem_category_collection.find(
             {"problem_id": ObjectId(problem_id)}
         ):
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
     except Exception as e:
-        logger.error(f"Error when retrieve_by_problem_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_problem_category(id: str) -> bool:
     """
-    Delete a delete_problem_category with a matching ID
+    Delete a problem_category with a matching ID
     :param id: str
     """
     try:
-        delete = await problem_category_collection.delete_one({"_id": ObjectId(id)})
-        if delete:
+        problem_category = await problem_category_collection.find_one(
+            {"_id": ObjectId(id)})
+        if not problem_category:
+            raise Exception("Problem_category not found")
+
+        deleted_problem_category = await problem_category_collection.delete_one(
+            {"_id": ObjectId(id)}
+        )
+        if deleted_problem_category.deleted_count == 1:
             return True
         return False
     except Exception as e:
-        logger.error(f"Error when delete_problem_category: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def delete_all_by_problem_id(problem_id: str) -> bool:
@@ -167,12 +183,15 @@ async def delete_all_by_problem_id(problem_id: str) -> bool:
     :param problem_id: str
     """
     try:
-        delete = await problem_category_collection.delete_many({"problem_id": ObjectId(problem_id)})
-        if delete:
+        deleted_problem_category = await problem_category_collection.delete_many(
+            {"problem_id": ObjectId(problem_id)}
+        )
+        if deleted_problem_category.deleted_count > 0:
             return True
         return False
     except Exception as e:
-        logger.error(f"Error when delete_all_by_problem_id: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 
@@ -187,7 +206,14 @@ async def update_problem_category_problem_id(problem_id: str) -> bool:
     """
     try:
         problem_categories = await retrieve_by_problem_id(problem_id)
+        if isinstance(problem_categories, Exception):
+            raise problem_categories
         for problem_category in problem_categories:
-            await delete_problem_category(problem_category["id"])
+            deleted = await delete_problem_category(problem_category["id"])
+            if isinstance(deleted, Exception):
+                raise deleted
+            if not deleted:
+                raise Exception("Error when delete problem_category")
     except Exception as e:
-        logger.error(f"Error when update_problem_category: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e

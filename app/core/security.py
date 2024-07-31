@@ -19,11 +19,6 @@ oauth2_scheme = HTTPBearer()
 
 
 async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     token_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token has expired",
@@ -33,8 +28,6 @@ async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         clerk_user_id: str = payload.get("sub")
-        if clerk_user_id is None:
-            raise credentials_exception
         return clerk_user_id
 
     except jwt.ExpiredSignatureError:
@@ -42,6 +35,11 @@ async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
 
 async def is_admin(clerk_user_id: str = Depends(is_authenticated)):
     user = await retrieve_user(clerk_user_id)
+    if isinstance(user, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
     if user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -51,6 +49,11 @@ async def is_admin(clerk_user_id: str = Depends(is_authenticated)):
 
 async def is_aio(clerk_user_id: str = Depends(is_authenticated)):
     user = await retrieve_user(clerk_user_id)
+    if isinstance(user, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
     if user["role"] not in ["admin", "aio"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

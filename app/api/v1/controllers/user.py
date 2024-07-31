@@ -1,3 +1,4 @@
+import traceback
 import os
 import requests
 from requests.exceptions import HTTPError, Timeout
@@ -63,18 +64,22 @@ def whitelist_helper(user) -> dict:
 async def add_user(user_data: dict) -> dict:
     """
     Create a new user
+    :param user_data: dict
+    :return: dict
     """
     try:
         user = await user_collection.insert_one(user_data)
         new_user = await user_collection.find_one({"_id": user.inserted_id})
         return user_helper(new_user)
     except Exception as e:
-        logger.error(f"Error when add user: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_users() -> list[dict]:
     """
     Retrieve all users in database
+    :return: list
     """
     try:
         users = []
@@ -82,43 +87,55 @@ async def retrieve_users() -> list[dict]:
             users.append(user_helper(user))
         return users
     except Exception as e:
-        logger.error(f"Error when retrieve users: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_user(clerk_user_id: str) -> dict:
     """
     Retrieve a user with a matching ID
+    :param clerk_user_id: str
+    :return: dict
     """
     try:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if user:
             return user_helper(user)
     except Exception as e:
-        logger.error(f"Error when retrieve user: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     Update a user with a matching ID
+    :param clerk_user_id: str
+    :param data: dict
+    :return: bool
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data to update")
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
-        if user:
-            updated_user = await user_collection.update_one(
-                {"clerk_user_id": clerk_user_id}, {"$set": data}
-            )
-            if updated_user:
-                return True
-            return False
+        if not user:
+            raise Exception("User not found")
+        
+        updated_user = await user_collection.update_one(
+            {"clerk_user_id": clerk_user_id}, {"$set": data}
+        )
+        if updated_user.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update user: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_user_clerk(clerk_user_id: str) -> dict:
     """
     Retrieve a user data from Clerk
+    :param clerk_user_id: str
+    :return: dict
     """
     try:
         CLERK_URL = f"https://api.clerk.com/v1/users/{clerk_user_id}"
@@ -138,24 +155,29 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
     except Timeout as timeout_err:
         logger.error(f"Request timeout: {timeout_err}")
     except Exception as e:
-        logger.error(f"Error when retrieve user clerk: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def add_whitelist(whitelist_data: dict) -> dict:
     """
     Create a new whitelist
+    :param whitelist_data: dict
+    :return: dict
     """
     try:
         whitelist = await whitelist_collection.insert_one(whitelist_data)
         new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
         return whitelist_helper(new_whitelist)
     except Exception as e:
-        logger.error(f"Error when add whitelist: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_whitelists() -> list[dict]:
     """
-    Retrieve all whitelists in database
+    Retrieve all whitelists in database.
+    :return: list
     """
     try:
         whitelists = []
@@ -163,26 +185,32 @@ async def retrieve_whitelists() -> list[dict]:
             whitelists.append(whitelist_helper(whitelist))
         return whitelists
     except Exception as e:
-        logger.error(f"Error when retrieve whitelists: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def check_whitelist_via_email(email: str) -> bool:
     """
-    Check an email is in whitelist by email 
+    Check an email is in whitelist by email.
+    :param email: str
+    :return: bool
     """
     try:
         whitelist = await whitelist_collection.find_one({"email": email})
         if whitelist:
             return True
+        return False
     except Exception as e:
-        logger.error(f"Error when check whitelist: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def check_whitelist_via_id(clerk_user_id: str) -> bool:
     """
     Check an email is in whitelist by clerk_user_id
-
     Only use for user who has been logged in before -> exist in users collection
+    :param clerk_user_id: str
+    :return: bool
     """
     try:
         user_data = await user_collection.find_one({"clerk_user_id": clerk_user_id})
@@ -193,4 +221,5 @@ async def check_whitelist_via_id(clerk_user_id: str) -> bool:
                 return True
         return False
     except Exception as e:
-        logger.error(f"Error when check whitelist: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e

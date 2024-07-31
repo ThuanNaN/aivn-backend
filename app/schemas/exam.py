@@ -27,6 +27,9 @@ class ExamSchema(BaseModel):
         }
     }
 
+class ExamSchemaDB(ExamSchema):
+    creator_id: str
+
 
 class UpdateExamSchema(BaseModel):
     contest_id: str
@@ -51,6 +54,10 @@ class UpdateExamSchema(BaseModel):
             ]
         }
     }
+
+class UpdateExamSchemaDB(UpdateExamSchema):
+    creator_id: str
+
 
 class OrderSchema(BaseModel):
     problem_id: str

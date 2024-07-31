@@ -1,3 +1,4 @@
+import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -75,7 +76,8 @@ async def add_problem(problem_data: dict) -> dict:
         new_problem = await problem_collection.find_one({"_id": problem.inserted_id})
         return problem_helper(new_problem)
     except Exception as e:
-        logger.error(f"Error when add problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_problems(full_return: bool = False) -> list:
@@ -94,7 +96,8 @@ async def retrieve_problems(full_return: bool = False) -> list:
             problems.append(problem_data)
         return problems
     except Exception as e:
-        logger.error(f"Error when retrieve problems: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_problems_by_ids(ids: list, full_return: bool = False) -> list:
@@ -114,7 +117,8 @@ async def retrieve_problems_by_ids(ids: list, full_return: bool = False) -> list
             problems.append(problem_data)
         return problems
     except Exception as e:
-        logger.error(f"Error when retrieve problems: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_problem(id: str, full_return: bool = False) -> dict:
@@ -132,12 +136,14 @@ async def retrieve_problem(id: str, full_return: bool = False) -> dict:
             else:
                 return hide_problem_helper(problem)
     except Exception as e:
-        logger.error(f"Error when retrieve problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def retrieve_search_filter_pagination(pipeline: list,
                                             page: int,
                                             per_page: int, 
+                                            role: str
                                             ) -> dict:
     """
     Retrieve all problems with search, filter and pagination.
@@ -163,7 +169,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
         result_data = []
         for problem in problems:  
-            problem_info = hide_problem_helper(problem)
+            problem_info = problem_helper(problem) if role == "admin" else hide_problem_helper(problem)
             return_dict = {
                 **problem_info,
                 "categories": [category_helper(category) for category in problem["category_info"]]
@@ -177,55 +183,56 @@ async def retrieve_search_filter_pagination(pipeline: list,
             "per_page": per_page
         }
     except Exception as e:
-        logger.error(f"Error when retrieve problems with search, filter and pagination: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def update_problem(id: str, data: dict):
+async def update_problem(id: str, data: dict) -> bool:
     """
     Update a problem with a matching ID
-    Args:
-        id (str): problem ID
-        data (dict): problem data to update
-    Returns:
-        bool: True if update success, False if not
+    :param id: str
+    :param data: dict
+    :return: bool
     """
     try:
         if len(data) < 1:
-            return False
+            raise Exception("No data to update")
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
-        if problem:
-            updated_problem = await problem_collection.update_one(
-                {"_id": ObjectId(id)}, {"$set": data}
-            )
-            if updated_problem:
-                return True
-            return False
+        if not problem:
+            raise Exception("Problem not found")
+        updated_problem = await problem_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": data}
+        )
+        if updated_problem.modified_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when update problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
-async def delete_problem(id: str):
+async def delete_problem(id: str) -> bool:
     """
     Delete a problem with a matching ID
-    Args:
-        id (str): problem ID
-    Returns:
-        bool: True if delete success, False if not
+    :param id: str
+    :return: bool
     """
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if not problem:
             raise Exception("Problem not found")
-        
-        deleted_problem = await problem_collection.delete_one({"_id": ObjectId(id)})
-        if not deleted_problem:
-            raise Exception("Error when delete problem")
 
         # Delete in problem_category collection
         deleted_problem_category = await delete_all_by_problem_id(id)
+        if isinstance(deleted_problem_category, Exception):
+            raise deleted_problem_category
         if not deleted_problem_category:
-            raise Exception("Error when delete problem_category")
-
-        return True
+            raise Exception("No problem_category deleted")
+        
+        deleted_problem = await problem_collection.delete_one({"_id": ObjectId(id)})
+        if deleted_problem.deleted_count == 1:
+            return True
+        return False
     except Exception as e:
-        logger.error(f"Error when delete problem: {e}")
+        logger.error(f"{traceback.format_exc()}")
+        return e
