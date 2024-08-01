@@ -37,6 +37,15 @@ def submission_helper(submission) -> dict:
         "created_at": str(submission["created_at"]),
     }
 
+def ObjectId_helper(submission: dict) -> dict:
+    retake_id = submission.get("retake_id", None)
+    if retake_id is not None:
+        submission["retake_id"] = ObjectId(retake_id)
+    else:
+        submission["retake_id"] = None
+
+    submission["exam_id"] = ObjectId(submission["exam_id"])
+    return submission
 
 async def add_submission(submission_data: dict) -> dict:
     """
@@ -45,8 +54,7 @@ async def add_submission(submission_data: dict) -> dict:
     :return: dict
     """
     try:
-        submission_data["exam_id"] = ObjectId(submission_data["exam_id"])
-        submission_data["retake_id"] = ObjectId(submission_data["retake_id"])
+        submission_data = ObjectId_helper(submission_data)
         submission = await submission_collection.insert_one(submission_data)
         new_submission = await submission_collection.find_one(
             {"_id": submission.inserted_id}

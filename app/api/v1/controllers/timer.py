@@ -14,17 +14,24 @@ except Exception as e:
 
 # helper
 def timer_helper(timer) -> dict:
+    retake_id = timer.get("retake_id", None)
+    retake_id = str(retake_id) if retake_id else None
     return {
         "id": str(timer["_id"]),
         "exam_id": str(timer["exam_id"]),
         "clerk_user_id": timer["clerk_user_id"],
-        "retake_id": str(timer["retake_id"]),
+        "retake_id": retake_id,
         "start_time": timer["start_time"]
     }
 
 def ObjectId_helper(timer: dict) -> dict:
+    retake_id = timer.get("retake_id", None)
+    if retake_id is not None:
+        timer["retake_id"] = ObjectId(retake_id)
+    else:
+        timer["retake_id"] = None
+
     timer["exam_id"] = ObjectId(timer["exam_id"])
-    timer["retake_id"] = ObjectId(timer["retake_id"])
     return timer
 
 
