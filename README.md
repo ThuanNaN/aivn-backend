@@ -33,3 +33,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 # for deploy gunicorn with uvicorn worker
 gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
+
+### TODO
+
+- exam_helper
+- retake_helper
