@@ -35,6 +35,11 @@ def exam_helper(exam: dict) -> dict:
     }
 
 
+def update_helper(update_exam_data: dict) -> dict:
+    update_exam_data["contest_id"] = ObjectId(update_exam_data["contest_id"])
+    return update_exam_data
+
+
 async def add_exam(exam_data: dict) -> dict:
     """
     Add a new exam to database
@@ -141,8 +146,9 @@ async def update_exam(id: str, data: dict) -> bool:
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
         if not exam:
             raise Exception("Exam not found")
+        update_data = update_helper(data)
         updated_exam = await exam_collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": data}
+            {"_id": ObjectId(id)}, {"$set": update_data}
         )
         if updated_exam.modified_count == 1:
             return True
