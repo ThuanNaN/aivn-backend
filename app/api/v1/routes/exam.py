@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
@@ -34,7 +34,7 @@ from app.api.v1.controllers.exam import (
     delete_exam
 )
 from app.api.v1.controllers.timer import (
-    retrieve_timer_by_exam_user_id,
+    retrieve_timer_by_exam_retake_user_id,
     add_timer,
     delete_timer_by_exam_user_id
 )
@@ -77,7 +77,9 @@ async def create_exam(exam: ExamSchema,
 async def create_timer(exam_id: str,
                        start_time: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)):
-    timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
+    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
+                                                        clerk_user_id,
+                                                        retake_id=None)
     if timer:
         return ErrorResponseModel(error="Timer already exists.",
                                   code=status.HTTP_400_BAD_REQUEST,
@@ -149,8 +151,12 @@ async def get_exam_by_id(id: str):
 
 @router.get("/{exam_id}/timer",
             description="Retrieve a timer with a matching exam_id ID")
-async def get_timer(exam_id: str, clerk_user_id: str = Depends(is_authenticated)):
-    timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
+async def get_timer(exam_id: str, 
+                    retake_id: str | None = None,
+                    clerk_user_id: str = Depends(is_authenticated)):
+    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
+                                                        clerk_user_id, 
+                                                        retake_id)
     if isinstance(timer, Exception):
         return ErrorResponseModel(error=str(timer),
                                   code=status.HTTP_404_NOT_FOUND,

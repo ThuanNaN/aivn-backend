@@ -12,7 +12,7 @@ except Exception as e:
     exit(1)
 
 
-# helper 
+# helper
 def timer_helper(timer) -> dict:
     return {
         "id": str(timer["_id"]),
@@ -22,6 +22,12 @@ def timer_helper(timer) -> dict:
         "start_time": timer["start_time"]
     }
 
+def ObjectId_helper(timer: dict) -> dict:
+    timer["exam_id"] = ObjectId(timer["exam_id"])
+    timer["retake_id"] = ObjectId(timer["retake_id"])
+    return timer
+
+
 
 async def add_timer(timer_data: dict) -> dict:
     """
@@ -30,7 +36,7 @@ async def add_timer(timer_data: dict) -> dict:
     :return: dict
     """
     try:
-        timer_data["exam_id"] = ObjectId(timer_data["exam_id"])
+        timer_data = ObjectId_helper(timer_data)
         timer = await timer_collection.insert_one(timer_data)
         new_timer = await timer_collection.find_one({"_id": timer.inserted_id})
         return timer_helper(new_timer)
@@ -69,15 +75,23 @@ async def retrieve_timer_by_exam_id(exam_id: str) -> dict:
         return e
 
 
-async def retrieve_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> dict:
+async def retrieve_timer_by_exam_retake_user_id(exam_id: str,
+                                                clerk_user_id: str,
+                                                retake_id: str | None
+                                                ) -> dict:
     """
-    Retrieve a timer with matching exam_id and user_id from the database
+    Retrieve a timer with matching exam_id, retake_id and clerk_user_id
     :param exam_id: str
+    :param retake_id: str
     :param clerk_user_id: str
     :return: dict
     """
     try:
-        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id), 
+        if retake_id is not None:
+            retake_id = ObjectId(retake_id)
+
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id),
+                                                 "retake_id": retake_id,
                                                  "clerk_user_id": clerk_user_id})
         if timer:
             return timer_helper(timer)
@@ -135,7 +149,7 @@ async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool
     :return: bool
     """
     try:
-        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id), 
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id),
                                                  "clerk_user_id": clerk_user_id})
         if not timer:
             raise Exception("Timer not found")
