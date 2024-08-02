@@ -202,7 +202,7 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
 
 
 async def retrieve_submission_by_id_user_retake(exam_id: str,
-                                                retake_id: str,
+                                                retake_id: str | None,
                                                 clerk_user_id: str
                                                 ) -> dict:
     """
@@ -213,10 +213,13 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
     :return dict
     """
     try:
+        if retake_id is not None:
+            retake_id = ObjectId(retake_id)
+
         submission = await submission_collection.find_one(
             {
                 "exam_id": ObjectId(exam_id),
-                "retake_id": ObjectId(retake_id),
+                "retake_id": retake_id,
                 "clerk_user_id": clerk_user_id
             }
         )
