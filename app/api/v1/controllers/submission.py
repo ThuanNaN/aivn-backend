@@ -3,15 +3,15 @@ from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.user import (
-    retrieve_user, 
+    retrieve_user,
     user_helper
 )
 from app.api.v1.controllers.exam import (
-    retrieve_exam, 
+    retrieve_exam,
     exam_helper
 )
 from app.api.v1.controllers.contest import (
-    retrieve_contest, 
+    retrieve_contest,
     contest_helper
 )
 
@@ -38,6 +38,26 @@ def submission_helper(submission) -> dict:
     }
 
 
+def ObjectId_helper(submission: dict) -> dict:
+    retake_id = submission.get("retake_id", None)
+    if retake_id is not None:
+        submission["retake_id"] = ObjectId(retake_id)
+    else:
+        submission["retake_id"] = None
+
+    submission["exam_id"] = ObjectId(submission["exam_id"])
+    return submission
+
+
+def update_helper(submission: dict) -> dict:
+    retake_id = submission.get("retake_id", None)
+    if retake_id is not None:
+        submission["retake_id"] = ObjectId(retake_id)
+    else:
+        submission["retake_id"] = None
+    return submission
+
+
 async def add_submission(submission_data: dict) -> dict:
     """
     Create a new submission in the database
@@ -45,8 +65,7 @@ async def add_submission(submission_data: dict) -> dict:
     :return: dict
     """
     try:
-        submission_data["exam_id"] = ObjectId(submission_data["exam_id"])
-        submission_data["retake_id"] = ObjectId(submission_data["retake_id"])
+        submission_data = ObjectId_helper(submission_data)
         submission = await submission_collection.insert_one(submission_data)
         new_submission = await submission_collection.find_one(
             {"_id": submission.inserted_id}
@@ -59,7 +78,7 @@ async def add_submission(submission_data: dict) -> dict:
 
 async def retrieve_submissions() -> list:
     """
-    Retrieve all submissions from database
+    Retrieve all submissions from database, include user info
     :return: list
     """
     try:
@@ -75,6 +94,7 @@ async def retrieve_submissions() -> list:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+
 
 
 async def retrieve_search_filter_pagination(pipeline: list,
@@ -96,7 +116,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
                 "current_page": page,
                 "per_page": per_page
             }
-        
+
         total_submissions = pipeline_results[0]["total"][0]["count"]
         total_pages = (total_submissions + per_page - 1) // per_page
 
@@ -124,7 +144,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
 async def retrieve_submission_by_id(id: str) -> dict:
     """
-    Retrieve a submission with a matching ID
+    Retrieve a submission with a matching ID, include user info and exam info
     :param id: str
     :return: dict
     """
@@ -132,15 +152,15 @@ async def retrieve_submission_by_id(id: str) -> dict:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         if not submission:
             raise Exception("Submission not found")
-        
+
         user_info = await retrieve_user(submission["clerk_user_id"])
         if isinstance(user_info, Exception):
             raise user_info
-        
+
         exam_info = await retrieve_exam(submission["exam_id"])
         if isinstance(exam_info, Exception):
             raise exam_info
-        
+
         contest_info = await retrieve_contest(exam_info["contest_id"])
         if isinstance(contest_info, Exception):
             raise contest_info
@@ -157,7 +177,15 @@ async def retrieve_submission_by_id(id: str) -> dict:
         return e
 
 
-async def retrieve_submission_by_exam_user_id(exam_id: str, clerk_user_id) -> dict:
+async def retrieve_submission_by_exam_user_id(exam_id: str,
+                                              clerk_user_id
+                                              ) -> dict:
+    """
+    Retrieve a submission by exam ID and user ID, include user info
+    :param exam_id: str
+    :param clerk_user_id: str
+    :return dict
+    """
     try:
         submission = await submission_collection.find_one(
             {"exam_id": ObjectId(exam_id), "clerk_user_id": clerk_user_id}
@@ -169,6 +197,63 @@ async def retrieve_submission_by_exam_user_id(exam_id: str, clerk_user_id) -> di
                 raise user_info
             return_data["user"] = user_info
             return return_data
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def retrieve_submission_by_id_user_retake(exam_id: str,
+                                                retake_id: str | None,
+                                                clerk_user_id: str
+                                                ) -> dict:
+    """
+    Retrieve a submission by exam ID, retake ID and user ID. Include user info
+    :param exam_id: str
+    :param retake_id: str
+    :param clerk_user_id: str
+    :return dict
+    """
+    try:
+        if retake_id is not None:
+            retake_id = ObjectId(retake_id)
+
+        submission = await submission_collection.find_one(
+            {
+                "exam_id": ObjectId(exam_id),
+                "retake_id": retake_id,
+                "clerk_user_id": clerk_user_id
+            }
+        )
+        if submission and submission["submitted_problems"] is not None:
+            return_data = submission_helper(submission)
+            user_info = await retrieve_user(submission["clerk_user_id"])
+            if isinstance(user_info, Exception):
+                raise user_info
+            return_data["user"] = user_info
+            return return_data
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def update_submission(id: str, submission_data: dict) -> dict:
+    """
+    Update a submission with a matching ID
+    :param id: str
+    :param data: dict
+    :return: dict
+    """
+    try:
+        if len(submission_data) < 1:
+            raise Exception("No data to update")
+
+        submission_data = update_helper(submission_data)
+        updated_submission = await submission_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": submission_data}
+        )
+        if updated_submission.modified_count > 0:
+            return True
+        return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -187,7 +272,7 @@ async def delete_submission(id: str) -> bool:
         deleted_submission = await submission_collection.delete_one(
             {"_id": ObjectId(id)})
         if deleted_submission.deleted_count == 1:
-            return True 
+            return True
         return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")

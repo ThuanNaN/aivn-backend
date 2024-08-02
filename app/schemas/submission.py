@@ -9,7 +9,7 @@ class SubmittedProblem(BaseModel):
     submitted_choice: str | None = None
 
 class Submission(BaseModel):
-    submitted_problems: List[SubmittedProblem]
+    submitted_problems: List[SubmittedProblem] | None = None
     retake_id: str | None = None
     created_at: datetime = datetime.now()
 
@@ -45,9 +45,13 @@ class SubmissionDB(BaseModel):
     exam_id: str
     clerk_user_id: str
     retake_id: str | None = None
-    submitted_problems: List[SubmittedResult]
+    submitted_problems: List[SubmittedResult] | None = None
     created_at: datetime = datetime.now()
 
 
-
+class UpdateSubmissionDB(BaseModel):
+    retake_id: str | None = None
+    submitted_problems: List[SubmittedResult] | None = None
+    created_at: datetime = datetime.now()
+    
 

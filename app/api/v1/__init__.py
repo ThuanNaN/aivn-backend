@@ -7,6 +7,7 @@ from app.api.v1.routes.category import router as category_router
 from app.api.v1.routes.problem import router as problem_router
 from app.api.v1.routes.code import router as code_router
 from app.api.v1.routes.submission import router as submission_router
+from app.api.v1.routes.retake import router as retake_router
 from app.core.security import (
     is_authenticated,
     is_aio,
@@ -54,3 +55,8 @@ router.include_router(submission_router,
                       dependencies=[Depends(is_authenticated)],
                       prefix="/submission",
                       tags=["Submission"])
+
+router.include_router(retake_router,
+                      dependencies=[Depends(is_admin)],
+                      prefix="/retake",
+                      tags=["Retake"])

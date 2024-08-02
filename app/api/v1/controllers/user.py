@@ -123,7 +123,7 @@ async def update_user(clerk_user_id: str, data: dict) -> bool:
         updated_user = await user_collection.update_one(
             {"clerk_user_id": clerk_user_id}, {"$set": data}
         )
-        if updated_user.modified_count == 1:
+        if updated_user.modified_count > 0:
             return True
         return False
     except Exception as e:

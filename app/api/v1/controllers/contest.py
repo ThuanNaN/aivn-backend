@@ -11,7 +11,7 @@ from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id
 )
 from app.api.v1.controllers.retake import (
-    retrieve_retake_by_user_clerk_id
+    retrieve_retake_by_clerk_user_id
 )
 
 logger = Logger("controllers/contest", log_file="contest.log")
@@ -73,7 +73,7 @@ async def retrieve_contests() -> list[dict]:
 
 
 
-async def retrieve_available_contests(user_clerk_id: str) -> list:
+async def retrieve_available_contests(clerk_user_id: str) -> list:
     """
     Retrieve all available contests
     :return: list[dict]
@@ -81,7 +81,7 @@ async def retrieve_available_contests(user_clerk_id: str) -> list:
     try:
         contests = []
         async for contest in contest_collection.find({"is_active": True}):
-            contest_detail = await retrieve_contest_detail(contest["_id"], user_clerk_id)
+            contest_detail = await retrieve_contest_detail(contest["_id"], clerk_user_id)
             if isinstance(contest_detail, Exception):
                 raise contest_detail
             contests.append(contest_detail)
@@ -108,10 +108,10 @@ async def retrieve_contest(id: str) -> dict:
 
 
 
-async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
+async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     Retrieve a contest with a matching contest_id (id),
-    including exams with available for user_clerk_id.
+    including exams with available for clerk_user_id.
     :param id: str
     :return: list
     """
@@ -120,7 +120,7 @@ async def retrieve_contest_detail(id: str, user_clerk_id: str) -> dict:
         if isinstance(contest, Exception):
             raise contest
 
-        retakes = await retrieve_retake_by_user_clerk_id(user_clerk_id)
+        retakes = await retrieve_retake_by_clerk_user_id(clerk_user_id)
         if isinstance(retakes, Exception):
             raise retakes
         exam_retake_ids = []
@@ -191,7 +191,7 @@ async def update_contest(id: str, data: dict) -> bool:
         updated_contest = await contest_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_contest.modified_count == 1:
+        if updated_contest.modified_count > 0:
             return True
         return False
     except Exception as e:

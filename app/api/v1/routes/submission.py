@@ -9,11 +9,16 @@ from app.schemas.response import (
 from app.api.v1.controllers.submission import (
     retrieve_search_filter_pagination,
     retrieve_submission_by_id,
-    retrieve_submission_by_exam_user_id,
+    retrieve_submission_by_id_user_retake,
     delete_submission,
 )
 from app.api.v1.controllers.timer import (
-    delete_timer_by_user_id
+    delete_timer_by_user_id,
+    delete_timer_by_exam_retake_user_id
+)
+from app.api.v1.controllers.retake import (
+    retrieve_retake_by_user_exam_id,
+    delete_retake_by_ids
 )
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
@@ -120,8 +125,11 @@ async def get_submissions(
 
 @router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
 async def get_submission_by_user(exam_id: str,
+                                 retake_id: Optional[str] = None,
                                  clerk_user_id: str = Depends(is_authenticated)):
-    submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
+    submission = await retrieve_submission_by_id_user_retake(exam_id, 
+                                                             retake_id,
+                                                             clerk_user_id)
     if isinstance(submission, Exception):
         return ErrorResponseModel(error=str(submission),
                                   message="An error occurred while retrieving submission.",
@@ -158,8 +166,28 @@ async def delete_submission_data(id: str):
                                   code=status.HTTP_404_NOT_FOUND)
     clerk_user_id = submission_info["clerk_user_id"]
 
+    # Delete retake if exists
+    retakes = await retrieve_retake_by_user_exam_id(clerk_user_id=clerk_user_id, 
+                                                    exam_id=submission_info["exam_id"])
+    if isinstance(retakes, Exception):
+        return ErrorResponseModel(error=str(retakes),
+                                  message="An error occurred while retrieving retakes.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if retakes:
+        retake_ids = [ObjectId(retake["id"]) for retake in retakes]
+        deleted_retakes = await delete_retake_by_ids(retake_ids)
+        if isinstance(deleted_retakes, Exception):
+            return ErrorResponseModel(error=str(deleted_retakes),
+                                      message="An error occurred while deleting retakes.",
+                                      code=status.HTTP_404_NOT_FOUND)
+        if not deleted_retakes:
+            return ErrorResponseModel(error="An error occurred while deleting retakes.",
+                                      message="Retakes were not deleted.",
+                                      code=status.HTTP_404_NOT_FOUND)
     # Delete timer
-    deleted_timer = await delete_timer_by_user_id(clerk_user_id)
+    deleted_timer = await delete_timer_by_exam_retake_user_id(exam_id=submission_info["exam_id"],
+                                                              clerk_user_id=clerk_user_id,
+                                                              retake_id=submission_info["retake_id"])
     if isinstance(deleted_timer, Exception):
         return ErrorResponseModel(error=str(deleted_timer),
                                   message="An error occurred while deleting timer.",
@@ -168,7 +196,6 @@ async def delete_submission_data(id: str):
         return ErrorResponseModel(error="An error occurred while deleting timer.",
                                   message="Timer was not deleted.",
                                   code=status.HTTP_404_NOT_FOUND)
-
     # Delete submission
     deleted_submission = await delete_submission(id)
     if isinstance(deleted_submission, Exception):

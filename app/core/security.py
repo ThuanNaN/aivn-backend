@@ -1,9 +1,14 @@
 import jwt
+from jwt.exceptions import (
+    ExpiredSignatureError, 
+    ImmatureSignatureError, 
+    InvalidTokenError
+)
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from app.api.v1.controllers.user import retrieve_user
 
-SECRET_KEY = """-----BEGIN PUBLIC KEY-----
+PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvZrZXYBd+sjK1wQ3t2yH
 QdhRL8gOGJrgkuNqW30dRmWShRQ6/UCybp1ojgJKW3P31o8fLhuOCnKCjAjDPI0X
 QbtjajAKcoCUEcx38VHLv2gT5STIhgvSC9IrDEOflmFz6+5KbQQcQBvyV51V9eb7
@@ -19,19 +24,30 @@ oauth2_scheme = HTTPBearer()
 
 
 async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
-    token_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token has expired",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    token = oauth2_scheme.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        token = oauth2_scheme.credentials
+        payload = jwt.decode(token, PUBLIC_KEY, algorithms=[ALGORITHM])
         clerk_user_id: str = payload.get("sub")
         return clerk_user_id
-
-    except jwt.ExpiredSignatureError:
-        raise token_exception
+    
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except ImmatureSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is not yet valid (iat)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is invalid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 async def is_admin(clerk_user_id: str = Depends(is_authenticated)):
     user = await retrieve_user(clerk_user_id)

@@ -1,8 +1,8 @@
 import traceback
+from typing import List
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-
 
 logger = Logger("controllers/retake", log_file="retake.log")
 
@@ -20,7 +20,7 @@ def retake_helper(retake) -> dict:
     updated_at = str(updated_at) if updated_at else None
     return {
         "id": str(retake["_id"]),
-        "user_clerk_id": retake["user_clerk_id"],
+        "clerk_user_id": retake["clerk_user_id"],
         "creator_id": retake["creator_id"],
         "exam_id": str(retake["exam_id"]),
         "created_at": str(retake["created_at"]),
@@ -90,15 +90,15 @@ async def retrieve_retakes_by_ids(ids: list) -> list:
         return e
 
 
-async def retrieve_retake_by_user_clerk_id(user_clerk_id: str) -> list:
+async def retrieve_retake_by_clerk_user_id(clerk_user_id: str) -> list:
     """
-    Retrieve retakes with a matching user_clerk_id
-    :param user_clerk_id: str
+    Retrieve retakes with a matching clerk_user_id
+    :param clerk_user_id: str
     :return: list
     """
     try:
         retakes = []
-        async for retake in retake_collection.find({"user_clerk_id": user_clerk_id}):
+        async for retake in retake_collection.find({"clerk_user_id": clerk_user_id}):
             retakes.append(retake_helper(retake))
         return retakes
     except Exception as e:
@@ -120,32 +120,46 @@ async def retrieve_retake_by_exam_id(exam_id: str) -> list:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-    
 
-async def update_retake(id: str, retake_data: dict) -> bool:
+
+async def retrieve_retake_by_user_exam_id(clerk_user_id: str, 
+                                          exam_id: str
+                                          ) -> list:
     """
-    Update a retake with a matching ID
-    :param id: str
-    :param retake_data: dict
-    :return: bool
+    Retrieve retakes with a matching clerk_user_id and exam_id
+    :param clerk_user_id: str
+    :param exam_id: str
+    :return: list
     """
     try:
-        if len(retake_data) < 1:
-            raise Exception("No data to update")
-        
-        retake = await retake_collection.find_one({"_id": ObjectId(id)})
-        if not retake:
-            raise Exception("Retake not found")
-        
-        updated_retake = await retake_collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": retake_data}
-        )
-        if updated_retake.modified_count == 1:
-            return True
-        return False
+        retakes = []
+        async for retake in retake_collection.find(
+            {
+                "clerk_user_id": clerk_user_id,
+                "exam_id": ObjectId(exam_id)
+            }
+        ):
+            retakes.append(retake_helper(retake))
+        return retakes
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+
+
+async def retrieve_retakes_unsubmit(submission_retake_ids: List[str]) -> list:
+    """
+    Retrieve retakes that have not been submitted
+    :return list
+    """
+    try:
+        retakes = await retrieve_retakes()
+        retake_ids = [retake["id"] for retake in retakes]
+        unsubmit_retake_ids = [retake_id for retake_id in retake_ids if retake_id not in submission_retake_ids]
+        unsubmit_retakes = [retake for retake in retakes if retake["id"] in unsubmit_retake_ids]
+        return unsubmit_retakes
+    except Exception as e:
+        logger.error(f"Error when retrieving retakes: {e}")
+        return None
 
 
 async def delete_retake_by_id(id: str) -> bool:
@@ -165,4 +179,20 @@ async def delete_retake_by_id(id: str) -> bool:
         return False
     except Exception as e:
         logger.error(f"Error when delete retake: {e}")
+        return e
+    
+    
+async def delete_retake_by_ids(ids: list) -> bool:
+    """
+    Delete retakes with a matching IDs
+    :param ids: list
+    :return: bool
+    """
+    try:
+        deleted_retakes = await retake_collection.delete_many({"_id": {"$in": ids}})
+        if deleted_retakes.deleted_count > 0:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error when delete retakes: {e}")
         return e

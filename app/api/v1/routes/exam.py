@@ -19,6 +19,9 @@ from app.schemas.retake import (
     RetakeSchema,
     RetakeSchemaDB
 )
+from app.schemas.submission import (
+    SubmissionDB
+)
 from app.schemas.response import (
     ListResponseModel,
     DictResponseModel,
@@ -33,8 +36,11 @@ from app.api.v1.controllers.exam import (
     update_exam,
     delete_exam
 )
+from app.api.v1.controllers.submission import (
+    add_submission,
+)
 from app.api.v1.controllers.timer import (
-    retrieve_timer_by_exam_user_id,
+    retrieve_timer_by_exam_retake_user_id,
     add_timer,
     delete_timer_by_exam_user_id
 )
@@ -77,13 +83,14 @@ async def create_exam(exam: ExamSchema,
 async def create_timer(exam_id: str,
                        start_time: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)):
-    timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
+    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
+                                                        clerk_user_id,
+                                                        retake_id=None)
     if timer:
         return ErrorResponseModel(error="Timer already exists.",
                                   code=status.HTTP_400_BAD_REQUEST,
                                   message="Timer already exists.")
-
-    # create new
+    # create new timer
     timer_data = TimerSchemaDB(
         **start_time.model_dump(),
         exam_id=exam_id,
@@ -94,6 +101,18 @@ async def create_timer(exam_id: str,
         return ErrorResponseModel(error=str(new_timer),
                                   code=status.HTTP_404_NOT_FOUND,
                                   message="An error occurred while adding the timer.")
+    submission_db = SubmissionDB(
+        exam_id=exam_id,
+        clerk_user_id=clerk_user_id,
+        retake_id=None,
+        submitted_problems=None
+    ).model_dump()
+    pseudo_submission = await add_submission(submission_db)
+    if isinstance(pseudo_submission, Exception):
+        return ErrorResponseModel(error=str(pseudo_submission),
+                                message="An error occurred while create submission.",
+                                code=status.HTTP_404_NOT_FOUND)
+    
     return DictResponseModel(data=new_timer,
                              message="Timer added successfully.",
                              code=status.HTTP_200_OK)
@@ -149,8 +168,12 @@ async def get_exam_by_id(id: str):
 
 @router.get("/{exam_id}/timer",
             description="Retrieve a timer with a matching exam_id ID")
-async def get_timer(exam_id: str, clerk_user_id: str = Depends(is_authenticated)):
-    timer = await retrieve_timer_by_exam_user_id(exam_id, clerk_user_id)
+async def get_timer(exam_id: str, 
+                    retake_id: str | None = None,
+                    clerk_user_id: str = Depends(is_authenticated)):
+    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
+                                                        clerk_user_id, 
+                                                        retake_id)
     if isinstance(timer, Exception):
         return ErrorResponseModel(error=str(timer),
                                   code=status.HTTP_404_NOT_FOUND,
@@ -274,7 +297,9 @@ async def delete_retake(retake_id: str):
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Order problems in an exam by index")
-async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
+async def order_problems_in_exam(id: str, 
+                                 orders: List[OrderSchema], 
+                                 creator_id=Depends(is_authenticated)):
     for order in orders:
         exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
                                                          problem_id=order.problem_id)
@@ -283,7 +308,8 @@ async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
                                       code=status.HTTP_404_NOT_FOUND,
                                       message="An error occurred while retrieving exam-problem.")
         new_exam_problem = UpdateExamProblem(
-            index=order.index
+            index=order.index,
+            creator_id=creator_id
         )
         updated_exam_problem = await update_exam_problem(exam_problem["id"],
                                                          new_exam_problem.model_dump())
