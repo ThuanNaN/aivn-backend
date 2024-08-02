@@ -192,28 +192,3 @@ async def delete_all_by_problem_id(problem_id: str) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-
-
-
-async def update_problem_category_problem_id(problem_id: str) -> bool:
-    """
-    Update a problem_category with a matching problem_id.
-    - Delete all problem_category with a matching problem_id
-    - Create new problem_category with a problem_id
-    :param id: str
-    :param data: dict
-    :return: bool
-    """
-    try:
-        problem_categories = await retrieve_by_problem_id(problem_id)
-        if isinstance(problem_categories, Exception):
-            raise problem_categories
-        for problem_category in problem_categories:
-            deleted = await delete_problem_category(problem_category["id"])
-            if isinstance(deleted, Exception):
-                raise deleted
-            if not deleted:
-                raise Exception("Error when delete problem_category")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
