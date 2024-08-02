@@ -78,7 +78,7 @@ async def add_submission(submission_data: dict) -> dict:
 
 async def retrieve_submissions() -> list:
     """
-    Retrieve all submissions from database
+    Retrieve all submissions from database, include user info
     :return: list
     """
     try:
@@ -94,6 +94,7 @@ async def retrieve_submissions() -> list:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+
 
 
 async def retrieve_search_filter_pagination(pipeline: list,
@@ -143,7 +144,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
 async def retrieve_submission_by_id(id: str) -> dict:
     """
-    Retrieve a submission with a matching ID
+    Retrieve a submission with a matching ID, include user info and exam info
     :param id: str
     :return: dict
     """
@@ -180,7 +181,7 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
                                               clerk_user_id
                                               ) -> dict:
     """
-    Retrieve a submission by exam ID and user ID
+    Retrieve a submission by exam ID and user ID, include user info
     :param exam_id: str
     :param clerk_user_id: str
     :return dict
@@ -206,7 +207,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                                                 clerk_user_id: str
                                                 ) -> dict:
     """
-    Retrieve a submission by exam ID, retake ID and user ID
+    Retrieve a submission by exam ID, retake ID and user ID. Include user info
     :param exam_id: str
     :param retake_id: str
     :param clerk_user_id: str
