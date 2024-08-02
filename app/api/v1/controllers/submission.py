@@ -37,6 +37,7 @@ def submission_helper(submission) -> dict:
         "created_at": str(submission["created_at"]),
     }
 
+
 def ObjectId_helper(submission: dict) -> dict:
     retake_id = submission.get("retake_id", None)
     if retake_id is not None:
@@ -46,6 +47,16 @@ def ObjectId_helper(submission: dict) -> dict:
 
     submission["exam_id"] = ObjectId(submission["exam_id"])
     return submission
+
+
+def update_helper(submission: dict) -> dict:
+    retake_id = submission.get("retake_id", None)
+    if retake_id is not None:
+        submission["retake_id"] = ObjectId(retake_id)
+    else:
+        submission["retake_id"] = None
+    return submission
+
 
 async def add_submission(submission_data: dict) -> dict:
     """
@@ -181,6 +192,29 @@ async def retrieve_submission_by_exam_user_id(exam_id: str, clerk_user_id) -> di
         logger.error(f"{traceback.format_exc()}")
         return e
 
+
+async def update_submission(id: str, submission_data: dict) -> dict:
+    """
+    Update a submission with a matching ID
+    :param id: str
+    :param data: dict
+    :return: dict
+    """
+    try:
+        if len(submission_data) < 1:
+            raise Exception("No data to update")
+        
+        submission_data = update_helper(submission_data)
+        updated_submission = await submission_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": submission_data}
+        )
+        if updated_submission.modified_count > 0:
+            True
+        return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+    
 
 async def delete_submission(id: str) -> bool:
     """

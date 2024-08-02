@@ -1,3 +1,4 @@
+from typing import List
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.api.v1.controllers.contest import (
@@ -22,11 +23,15 @@ from app.api.v1.controllers.run_code import (
 )
 from app.api.v1.controllers.submission import (
     add_submission,
+    update_submission,
+    retrieve_submission_by_exam_user_id
 )
 from app.schemas.submission import (
+    SubmittedProblem,
     Submission,
     SubmittedResult,
-    SubmissionDB
+    SubmissionDB,
+    UpdateSubmissionDB
 )
 from app.schemas.contest import (
     ContestSchema,
@@ -96,82 +101,108 @@ async def create_exam_problem(exam_id: str,
 async def create_submission(exam_id: str,
                             submission_data: Submission,
                             clerk_user_id: str = Depends(is_authenticated)):
-    submission_dict = submission_data.model_dump()
-    submitted_problems = submission_dict["submitted_problems"]
+    submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
 
-    submitted_results = []
-    total_score = 0
-    for submitted_problem in submitted_problems:
-        problem_id = submitted_problem["problem_id"]
-        problem_info = await retrieve_problem(problem_id, full_return=True)
-        if isinstance(problem_info, Exception):
-            return ErrorResponseModel(error=str(problem_info),
-                                      message="An error occurred while retrieve problem.",
-                                      code=status.HTTP_404_NOT_FOUND)
+    if submitted_problems is None:
+        submitted_results = None
+    else:
+        submitted_results = []
+        total_score = 0
+        for submitted_problem in submitted_problems:
+            problem_id = submitted_problem.problem_id
+            problem_info = await retrieve_problem(problem_id, full_return=True)
+            if isinstance(problem_info, Exception):
+                return ErrorResponseModel(error=str(problem_info),
+                                        message="An error occurred while retrieve problem.",
+                                        code=status.HTTP_404_NOT_FOUND)
 
-        submitted_code = submitted_problem.get("submitted_code", None)
-        public_results, private_results = None, None
-        if submitted_code is not None:
-            admin_template = problem_info.get("admin_template", "")
-            public_testcases = problem_info.get("public_testcases", [])
-            private_testcases = problem_info.get("private_testcases", [])
+            submitted_code = submitted_problem.submitted_code
+            public_results, private_results = None, None
+            if submitted_code is not None:
+                admin_template = problem_info.get("admin_template", "")
+                public_testcases = problem_info.get("public_testcases", [])
+                private_testcases = problem_info.get("private_testcases", [])
 
-            public_results, is_pass_public = await run_testcases(
-                admin_template,
-                submitted_code,
-                public_testcases
+                public_results, is_pass_public = await run_testcases(
+                    admin_template,
+                    submitted_code,
+                    public_testcases
+                )
+
+                private_results, is_pass_private = await run_testcases(
+                    admin_template,
+                    submitted_code,
+                    private_testcases
+                )
+
+                is_pass_problem = is_pass_public and is_pass_private
+                total_score += int(is_pass_problem)
+
+            submitted_choice = submitted_problem.submitted_choice
+            if submitted_choice is not None:
+                choice_answers = submitted_choice.split(",")  # -> ["id_1", "id_2"]
+                true_answers_id = [str(choice["choice_id"])
+                                for choice in problem_info["choices"]
+                                if choice["is_correct"]]
+
+                if len(choice_answers) != len(true_answers_id):
+                    is_pass_problem = False
+                else:
+                    is_pass_problem = sorted(
+                        choice_answers) == sorted(true_answers_id)
+                total_score += int(is_pass_problem)
+
+            submitted_results.append(
+                SubmittedResult(
+                    problem_id=problem_id,
+                    submitted_code=submitted_code,
+                    submitted_choice=submitted_choice,
+                    title=problem_info["title"],
+                    description=problem_info["description"],
+                    public_testcases_results=public_results,
+                    private_testcases_results=private_results,
+                    choice_results=problem_info["choices"],
+                    is_pass_problem=is_pass_problem
+                )
             )
-
-            private_results, is_pass_private = await run_testcases(
-                admin_template,
-                submitted_code,
-                private_testcases
-            )
-
-            is_pass_problem = is_pass_public and is_pass_private
-            total_score += int(is_pass_problem)
-
-        submitted_choice = submitted_problem.get("submitted_choice", None)
-        if submitted_choice is not None:
-            choice_answers = submitted_choice.split(",")  # -> ["id_1", "id_2"]
-            true_answers_id = [str(choice["choice_id"])
-                               for choice in problem_info["choices"]
-                               if choice["is_correct"]]
-
-            if len(choice_answers) != len(true_answers_id):
-                is_pass_problem = False
-            else:
-                is_pass_problem = sorted(
-                    choice_answers) == sorted(true_answers_id)
-            total_score += int(is_pass_problem)
-
-        submitted_results.append(
-            SubmittedResult(
-                problem_id=problem_id,
-                submitted_code=submitted_code,
-                submitted_choice=submitted_choice,
-                title=problem_info["title"],
-                description=problem_info["description"],
-                public_testcases_results=public_results,
-                private_testcases_results=private_results,
-                choice_results=problem_info["choices"],
-                is_pass_problem=is_pass_problem
-            )
-        )
-
-    submission_db = SubmissionDB(
-        exam_id=exam_id,
-        clerk_user_id=clerk_user_id,
-        retake_id=submission_dict.get("retake_id", None),
-        submitted_problems=submitted_results
-    )
-
     try:
-        new_submission = await add_submission(submission_db.model_dump())
-        if isinstance(new_submission, Exception):
-            return ErrorResponseModel(error=str(new_submission),
-                                      message="An error occurred while create submission.",
+        # Insert submission to database
+
+        # submission_db = SubmissionDB(
+        #     exam_id=exam_id,
+        #     clerk_user_id=clerk_user_id,
+        #     retake_id=submission_data.retake_id,
+        #     submitted_problems=submitted_results
+        # ).model_dump()
+        # new_submission = await add_submission(submission_db)
+        # if isinstance(new_submission, Exception):
+        #     return ErrorResponseModel(error=str(new_submission),
+        #                               message="An error occurred while create submission.",
+        #                               code=status.HTTP_404_NOT_FOUND)
+
+        # Upsert submission to database
+
+        pseudo_submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
+        submission_id = pseudo_submission["id"]
+        if isinstance(pseudo_submission, Exception):
+            return ErrorResponseModel(error=str(pseudo_submission),
+                                      message="Pseudo submission not found.",
                                       code=status.HTTP_404_NOT_FOUND)
+        upsert_submission = UpdateSubmissionDB(
+            retake_id=submission_data.retake_id,
+            submitted_problems=submitted_results
+        ).model_dump()
+
+        updated_submission = await update_submission(submission_id, upsert_submission)
+        if isinstance(updated_submission, Exception):
+            return ErrorResponseModel(error=str(updated_submission),
+                                      message="An error occurred while updating submission.",
+                                      code=status.HTTP_400_BAD_REQUEST)
+        if not updated_submission:
+            return ErrorResponseModel(error="No submission was created.",
+                                      message="An error occurred while updating submission.",
+                                      code=status.HTTP_404_NOT_FOUND)
+
         return DictResponseModel(
             data={
                 "total_score": total_score,
@@ -180,7 +211,7 @@ async def create_submission(exam_id: str,
             message="Submission added successfully.",
             code=status.HTTP_201_CREATED)
     except Exception as e:
-        logger.error(f'Error when submit code: {e}')
+        logger.error(e)
         return ErrorResponseModel(error="Error when submit code.",
                                   message="Submission not created.",
                                   code=status.HTTP_404_NOT_FOUND)
