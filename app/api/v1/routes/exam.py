@@ -297,7 +297,9 @@ async def delete_retake(retake_id: str):
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Order problems in an exam by index")
-async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
+async def order_problems_in_exam(id: str, 
+                                 orders: List[OrderSchema], 
+                                 creator_id=Depends(is_authenticated)):
     for order in orders:
         exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
                                                          problem_id=order.problem_id)
@@ -306,7 +308,8 @@ async def order_problems_in_exam(id: str, orders: List[OrderSchema]):
                                       code=status.HTTP_404_NOT_FOUND,
                                       message="An error occurred while retrieving exam-problem.")
         new_exam_problem = UpdateExamProblem(
-            index=order.index
+            index=order.index,
+            creator_id=creator_id
         )
         updated_exam_problem = await update_exam_problem(exam_problem["id"],
                                                          new_exam_problem.model_dump())

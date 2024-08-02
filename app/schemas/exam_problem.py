@@ -27,8 +27,5 @@ class ExamProblemDB(ExamProblem):
 
 class UpdateExamProblem(BaseModel):
     index: int
-    updated_at: datetime = datetime.now()
-
-
-class UpdateExamProblemDB(UpdateExamProblem):
     creator_id: str
+    updated_at: datetime = datetime.now()
