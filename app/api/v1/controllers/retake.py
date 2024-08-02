@@ -1,8 +1,8 @@
 import traceback
+from typing import List
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-
 
 logger = Logger("controllers/retake", log_file="retake.log")
 
@@ -146,31 +146,20 @@ async def retrieve_retake_by_user_exam_id(clerk_user_id: str,
         return e
 
 
-## Note: nest to ObjectId if have x_id in the data
-async def update_retake(id: str, retake_data: dict) -> bool:
+async def retrieve_retakes_unsubmit(submission_retake_ids: List[str]) -> list:
     """
-    Update a retake with a matching ID
-    :param id: str
-    :param retake_data: dict
-    :return: bool
+    Retrieve retakes that have not been submitted
+    :return list
     """
     try:
-        if len(retake_data) < 1:
-            raise Exception("No data to update")
-        
-        retake = await retake_collection.find_one({"_id": ObjectId(id)})
-        if not retake:
-            raise Exception("Retake not found")
-        
-        updated_retake = await retake_collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": retake_data}
-        )
-        if updated_retake.modified_count > 0:
-            return True
-        return False
+        retakes = await retrieve_retakes()
+        retake_ids = [retake["id"] for retake in retakes]
+        unsubmit_retake_ids = [retake_id for retake_id in retake_ids if retake_id not in submission_retake_ids]
+        unsubmit_retakes = [retake for retake in retakes if retake["id"] in unsubmit_retake_ids]
+        return unsubmit_retakes
     except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
+        logger.error(f"Error when retrieving retakes: {e}")
+        return None
 
 
 async def delete_retake_by_id(id: str) -> bool:
