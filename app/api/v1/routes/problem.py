@@ -56,7 +56,7 @@ async def create_problem(problem: ProblemSchema, clerk_user_id: str = Depends(is
                                   message="An error occurred while adding problem.",
                                   code=status.HTTP_404_NOT_FOUND)
     new_problem_categories = []
-    if category_ids > 0:
+    if category_ids:
         problem_categories: List[dict] = [
             ProblemCategory(problem_id=new_problem["id"],
                             category_id=category_id).model_dump()
