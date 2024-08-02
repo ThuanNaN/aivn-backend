@@ -9,7 +9,6 @@ from app.schemas.response import (
 from app.api.v1.controllers.submission import (
     retrieve_search_filter_pagination,
     retrieve_submission_by_id,
-    retrieve_submission_by_exam_user_id,
     retrieve_submission_by_id_user_retake,
     delete_submission,
 )
@@ -128,7 +127,6 @@ async def get_submissions(
 async def get_submission_by_user(exam_id: str,
                                  retake_id: Optional[str] = None,
                                  clerk_user_id: str = Depends(is_authenticated)):
-    # submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
     submission = await retrieve_submission_by_id_user_retake(exam_id, 
                                                              retake_id,
                                                              clerk_user_id)

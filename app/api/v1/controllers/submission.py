@@ -223,7 +223,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                 "clerk_user_id": clerk_user_id
             }
         )
-        if submission:
+        if submission and submission["submitted_problems"] is not None:
             return_data = submission_helper(submission)
             user_info = await retrieve_user(submission["clerk_user_id"])
             if isinstance(user_info, Exception):
@@ -231,7 +231,8 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
             return_data["user"] = user_info
             return return_data
     except Exception as e:
-        pass
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
 
 async def update_submission(id: str, submission_data: dict) -> dict:
