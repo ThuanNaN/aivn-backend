@@ -140,7 +140,7 @@ async def update_retake(id: str, retake_data: dict) -> bool:
         updated_retake = await retake_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": retake_data}
         )
-        if updated_retake.modified_count == 1:
+        if updated_retake.modified_count > 0:
             return True
         return False
     except Exception as e:

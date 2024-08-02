@@ -191,7 +191,7 @@ async def update_contest(id: str, data: dict) -> bool:
         updated_contest = await contest_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_contest.modified_count == 1:
+        if updated_contest.modified_count > 0:
             return True
         return False
     except Exception as e:

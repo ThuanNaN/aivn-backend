@@ -147,7 +147,7 @@ async def delete_exam_problem(id: str) -> bool:
         if not exam_problem:
             raise Exception("Exam_problem not found")
         deleted_exam_problem = await exam_problem_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_exam_problem.deleted_count == 1:
+        if deleted_exam_problem.deleted_count > 0:
             return True
         return False
     except Exception as e:

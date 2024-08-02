@@ -150,7 +150,7 @@ async def update_exam(id: str, data: dict) -> bool:
         updated_exam = await exam_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": update_data}
         )
-        if updated_exam.modified_count == 1:
+        if updated_exam.modified_count > 0:
             return True
         return False
     except Exception as e:

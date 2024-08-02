@@ -203,7 +203,7 @@ async def update_problem(id: str, data: dict) -> bool:
         updated_problem = await problem_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_problem.modified_count == 1:
+        if updated_problem.modified_count > 0:
             return True
         return False
     except Exception as e:
