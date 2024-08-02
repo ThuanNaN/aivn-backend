@@ -234,8 +234,8 @@ async def get_contests():
 @router.get("/available",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all available contests")
-async def get_available_contests(user_clerk_id: str = Depends(is_authenticated)):
-    contests = await retrieve_available_contests(user_clerk_id)
+async def get_available_contests(clerk_user_id: str = Depends(is_authenticated)):
+    contests = await retrieve_available_contests(clerk_user_id)
     if isinstance(contests, Exception):
         return ErrorResponseModel(error=str(contests),
                                   message="Error when retrieve contests.",
@@ -262,8 +262,8 @@ async def get_contest(id: str):
 @router.get("/{id}/details",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve a contest with a matching ID and its details")
-async def get_contest_detail(id: str, user_clerk_id: str = Depends(is_authenticated)):
-    contest_details = await retrieve_contest_detail(id, user_clerk_id)
+async def get_contest_detail(id: str, clerk_user_id: str = Depends(is_authenticated)):
+    contest_details = await retrieve_contest_detail(id, clerk_user_id)
     if isinstance(contest_details, Exception):
         return ErrorResponseModel(error=str(contest_details),
                                   message="An error occurred.",

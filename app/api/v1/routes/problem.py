@@ -42,13 +42,13 @@ logger = Logger("routes/problem", log_file="problem.log")
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Add a new problem")
-async def create_problem(problem: ProblemSchema, user_clerk_id: str = Depends(is_authenticated)):
+async def create_problem(problem: ProblemSchema, clerk_user_id: str = Depends(is_authenticated)):
     problem_dict = problem.model_dump()
     category_ids = problem_dict.pop("category_ids", [])
 
     problem_db = ProblemSchemaDB(
         **problem_dict,
-        creator_id=user_clerk_id
+        creator_id=clerk_user_id
     )
     new_problem = await add_problem(problem_db.model_dump())
     if isinstance(new_problem, Exception):
@@ -96,7 +96,7 @@ async def create_problem_category(id: str, category_id: str):
 @router.get("/problems",
             description="Retrieve all problems")
 async def get_problems(
-        user_clerk_id: str = Depends(is_authenticated),
+        clerk_user_id: str = Depends(is_authenticated),
         search: Optional[str] = Query(
             None, description="Search by problem title or description"),
         categories: Optional[str] = Query(
@@ -205,7 +205,7 @@ async def get_problems(
         },
     ]
 
-    current_user = await retrieve_user(user_clerk_id)
+    current_user = await retrieve_user(clerk_user_id)
     role = current_user["role"]
     problems = await retrieve_search_filter_pagination(pipeline, page, per_page, role)
     if isinstance(problems, Exception):
@@ -236,7 +236,7 @@ async def get_problem(id: str):
               description="Update a problem with a matching ID")
 async def update_problem_data(id: str,
                               problem_data: UpdateProblemSchema = Body(...),
-                              user_clerk_id: str = Depends(is_authenticated)):
+                              clerk_user_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
     category_ids = problem_dict.pop("category_ids", [])
     deleted_problem_category = await delete_all_by_problem_id(id)
@@ -262,7 +262,7 @@ async def update_problem_data(id: str,
                                       code=status.HTTP_404_NOT_FOUND)
 
     updated_data = UpdateProblemSchemaDB(**problem_dict,
-                                         creator_id=user_clerk_id)
+                                         creator_id=clerk_user_id)
     updated_problem = await update_problem(id, updated_data.model_dump())
     if isinstance(updated_problem, Exception):
         return ErrorResponseModel(error=str(updated_problem),

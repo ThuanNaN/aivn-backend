@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class RetakeSchema(BaseModel):
-    user_clerk_id: str
+    clerk_user_id: str
     created_at: datetime = datetime.now()
 
 
