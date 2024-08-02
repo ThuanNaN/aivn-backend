@@ -24,6 +24,7 @@ def timer_helper(timer) -> dict:
         "start_time": timer["start_time"]
     }
 
+
 def ObjectId_helper(timer: dict) -> dict:
     retake_id = timer.get("retake_id", None)
     if retake_id is not None:
@@ -33,7 +34,6 @@ def ObjectId_helper(timer: dict) -> dict:
 
     timer["exam_id"] = ObjectId(timer["exam_id"])
     return timer
-
 
 
 async def add_timer(timer_data: dict) -> dict:
@@ -164,6 +164,38 @@ async def delete_timer_by_exam_user_id(exam_id: str, clerk_user_id: str) -> bool
             {"exam_id": ObjectId(exam_id),
              "clerk_user_id": clerk_user_id})
         if deleted_timer.deleted_count == 1:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def delete_timer_by_exam_retake_user_id(exam_id: str,
+                                              clerk_user_id: str,
+                                              retake_id: str | None
+                                              ) -> bool:
+    """
+    Delete a timer with matching exam_id, retake_id and user_id from the database
+    :param exam_id: str
+    :param retake_id: str
+    :param clerk_user_id: str
+    :return: bool
+    """
+    try:
+        if retake_id is not None:
+            retake_id = ObjectId(retake_id)
+
+        timer = await timer_collection.find_one({"exam_id": ObjectId(exam_id),
+                                                 "retake_id": retake_id,
+                                                 "clerk_user_id": clerk_user_id})
+        if not timer:
+            raise Exception("Timer not found")
+        deleted_timer = await timer_collection.delete_one(
+            {"exam_id": ObjectId(exam_id),
+             "retake_id": retake_id,
+             "clerk_user_id": clerk_user_id})
+        if deleted_timer.deleted_count > 0:
             return True
         return False
     except Exception as e:
