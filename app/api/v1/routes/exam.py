@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
@@ -19,6 +19,9 @@ from app.schemas.retake import (
     RetakeSchema,
     RetakeSchemaDB
 )
+from app.schemas.submission import (
+    SubmissionDB
+)
 from app.schemas.response import (
     ListResponseModel,
     DictResponseModel,
@@ -32,6 +35,9 @@ from app.api.v1.controllers.exam import (
     retrieve_exam_detail,
     update_exam,
     delete_exam
+)
+from app.api.v1.controllers.submission import (
+    add_submission,
 )
 from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_retake_user_id,
@@ -84,8 +90,7 @@ async def create_timer(exam_id: str,
         return ErrorResponseModel(error="Timer already exists.",
                                   code=status.HTTP_400_BAD_REQUEST,
                                   message="Timer already exists.")
-
-    # create new
+    # create new timer
     timer_data = TimerSchemaDB(
         **start_time.model_dump(),
         exam_id=exam_id,
@@ -96,6 +101,18 @@ async def create_timer(exam_id: str,
         return ErrorResponseModel(error=str(new_timer),
                                   code=status.HTTP_404_NOT_FOUND,
                                   message="An error occurred while adding the timer.")
+    submission_db = SubmissionDB(
+        exam_id=exam_id,
+        clerk_user_id=clerk_user_id,
+        retake_id=None,
+        submitted_problems=None
+    ).model_dump()
+    pseudo_submission = await add_submission(submission_db)
+    if isinstance(pseudo_submission, Exception):
+        return ErrorResponseModel(error=str(pseudo_submission),
+                                message="An error occurred while create submission.",
+                                code=status.HTTP_404_NOT_FOUND)
+    
     return DictResponseModel(data=new_timer,
                              message="Timer added successfully.",
                              code=status.HTTP_200_OK)
