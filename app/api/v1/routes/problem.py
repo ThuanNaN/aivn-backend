@@ -272,7 +272,7 @@ async def update_problem_data(id: str,
         return ErrorResponseModel(error="An error occurred while updating problem.",
                                   message="No problem data was not updated.",
                                   code=status.HTTP_404_NOT_FOUND)
-    return DictResponseModel(data=updated_problem,
+    return ListResponseModel(data=[],
                              message="Problem updated successfully.",
                              code=status.HTTP_200_OK)
 
