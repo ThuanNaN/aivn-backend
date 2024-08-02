@@ -209,7 +209,7 @@ async def update_submission(id: str, submission_data: dict) -> dict:
             {"_id": ObjectId(id)}, {"$set": submission_data}
         )
         if updated_submission.modified_count > 0:
-            True
+            return True
         return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
