@@ -10,6 +10,7 @@ from app.api.v1.controllers.submission import (
     retrieve_search_filter_pagination,
     retrieve_submission_by_id,
     retrieve_submission_by_exam_user_id,
+    retrieve_submission_by_id_user_retake,
     delete_submission,
 )
 from app.api.v1.controllers.timer import (
@@ -120,8 +121,12 @@ async def get_submissions(
 
 @router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
 async def get_submission_by_user(exam_id: str,
+                                 retake_id: Optional[str] = None,
                                  clerk_user_id: str = Depends(is_authenticated)):
-    submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
+    # submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
+    submission = await retrieve_submission_by_id_user_retake(exam_id, 
+                                                             retake_id,
+                                                             clerk_user_id)
     if isinstance(submission, Exception):
         return ErrorResponseModel(error=str(submission),
                                   message="An error occurred while retrieving submission.",
