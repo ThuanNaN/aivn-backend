@@ -52,6 +52,8 @@ class SubmissionDB(BaseModel):
 class UpdateSubmissionDB(BaseModel):
     retake_id: str | None = None
     submitted_problems: List[SubmittedResult] | None = None
+    total_score: int | None = None
+    total_problems: int | None = None
     created_at: datetime = datetime.now()
     
 

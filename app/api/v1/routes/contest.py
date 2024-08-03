@@ -22,7 +22,6 @@ from app.api.v1.controllers.run_code import (
     run_testcases
 )
 from app.api.v1.controllers.submission import (
-    add_submission,
     update_submission,
     retrieve_submission_by_exam_user_id
 )
@@ -30,7 +29,6 @@ from app.schemas.submission import (
     SubmittedProblem,
     Submission,
     SubmittedResult,
-    SubmissionDB,
     UpdateSubmissionDB
 )
 from app.schemas.contest import (
@@ -190,7 +188,9 @@ async def create_submission(exam_id: str,
                                       code=status.HTTP_404_NOT_FOUND)
         upsert_submission = UpdateSubmissionDB(
             retake_id=submission_data.retake_id,
-            submitted_problems=submitted_results
+            submitted_problems=submitted_results,
+            total_score=total_score,
+            total_problems=len(submitted_problems)
         ).model_dump()
 
         updated_submission = await update_submission(submission_id, upsert_submission)
