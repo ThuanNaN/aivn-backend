@@ -1,5 +1,8 @@
 from typing import Optional
+import pandas as pd
+from io import StringIO
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from bson.objectid import ObjectId
 from app.schemas.response import (
     ListResponseModel,
@@ -11,9 +14,9 @@ from app.api.v1.controllers.submission import (
     retrieve_submission_by_id,
     retrieve_submission_by_id_user_retake,
     delete_submission,
+    export_all_submissions
 )
 from app.api.v1.controllers.timer import (
-    delete_timer_by_user_id,
     delete_timer_by_exam_retake_user_id
 )
 from app.api.v1.controllers.retake import (
@@ -210,3 +213,28 @@ async def delete_submission_data(id: str):
     return ListResponseModel(data=[],
                              message="Submission deleted successfully.",
                              code=status.HTTP_200_OK)
+
+
+@router.get("/export/submissions",
+            response_class=StreamingResponse,
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Export all submissions to CSV file")
+async def export_submissions():
+    submissions = await export_all_submissions()
+    if isinstance(submissions, Exception):
+        return ErrorResponseModel(error="Export submissions failed.",
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not submissions:
+        return ErrorResponseModel(error="No submissions found.",
+                                  message="An error occurred.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    df = pd.DataFrame(submissions)
+    output = StringIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+    return StreamingResponse(output,
+                             media_type="text/csv",
+                             headers={"Content-Disposition": "attachment;filename=submissions.csv"}
+                             )

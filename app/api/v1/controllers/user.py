@@ -4,7 +4,7 @@ import requests
 from requests.exceptions import HTTPError, Timeout
 from app.core.database import mongo_db
 from app.utils.logger import Logger
-
+from pymongo import UpdateOne, DeleteOne, InsertOne
 
 logger = Logger("controllers/user", log_file="user.log")
 
@@ -159,16 +159,18 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         return e
 
 
-async def add_whitelist(whitelist_data: dict) -> dict:
+async def add_whitelist(whitelist_data: list[dict]) -> dict:
     """
     Create a new whitelist
     :param whitelist_data: dict
     :return: dict
     """
     try:
-        whitelist = await whitelist_collection.insert_one(whitelist_data)
-        new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
-        return whitelist_helper(new_whitelist)
+        operations = [InsertOne(data) for data in whitelist_data]
+        result = await whitelist_collection.bulk_write(operations)
+        inserted_count = result.inserted_count
+        logger.info(f"Number of documents inserted: {inserted_count}")
+        return {"inserted_count": inserted_count}
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -220,6 +222,99 @@ async def check_whitelist_via_id(clerk_user_id: str) -> bool:
             if whitelist:
                 return True
         return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+    
+
+async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
+    """
+    Upsert new whitelist to database
+    :param new_whitelists: list
+    :return: bool
+    """
+    try:
+        # Get the emails of the new whitelist
+        new_emails = {whitelist["email"] for whitelist in new_whitelists}
+        
+        # Retrieve current whitelist emails from the database
+        current_whitelists = await whitelist_collection.find({}, {"email": 1}).to_list(length=None)
+        current_emails = {whitelist["email"] for whitelist in current_whitelists}
+        
+        # Determine which emails to delete
+        emails_to_delete = current_emails - new_emails
+        
+        # Prepare bulk operations
+        operations = [
+            UpdateOne(
+                {"email": whitelist["email"]},
+                {"$set": whitelist},
+                upsert=True
+            ) for whitelist in new_whitelists
+        ]
+        
+        # Add delete operations for emails no longer in the new whitelist
+        operations.extend(DeleteOne({"email": email}) for email in emails_to_delete)
+        
+        if operations:
+            result = await whitelist_collection.bulk_write(operations)
+            logger.info(f"Bulk write result: {result.bulk_api_result}")
+        return True
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+    
+    
+
+async def upsert_admin_list(new_admins: list[dict]) -> bool:
+    """
+    Upsert new admin list to users collection via matching email.
+    If the user with match email, update the role to admin if not already.
+    The others user with not in admin list, update to role aio.
+    :param new_admins: list
+    :return: bool
+    """
+    try:
+        # Get the emails of the new admin list
+        new_admin_emails = {admin["email"] for admin in new_admins}
+        
+        # Retrieve current admin emails from the database
+        current_admins = await user_collection.find({"role": "admin"}, {"email": 1}).to_list(length=None)
+        current_admin_emails = {admin["email"] for admin in current_admins}
+        
+        # Determine which emails to update
+
+        # user/aio -> admin
+        emails_to_upgrade = new_admin_emails -  current_admin_emails
+
+        # admin -> aio
+        emails_to_downgrade = current_admin_emails - new_admin_emails
+        
+        # Prepare bulk operations
+        operations = []
+
+        # Upgrade phase
+        for admin in new_admins:
+            if admin["email"] in emails_to_upgrade:
+                operations.append(
+                    UpdateOne(
+                        {"email": admin["email"]},
+                        {"$set": {"role": "admin"}}
+                    )
+                )
+        # Downgrade phase
+        for admin in current_admins:
+            if admin["email"] in emails_to_downgrade:
+                operations.append(
+                    UpdateOne(
+                        {"email": admin["email"]},
+                        {"$set": {"role": "aio"}}
+                    )
+                )        
+        if operations:
+            result = await user_collection.bulk_write(operations)
+            logger.info(f"Bulk write result: {result.bulk_api_result}")
+        return True
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
