@@ -58,13 +58,36 @@ async def get_me(clerk_user_id: str = Depends(is_authenticated)):
                              code=status.HTTP_200_OK)
 
 
+@router.get("/whitelists",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Retrieve whitelist users")
+async def get_whitelists():
+    whitelists = await retrieve_whitelists()
+    if isinstance(whitelists, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving whitelists failed.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not whitelists:
+        return ErrorResponseModel(error="Whitelists not found.",
+                                  message="Cannot find any whitelists.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=whitelists,
+                             message="Whitelists retrieved successfully.",
+                             code=status.HTTP_200_OK)
+
+
 @router.get("/{clerk_user_id}",
             description="Retrieve a user with a matching ID")
 async def get_user(clerk_user_id: str):
     user = await retrieve_user(clerk_user_id)
     if isinstance(user, Exception):
-        return ErrorResponseModel(error=str(user),
-                                  message="An error occurred while retrieving user.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving user failed.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not user:
+        return ErrorResponseModel(error="User not found.",
+                                  message="Cannot find user with the provided ID.",
                                   code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
@@ -103,22 +126,6 @@ async def add_email_to_whitelist(whitelist_data: WhiteListSchema):
     return DictResponseModel(data=whitelist,
                              message="Email added to whitelist successfully.",
                              code=status.HTTP_200_OK)
-
-
-# TODO: Check return type
-@router.get("/whitelists",
-            dependencies=[Depends(is_admin)],
-            tags=["Admin"],
-            description="Retrieve all whitelists")
-async def get_whitelists():
-    whitelists = await retrieve_whitelists()
-    if isinstance(whitelists, Exception):
-        return ErrorResponseModel(error=str(whitelists),
-                                  message="An error occurred while retrieving whitelists.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    return ListResponseModel(data=whitelists,
-                                message="Whitelists retrieved successfully.",
-                                code=status.HTTP_200_OK)
 
 
 @router.post("/upsert", description="Update a user with Clerk data")
