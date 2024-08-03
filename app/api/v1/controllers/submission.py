@@ -34,8 +34,8 @@ def submission_helper(submission) -> dict:
         "clerk_user_id": submission["clerk_user_id"],
         "retake_id": retake_id,
         "submitted_problems": submission["submitted_problems"],
-        "total_problems": int(submission["total_problems"]),
-        "total_problems": int(submission["total_score"]),
+        "total_problems": submission["total_problems"],
+        "total_problems": submission["total_score"],
         "created_at": str(submission["created_at"]),
     }
 
@@ -279,3 +279,58 @@ async def delete_submission(id: str) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+
+
+
+async def export_all_submissions() -> list:
+    """
+    Export all submissions
+    :return: list
+    """
+    try:
+        submissions = []
+        async for submission in submission_collection.find():
+            submission_data = submission_helper(submission)
+            submitted_problems = submission_data.pop("submitted_problems")
+
+            user_info = await retrieve_user(submission["clerk_user_id"])
+            if isinstance(user_info, Exception):
+                raise user_info
+            
+            exam_info = await retrieve_exam(submission["exam_id"])
+            if isinstance(exam_info, Exception):
+                raise exam_info
+            
+            contest_info = await retrieve_contest(exam_info["contest_id"])
+            if isinstance(contest_info, Exception):
+                raise contest_info
+
+            return_data = {}
+            return_data["id"] = submission_data["id"]
+            return_data["user_id"] = submission_data["clerk_user_id"]
+            return_data["username"] = user_info["username"]
+            return_data["email"] = user_info["email"]
+            return_data["username"] = user_info["username"]
+            return_data["role"] = user_info["role"]
+
+            return_data["contest_id"] = exam_info["contest_id"]
+            return_data["contest_title"] = contest_info["title"]
+            return_data["contest_description"] = contest_info["description"]
+
+            return_data["exam_id"] = submission_data["exam_id"]
+            return_data["exam_title"] = exam_info["title"]
+            return_data["exam_description"] = exam_info["description"]
+            return_data["exam_duration"] = exam_info["duration"]
+            return_data["retake_exam_id"] = submission_data["retake_id"]
+
+            return_data["total_problems"] = submission_data["total_problems"]
+            return_data["total_passes"] = submission_data["total_problems"]
+
+            return_data["submit_at"] = submission_data["created_at"]
+            submissions.append(return_data)
+
+        return submissions
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
