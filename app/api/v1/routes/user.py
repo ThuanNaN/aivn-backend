@@ -20,7 +20,8 @@ from app.api.v1.controllers.user import (
     retrieve_whitelists,
     check_whitelist_via_email,
     check_whitelist_via_id,
-    upsert_whitelist
+    upsert_whitelist,
+    upsert_admin_list
 )
 from app.schemas.user import (
     UserSchema,
@@ -40,7 +41,7 @@ logger = Logger("routes/user", log_file="user.log")
 
 async def read_csv(file: UploadFile):
     content = await file.read()
-    csv_data = content.decode('utf-8')
+    csv_data = content.decode('utf-8-sig')
     csv_reader = csv.reader(StringIO(csv_data))
     return csv_reader
 
@@ -168,6 +169,35 @@ async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
     return ListResponseModel(data=[],
                              message="Email added to whitelist successfully.",
                              code=status.HTTP_200_OK)
+
+
+
+@router.post("/admin/upsert", 
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Update a user role to admin")
+async def update_user_role_to_admin(admin_csv: UploadFile = File(...)):
+    csv_reader = await read_csv(admin_csv)
+    admin_info = []
+    for row in csv_reader:
+        if len(row) >= 2:
+            admin_info.append({
+                "email": row[0],
+                # "nickname": row[1]
+            })
+    updated_admin = await upsert_admin_list(admin_info)
+    if isinstance(updated_admin, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Updating admin list failed.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not updated_admin:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="User role was not updated.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=[],
+                             message="User role updated to admin successfully.",
+                             code=status.HTTP_200_OK)
+
 
 
 @router.post("/upsert", description="Update a user with Clerk data")

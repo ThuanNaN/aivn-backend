@@ -263,3 +263,58 @@ async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    
+    
+
+async def upsert_admin_list(new_admins: list[dict]) -> bool:
+    """
+    Upsert new admin list to users collection via matching email.
+    If the user with match email, update the role to admin if not already.
+    The others user with not in admin list, update to role aio.
+    :param new_admins: list
+    :return: bool
+    """
+    try:
+        # Get the emails of the new admin list
+        new_admin_emails = {admin["email"] for admin in new_admins}
+        
+        # Retrieve current admin emails from the database
+        current_admins = await user_collection.find({"role": "admin"}, {"email": 1}).to_list(length=None)
+        current_admin_emails = {admin["email"] for admin in current_admins}
+        
+        # Determine which emails to update
+
+        # user/aio -> admin
+        emails_to_upgrade = new_admin_emails -  current_admin_emails
+
+        # admin -> aio
+        emails_to_downgrade = current_admin_emails - new_admin_emails
+        
+        # Prepare bulk operations
+        operations = []
+
+        # Upgrade phase
+        for admin in new_admins:
+            if admin["email"] in emails_to_upgrade:
+                operations.append(
+                    UpdateOne(
+                        {"email": admin["email"]},
+                        {"$set": {"role": "admin"}}
+                    )
+                )
+        # Downgrade phase
+        for admin in current_admins:
+            if admin["email"] in emails_to_downgrade:
+                operations.append(
+                    UpdateOne(
+                        {"email": admin["email"]},
+                        {"$set": {"role": "aio"}}
+                    )
+                )        
+        if operations:
+            result = await user_collection.bulk_write(operations)
+            logger.info(f"Bulk write result: {result.bulk_api_result}")
+        return True
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
