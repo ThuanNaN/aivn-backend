@@ -1,5 +1,11 @@
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body, Depends, status
+import csv
+from io import StringIO
+from fastapi import (
+    APIRouter,
+    UploadFile, File,
+    Body, Depends, status
+)
 from app.core.security import (
     is_authenticated,
     is_admin
@@ -13,7 +19,8 @@ from app.api.v1.controllers.user import (
     add_whitelist,
     retrieve_whitelists,
     check_whitelist_via_email,
-    check_whitelist_via_id
+    check_whitelist_via_id,
+    upsert_whitelist
 )
 from app.schemas.user import (
     UserSchema,
@@ -30,6 +37,12 @@ from app.schemas.response import (
 router = APIRouter()
 logger = Logger("routes/user", log_file="user.log")
 
+
+async def read_csv(file: UploadFile):
+    content = await file.read()
+    csv_data = content.decode('utf-8')
+    csv_reader = csv.reader(StringIO(csv_data))
+    return csv_reader
 
 @router.get("/users",
             dependencies=[Depends(is_admin)],
@@ -117,13 +130,42 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Add an email to whitelist")
-async def add_email_to_whitelist(whitelist_data: WhiteListSchema):
-    whitelist = await add_whitelist(whitelist_data.model_dump())
+async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
+    csv_reader = await read_csv(whitelist_csv)
+    csv_whitelist_data = []
+    for row in csv_reader:
+        if len(row) >= 2:
+            csv_whitelist_data.append(WhiteListSchema(email=row[0], nickname=row[1]))
+    whitelist_data = [data.model_dump() for data in csv_whitelist_data]
+
+    whitelist = await add_whitelist(whitelist_data)
     if isinstance(whitelist, Exception):
         return ErrorResponseModel(error=str(whitelist),
                                   message="An error occurred while adding email to whitelist.",
                                   code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=whitelist,
+                             message="Email added to whitelist successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.post("/whitelist/upsert",
+                dependencies=[Depends(is_admin)],
+                tags=["Admin"],
+                description="Upsert whitelist collection")
+async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
+    csv_reader = await read_csv(whitelist_csv)
+    csv_whitelist_data = []
+    for row in csv_reader:
+        if len(row) >= 2:
+            csv_whitelist_data.append(WhiteListSchema(email=row[0], nickname=row[1]))
+    whitelist_data = [data.model_dump() for data in csv_whitelist_data]
+
+    updated_whitelist = await upsert_whitelist(whitelist_data)
+    if isinstance(updated_whitelist, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Updating whitelist failed.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return ListResponseModel(data=[],
                              message="Email added to whitelist successfully.",
                              code=status.HTTP_200_OK)
 
