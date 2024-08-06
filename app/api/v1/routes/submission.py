@@ -14,7 +14,8 @@ from app.api.v1.controllers.submission import (
     retrieve_submission_by_id,
     retrieve_submission_by_id_user_retake,
     delete_submission,
-    export_all_submissions
+    export_all_submissions,
+    export_submissions_by_search_filter
 )
 from app.api.v1.controllers.timer import (
     delete_timer_by_exam_retake_user_id
@@ -35,10 +36,8 @@ logger = Logger("routes/submission", log_file="submission.log")
             tags=["Admin"],
             description="Get all submissions")
 async def get_submissions(
-    search: Optional[str] = Query(
-        None, description="Search by user, email, contest or exam title"),
-    contest_id: Optional[str] = Query(
-        None, description="Filter by contest id"),
+    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
     exam_id: Optional[str] = Query(None, description="Filter by exam id"),
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     page: int = Query(1, ge=1),
@@ -220,8 +219,76 @@ async def delete_submission_data(id: str):
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Export all submissions to CSV file")
-async def export_submissions():
-    submissions = await export_all_submissions()
+async def export_submissions(
+    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
+    exam_id: Optional[str] = Query(None, description="Filter by exam id"),
+):
+    
+    match_stage = {"$match": {}}
+    if search:
+        match_stage["$match"]["$or"] = [
+            {"user_info.email": {"$regex": search, "$options": "i"}},
+            {"user_info.username": {"$regex": search, "$options": "i"}},
+            {"exam_info.title": {"$regex": search, "$options": "i"}},
+            {"contest_info.title": {"$regex": search, "$options": "i"}}
+        ]
+
+    if exam_id is not None:
+        match_stage["$match"]["exam_id"] = ObjectId(exam_id)
+
+    if contest_id is not None:
+        match_stage["$match"]["exam_info.contest_id"] = ObjectId(contest_id)
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "clerk_user_id",
+                "foreignField": "clerk_user_id",
+                "as": "user_info"
+            }
+        },
+        {
+            "$unwind": "$user_info"
+        },
+        {
+            "$lookup": {
+                "from": "exams",
+                "localField": "exam_id",
+                "foreignField": "_id",
+                "as": "exam_info"
+            }
+        },
+        {
+            "$unwind": "$exam_info"
+        },
+        {
+            "$lookup": {
+                "from": "contests",
+                "localField": "exam_info.contest_id",
+                "foreignField": "_id",
+                "as": "contest_info"
+            }
+        },
+        {
+            "$unwind": "$contest_info"
+        },
+        match_stage,
+        {
+            "$facet": {
+                "submissions": [],
+                "total": [
+                    {
+                        "$count": "count"
+                    }
+                ]
+            }
+        },
+    ]
+    # submissions = await export_all_submissions()
+    submissions = await export_submissions_by_search_filter(pipeline)
+    
     if isinstance(submissions, Exception):
         return ErrorResponseModel(error="Export submissions failed.",
                                   message="An error occurred.",
