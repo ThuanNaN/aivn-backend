@@ -281,6 +281,21 @@ async def delete_submission(id: str) -> bool:
         return e
 
 
+async def get_extra_info(submission: dict) -> dict:
+    user_info = await retrieve_user(submission["clerk_user_id"])
+    if isinstance(user_info, Exception):
+        raise user_info
+    
+    exam_info = await retrieve_exam(submission["exam_id"])
+    if isinstance(exam_info, Exception):
+        raise exam_info
+    
+    contest_info = await retrieve_contest(exam_info["contest_id"])
+    if isinstance(contest_info, Exception):
+        raise contest_info
+
+    return user_info, exam_info, contest_info
+
 
 async def export_all_submissions() -> list:
     """
@@ -293,17 +308,8 @@ async def export_all_submissions() -> list:
             submission_data = submission_helper(submission)
             submitted_problems = submission_data.pop("submitted_problems")
 
-            user_info = await retrieve_user(submission["clerk_user_id"])
-            if isinstance(user_info, Exception):
-                raise user_info
-            
-            exam_info = await retrieve_exam(submission["exam_id"])
-            if isinstance(exam_info, Exception):
-                raise exam_info
-            
-            contest_info = await retrieve_contest(exam_info["contest_id"])
-            if isinstance(contest_info, Exception):
-                raise contest_info
+            extra_info = await get_extra_info(submission)
+            user_info, exam_info, contest_info = extra_info
 
             return_data = {}
             return_data["id"] = submission_data["id"]
@@ -334,3 +340,48 @@ async def export_all_submissions() -> list:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+async def export_submissions_by_search_filter(pipeline: list) -> list:
+    """
+    Export submissions by search and filter
+    :param pipeline: list
+    :return: list
+    """
+    try:
+        pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
+        submissions = pipeline_results[0]["submissions"]
+
+        outputs = []
+        for submission in submissions:
+            submission_data = submission_helper(submission)
+            submitted_problems = submission_data.pop("submitted_problems")
+
+            extra_info = await get_extra_info(submission)
+            user_info, exam_info, contest_info = extra_info
+
+            return_data = {}
+            return_data["id"] = submission_data["id"]
+            return_data["user_id"] = submission_data["clerk_user_id"]
+            return_data["username"] = user_info["username"]
+            return_data["email"] = user_info["email"]
+            return_data["username"] = user_info["username"]
+            return_data["role"] = user_info["role"]
+
+            return_data["contest_id"] = exam_info["contest_id"]
+            return_data["contest_title"] = contest_info["title"]
+            return_data["contest_description"] = contest_info["description"]
+
+            return_data["exam_id"] = submission_data["exam_id"]
+            return_data["exam_title"] = exam_info["title"]
+            return_data["exam_description"] = exam_info["description"]
+            return_data["exam_duration"] = exam_info["duration"]
+            return_data["retake_exam_id"] = submission_data["retake_id"]
+
+            return_data["total_problems"] = submission_data["total_problems"]
+            return_data["total_passes"] = submission_data["total_problems"]
+
+            return_data["submit_at"] = submission_data["created_at"]
+            outputs.append(return_data)
+        return outputs
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
