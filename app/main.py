@@ -1,10 +1,11 @@
+import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
 load_dotenv()
-
 
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
@@ -14,14 +15,14 @@ def create_application() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "*",
+           os.getenv("FRONTEND_URL")
         ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(LogProcessAndTime)
     app.include_router(v1_router, prefix="/api/v1")
     return app
-
 
 app = create_application()
