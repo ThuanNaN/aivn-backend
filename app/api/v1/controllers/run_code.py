@@ -135,6 +135,7 @@ class TestPythonFunction:
         try:
             my_object = object_vars.get(self.class_name)()
         except Exception as e:
+            logger.error(f"Error build object: {e}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -144,6 +145,7 @@ class TestPythonFunction:
             method = getattr(my_object, self.class_method)
             method_output = method(**input_kwargs)
         except Exception as e:
+            logger.error(f"Error run method: {e}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -159,6 +161,7 @@ class TestPythonFunction:
         try:
             is_correct = self.check_output(method_output, expected_output)
         except Exception as e:
+            logger.error(f"Error check output: {e}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
