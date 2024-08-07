@@ -130,11 +130,12 @@ class TestPythonFunction:
             testcase_output["output"] = build_object_vars["error"]
             return testcase_output
         object_vars = build_object_vars["local_vars"]
-        
+
         # build object
         try:
             my_object = object_vars.get(self.class_name)()
         except Exception as e:
+            logger.error(f"Build object error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -144,6 +145,7 @@ class TestPythonFunction:
             method = getattr(my_object, self.class_method)
             method_output = method(**input_kwargs)
         except Exception as e:
+            logger.error(f"Run method error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -159,6 +161,7 @@ class TestPythonFunction:
         try:
             is_correct = self.check_output(method_output, expected_output)
         except Exception as e:
+            logger.error(f"Check output error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -183,6 +186,10 @@ class TestPythonFunction:
             return np.allclose(expected_output, output, atol=eps) 
         elif isinstance(expected_output, torch.Tensor):
             # return torch.equal(expected_output, output)
+            if output.is_cuda or output.is_mps:
+                output = output.cpu()
+            if output.is_leaf:
+                output = output.detach()
             return torch.allclose(expected_output, output, atol=eps) 
         elif isinstance(expected_output, (list, tuple)):
             return all(self.check_output(i, o) for i, o in zip(expected_output, output))
