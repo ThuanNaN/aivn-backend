@@ -133,7 +133,6 @@ class TestPythonFunction:
 
         # build object
         try:
-
             my_object = object_vars.get(self.class_name)()
         except Exception as e:
             logger.error(f"Build object error: {traceback.format_exc()}")
@@ -187,6 +186,10 @@ class TestPythonFunction:
             return np.allclose(expected_output, output, atol=eps) 
         elif isinstance(expected_output, torch.Tensor):
             # return torch.equal(expected_output, output)
+            if output.is_cuda or output.is_mps:
+                output = output.cpu()
+            if output.is_leaf:
+                output = output.detach()
             return torch.allclose(expected_output, output, atol=eps) 
         elif isinstance(expected_output, (list, tuple)):
             return all(self.check_output(i, o) for i, o in zip(expected_output, output))
