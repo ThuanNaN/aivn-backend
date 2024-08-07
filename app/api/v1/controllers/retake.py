@@ -15,16 +15,12 @@ except Exception as e:
 
 # helper 
 def retake_helper(retake) -> dict:
-    # TODO: remove after all data is updated
-    updated_at = retake.get("updated_at", None)
-    updated_at = str(updated_at) if updated_at else None
     return {
         "id": str(retake["_id"]),
         "clerk_user_id": retake["clerk_user_id"],
         "creator_id": retake["creator_id"],
         "exam_id": str(retake["exam_id"]),
         "created_at": str(retake["created_at"]),
-        "updated_at": updated_at
     }
 
 

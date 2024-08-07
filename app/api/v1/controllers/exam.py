@@ -27,8 +27,7 @@ def exam_helper(exam: dict) -> dict:
         "title": exam["title"],
         "description": exam["description"],
         "is_active": exam["is_active"],
-        # TODO: remove this get method when all exam data has creator_id
-        "creator_id": exam.get("creator_id", None), 
+        "creator_id": exam["creator_id"],
         "duration": exam["duration"],
         "created_at": str(exam["created_at"]),
         "updated_at": str(exam["updated_at"])
