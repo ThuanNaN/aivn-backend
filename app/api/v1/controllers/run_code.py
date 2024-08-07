@@ -130,12 +130,13 @@ class TestPythonFunction:
             testcase_output["output"] = build_object_vars["error"]
             return testcase_output
         object_vars = build_object_vars["local_vars"]
-        
+
         # build object
         try:
+
             my_object = object_vars.get(self.class_name)()
         except Exception as e:
-            logger.error(f"Error build object: {e}")
+            logger.error(f"Build object error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -145,7 +146,7 @@ class TestPythonFunction:
             method = getattr(my_object, self.class_method)
             method_output = method(**input_kwargs)
         except Exception as e:
-            logger.error(f"Error run method: {e}")
+            logger.error(f"Run method error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
@@ -161,7 +162,7 @@ class TestPythonFunction:
         try:
             is_correct = self.check_output(method_output, expected_output)
         except Exception as e:
-            logger.error(f"Error check output: {e}")
+            logger.error(f"Check output error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
