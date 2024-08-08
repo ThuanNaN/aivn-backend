@@ -15,8 +15,9 @@ def create_application() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-        #    os.getenv("FRONTEND_URL")
-            "*"
+           os.getenv("FRONTEND_URL_DEV"),
+           os.getenv("FRONTEND_URL_PROD"),
+           os.getenv("FRONTEND_URL_LOCAL")
         ],
         allow_credentials=True,
         allow_methods=["*"],
