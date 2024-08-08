@@ -1,3 +1,4 @@
+import traceback
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.api.v1.controllers.submission import (
@@ -54,7 +55,7 @@ async def get_retakes_unsubmit(unsubmit: bool = True):
                                  message="Retakes unsubmit retrieved successfully",
                                  code=status.HTTP_200_OK)
     except Exception as e:
-        logger.error(f"{e}")
-        return ErrorResponseModel(error=str(e),
-                                  message="An error occurred while retrieving retakes unsubmit",
-                                  status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"{traceback.format_exc()}")
+        return ErrorResponseModel(error="An error occurred",
+                                  message="Retrieving retakes unsubmit failed",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
