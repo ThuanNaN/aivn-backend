@@ -8,6 +8,7 @@ from app.api.v1.routes.problem import router as problem_router
 from app.api.v1.routes.code import router as code_router
 from app.api.v1.routes.submission import router as submission_router
 from app.api.v1.routes.retake import router as retake_router
+from app.api.v1.routes.sleep import router as sleep_router
 from app.core.security import (
     is_authenticated,
     is_aio,
@@ -60,3 +61,8 @@ router.include_router(retake_router,
                       dependencies=[Depends(is_admin)],
                       prefix="/retake",
                       tags=["Retake"])
+
+router.include_router(sleep_router,
+                      dependencies=[Depends(is_admin)],
+                      prefix="/sleep",
+                      tags=["Sleep"])
