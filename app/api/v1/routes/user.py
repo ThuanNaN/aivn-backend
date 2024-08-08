@@ -52,8 +52,8 @@ async def read_csv(file: UploadFile):
 async def get_users():
     users = await retrieve_users()
     if isinstance(users, Exception):
-        return ErrorResponseModel(error=str(users),
-                                  message="An error occurred while retrieving users.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving users failed.",
                                   code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=users,
                              message="Users retrieved successfully.",
@@ -64,8 +64,8 @@ async def get_users():
 async def get_me(clerk_user_id: str = Depends(is_authenticated)):
     user = await retrieve_user(clerk_user_id)
     if isinstance(user, Exception):
-        return ErrorResponseModel(error=str(user),
-                                  message="An error occurred while retrieving user.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving user failed.",
                                   code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
@@ -83,8 +83,8 @@ async def get_whitelists():
                                   message="Retrieving whitelists failed.",
                                   code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if not whitelists:
-        return ErrorResponseModel(error="Whitelists not found.",
-                                  message="Cannot find any whitelists.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Whitelists not found.",
                                   code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=whitelists,
                              message="Whitelists retrieved successfully.",
@@ -100,8 +100,8 @@ async def get_user(clerk_user_id: str):
                                   message="Retrieving user failed.",
                                   code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if not user:
-        return ErrorResponseModel(error="User not found.",
-                                  message="Cannot find user with the provided ID.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="User not found.",
                                   code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
@@ -115,8 +115,8 @@ async def get_user(clerk_user_id: str):
 async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
     updated = await update_user(clerk_user_id, data.model_dump())
     if isinstance(updated, Exception):
-        return ErrorResponseModel(error=str(updated),
-                                  message="An error occurred while updating user.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Updating user failed.",
                                   code=status.HTTP_404_NOT_FOUND)
     if not updated:
         return ErrorResponseModel(error="An error occurred.",
@@ -141,8 +141,8 @@ async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
 
     whitelist = await add_whitelist(whitelist_data)
     if isinstance(whitelist, Exception):
-        return ErrorResponseModel(error=str(whitelist),
-                                  message="An error occurred while adding email to whitelist.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Adding email to whitelist failed.",
                                   code=status.HTTP_404_NOT_FOUND)
     return DictResponseModel(data=whitelist,
                              message="Email added to whitelist successfully.",
@@ -211,16 +211,16 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         CURRENT_ROLE = is_exist_user["role"]
         is_whitelist = await check_whitelist_via_id(clerk_user_id)
         if isinstance(is_whitelist, Exception):
-            return ErrorResponseModel(error=str(is_whitelist),
-                                      message="An error occurred while checking whitelist.",
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Checking whitelist failed.",
                                       code=status.HTTP_404_NOT_FOUND)
         if is_whitelist and CURRENT_ROLE != "aio":
             NEW_ROLE = "aio"
             update_role_data = UpdateUserRoleSchema(role=NEW_ROLE)
             updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
             if isinstance(updated_role, Exception):
-                return ErrorResponseModel(error=str(updated_role),
-                                          message="An error occurred while updating user role.",
+                return ErrorResponseModel(error="An error occurred.",
+                                          message="Updating user role failed.",
                                           code=status.HTTP_404_NOT_FOUND)
             if not updated_role:
                 return ErrorResponseModel(error="An error occurred.",
@@ -237,13 +237,13 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     else:
         clerk_user_data = await retrieve_user_clerk(clerk_user_id)
         if isinstance(clerk_user_data, Exception):
-            return ErrorResponseModel(error=str(clerk_user_data),
-                                      message="An error occurred while retrieving user from Clerk.",
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Retrieving user data failed.",
                                       code=status.HTTP_404_NOT_FOUND)
         is_whitelist = await check_whitelist_via_email(clerk_user_data["email"])
         if isinstance(is_whitelist, Exception):
-            return ErrorResponseModel(error=str(is_whitelist),
-                                      message="An error occurred while checking whitelist.",
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Checking whitelist failed.",
                                       code=status.HTTP_404_NOT_FOUND)
         if is_whitelist:
             ROLE = "aio"
@@ -257,8 +257,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         )
         new_user = await add_user(new_user_data.model_dump())
         if isinstance(new_user, Exception):
-            return ErrorResponseModel(error=str(new_user),
-                                      message="An error occurred while adding user.",
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Adding user failed.",
                                       code=status.HTTP_404_NOT_FOUND)
         return DictResponseModel(data=new_user,
                                  message="User added successfully.",
