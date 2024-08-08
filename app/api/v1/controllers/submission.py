@@ -2,17 +2,12 @@ import traceback
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.user import (
-    retrieve_user,
-    user_helper
+from app.api.v1.controllers.retake import (
+    retrieve_retake_by_user_exam_id,
+    delete_retake_by_ids
 )
-from app.api.v1.controllers.exam import (
-    retrieve_exam,
-    exam_helper
-)
-from app.api.v1.controllers.contest import (
-    retrieve_contest,
-    contest_helper
+from app.api.v1.controllers.timer import (
+    delete_timer_by_exam_retake_user_id
 )
 
 logger = Logger("controllers/submission", log_file="submission.log")
@@ -80,17 +75,13 @@ async def add_submission(submission_data: dict) -> dict:
 
 async def retrieve_submissions() -> list:
     """
-    Retrieve all submissions from database, include user info
+    Retrieve all submissions from database
     :return: list
     """
     try:
         submissions = []
         async for submission in submission_collection.find():
-            user_info = await retrieve_user(submission["clerk_user_id"])
-            if isinstance(user_info, Exception):
-                raise user_info
             return_data = submission_helper(submission)
-            return_data["user"] = user_info
             submissions.append(return_data)
         return submissions
     except Exception as e:
@@ -99,46 +90,14 @@ async def retrieve_submissions() -> list:
 
 
 
-async def retrieve_search_filter_pagination(pipeline: list,
-                                            page: int,
-                                            per_page: int
-                                            ) -> dict:
+async def retrieve_search_filter_pagination(pipeline: list) -> tuple:
     """
     Retrieve all submissions with search filter and pagination
     :param pipeline: list
     """
     try:
         pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
-        submissions = pipeline_results[0]["submissions"]
-        if len(submissions) < 1:
-            return {
-                "submissions_data": [],
-                "total_submissions": 0,
-                "total_pages": 0,
-                "current_page": page,
-                "per_page": per_page
-            }
-
-        total_submissions = pipeline_results[0]["total"][0]["count"]
-        total_pages = (total_submissions + per_page - 1) // per_page
-
-        submissions_data = []
-        for submission in submissions:
-            submissions_data.append(
-                {
-                    **submission_helper(submission),
-                    "contest_info": contest_helper(submission["contest_info"]),
-                    "exam_info": exam_helper(submission["exam_info"]),
-                    "user_info": user_helper(submission["user_info"])
-                }
-            )
-        return {
-            "submissions_data": submissions_data,
-            "total_submissions": total_submissions,
-            "total_pages": total_pages,
-            "current_page": page,
-            "per_page": per_page
-        }
+        return pipeline_results
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -146,7 +105,7 @@ async def retrieve_search_filter_pagination(pipeline: list,
 
 async def retrieve_submission_by_id(id: str) -> dict:
     """
-    Retrieve a submission with a matching ID, include user info and exam info
+    Retrieve a submission with a matching ID
     :param id: str
     :return: dict
     """
@@ -154,26 +113,24 @@ async def retrieve_submission_by_id(id: str) -> dict:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         if not submission:
             raise Exception("Submission not found")
+        return submission_helper(submission)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
 
-        user_info = await retrieve_user(submission["clerk_user_id"])
-        if isinstance(user_info, Exception):
-            raise user_info
 
-        exam_info = await retrieve_exam(submission["exam_id"])
-        if isinstance(exam_info, Exception):
-            raise exam_info
-
-        contest_info = await retrieve_contest(exam_info["contest_id"])
-        if isinstance(contest_info, Exception):
-            raise contest_info
-
-        return_data = submission_helper(submission)
-        return_data["user"] = user_info
-        return_data["exam"] = {
-            **exam_info,
-            "contest": contest_info
-        }
-        return return_data
+async def retrieve_submission_by_exam_id(exam_id: str) -> list:
+    """
+    Retrieve all submissions by exam ID
+    :param exam_id: str
+    :return: list
+    """
+    try:
+        submissions = []
+        async for submission in submission_collection.find({"exam_id": ObjectId(exam_id)}):
+            return_data = submission_helper(submission)
+            submissions.append(return_data)
+        return submissions
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -183,7 +140,7 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
                                               clerk_user_id
                                               ) -> dict:
     """
-    Retrieve a submission by exam ID and user ID, include user info
+    Retrieve a submission by exam ID and user ID
     :param exam_id: str
     :param clerk_user_id: str
     :return dict
@@ -194,10 +151,6 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         )
         if submission:
             return_data = submission_helper(submission)
-            user_info = await retrieve_user(submission["clerk_user_id"])
-            if isinstance(user_info, Exception):
-                raise user_info
-            return_data["user"] = user_info
             return return_data
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
@@ -209,7 +162,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                                                 clerk_user_id: str
                                                 ) -> dict:
     """
-    Retrieve a submission by exam ID, retake ID and user ID. Include user info
+    Retrieve a submission by exam ID, retake ID and user ID
     :param exam_id: str
     :param retake_id: str
     :param clerk_user_id: str
@@ -227,12 +180,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
             }
         )
         if submission and submission["submitted_problems"] is not None:
-            return_data = submission_helper(submission)
-            user_info = await retrieve_user(submission["clerk_user_id"])
-            if isinstance(user_info, Exception):
-                raise user_info
-            return_data["user"] = user_info
-            return return_data
+            return submission_helper(submission)
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -271,8 +219,40 @@ async def delete_submission(id: str) -> bool:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         if not submission:
             raise Exception("Submission not found")
-        deleted_submission = await submission_collection.delete_one(
-            {"_id": ObjectId(id)})
+        
+        submission_info = await retrieve_submission_by_id(id)
+        if isinstance(submission_info, Exception):
+            raise submission_info
+
+        clerk_user_id = submission_info["clerk_user_id"]
+
+        # Delete retake if exists
+        retakes = await retrieve_retake_by_user_exam_id(clerk_user_id=clerk_user_id, 
+                                                        exam_id=submission_info["exam_id"])
+        if isinstance(retakes, Exception):
+            raise retakes
+        if retakes:
+            retake_ids = [ObjectId(retake["id"]) for retake in retakes]
+            deleted_retakes = await delete_retake_by_ids(retake_ids)
+            if isinstance(deleted_retakes, Exception):
+                raise deleted_retakes
+            if not deleted_retakes:
+                raise Exception("Delete retake failed.")
+
+        # Delete timer
+        deleted_timer = await delete_timer_by_exam_retake_user_id(exam_id=submission_info["exam_id"],
+                                                                clerk_user_id=clerk_user_id,
+                                                                retake_id=submission_info["retake_id"])
+        if isinstance(deleted_timer, Exception):
+            raise deleted_timer
+        if not deleted_timer:
+            raise Exception("Delete timer failed.")
+
+        # Delete submission
+        submission = await submission_collection.find_one({"_id": ObjectId(id)})
+        if not submission:
+            raise Exception("Submission not found")
+        deleted_submission = await submission_collection.delete_one({"_id": ObjectId(id)})
         if deleted_submission.deleted_count == 1:
             return True
         return False
@@ -281,64 +261,24 @@ async def delete_submission(id: str) -> bool:
         return e
 
 
-async def get_extra_info(submission: dict) -> dict:
-    user_info = await retrieve_user(submission["clerk_user_id"])
-    if isinstance(user_info, Exception):
-        raise user_info
-    
-    exam_info = await retrieve_exam(submission["exam_id"])
-    if isinstance(exam_info, Exception):
-        raise exam_info
-    
-    contest_info = await retrieve_contest(exam_info["contest_id"])
-    if isinstance(contest_info, Exception):
-        raise contest_info
-
-    return user_info, exam_info, contest_info
-
-
-async def export_all_submissions() -> list:
+async def delete_submissions_by_exam_id(exam_id: str) -> bool:
     """
-    Export all submissions
-    :return: list
+    Delete all submissions with a matching exam ID
+    :param exam_id: str
+    :return: bool
     """
     try:
-        submissions = []
-        async for submission in submission_collection.find():
-            submission_data = submission_helper(submission)
-            submitted_problems = submission_data.pop("submitted_problems")
-
-            extra_info = await get_extra_info(submission)
-            user_info, exam_info, contest_info = extra_info
-
-            return_data = {}
-            return_data["id"] = submission_data["id"]
-            return_data["user_id"] = submission_data["clerk_user_id"]
-            return_data["username"] = user_info["username"]
-            return_data["email"] = user_info["email"]
-            return_data["username"] = user_info["username"]
-            return_data["role"] = user_info["role"]
-
-            return_data["contest_id"] = exam_info["contest_id"]
-            return_data["contest_title"] = contest_info["title"]
-            return_data["contest_description"] = contest_info["description"]
-
-            return_data["exam_id"] = submission_data["exam_id"]
-            return_data["exam_title"] = exam_info["title"]
-            return_data["exam_description"] = exam_info["description"]
-            return_data["exam_duration"] = exam_info["duration"]
-            return_data["retake_exam_id"] = submission_data["retake_id"]
-
-            return_data["total_problems"] = submission_data["total_problems"]
-            return_data["total_passes"] = submission_data["total_problems"]
-
-            return_data["submit_at"] = submission_data["created_at"]
-            submissions.append(return_data)
-
-        return submissions
+        async for submission in submission_collection.find({"exam_id": ObjectId(exam_id)}):
+            deleted_submission = await delete_submission(str(submission["_id"]))
+            if isinstance(deleted_submission, Exception):
+                raise deleted_submission
+            if not deleted_submission:
+                raise Exception("Delete submission failed")
+        return True
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    
 
 async def export_submissions_by_search_filter(pipeline: list) -> list:
     """
@@ -348,40 +288,7 @@ async def export_submissions_by_search_filter(pipeline: list) -> list:
     """
     try:
         pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
-        submissions = pipeline_results[0]["submissions"]
-
-        outputs = []
-        for submission in submissions:
-            submission_data = submission_helper(submission)
-            submitted_problems = submission_data.pop("submitted_problems")
-
-            extra_info = await get_extra_info(submission)
-            user_info, exam_info, contest_info = extra_info
-
-            return_data = {}
-            return_data["id"] = submission_data["id"]
-            return_data["user_id"] = submission_data["clerk_user_id"]
-            return_data["username"] = user_info["username"]
-            return_data["email"] = user_info["email"]
-            return_data["username"] = user_info["username"]
-            return_data["role"] = user_info["role"]
-
-            return_data["contest_id"] = exam_info["contest_id"]
-            return_data["contest_title"] = contest_info["title"]
-            return_data["contest_description"] = contest_info["description"]
-
-            return_data["exam_id"] = submission_data["exam_id"]
-            return_data["exam_title"] = exam_info["title"]
-            return_data["exam_description"] = exam_info["description"]
-            return_data["exam_duration"] = exam_info["duration"]
-            return_data["retake_exam_id"] = submission_data["retake_id"]
-
-            return_data["total_problems"] = submission_data["total_problems"]
-            return_data["total_passes"] = submission_data["total_problems"]
-
-            return_data["submit_at"] = submission_data["created_at"]
-            outputs.append(return_data)
-        return outputs
+        return pipeline_results
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
