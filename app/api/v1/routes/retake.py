@@ -47,10 +47,11 @@ async def get_retakes_unsubmit(unsubmit: bool = True):
             contest_info = await retrieve_contest(exam_info["contest_id"])
             if isinstance(contest_info, Exception):
                 raise contest_info
-
-            retake["user"] = user_info
-            retake["exam"] = exam_info
-            retake["contest"] = contest_info
+            
+            retake["user_info"] = user_info
+            retake["exam_info"] = exam_info
+            retake["contest_info"] = contest_info
+            
         return ListResponseModel(data=retakes_data,
                                  message="Retakes unsubmit retrieved successfully",
                                  code=status.HTTP_200_OK)
