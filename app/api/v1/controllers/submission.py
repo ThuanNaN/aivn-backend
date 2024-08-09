@@ -90,7 +90,7 @@ async def retrieve_submissions() -> list:
 
 
 
-async def retrieve_search_filter_pagination(pipeline: list) -> tuple:
+async def retrieve_submission_by_pipeline(pipeline: list) -> tuple:
     """
     Retrieve all submissions with search filter and pagination
     :param pipeline: list
