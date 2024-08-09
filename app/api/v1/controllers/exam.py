@@ -9,6 +9,12 @@ from app.api.v1.controllers.exam_problem import (
 from app.api.v1.controllers.problem import (
     retrieve_problems_by_ids
 )
+from app.api.v1.controllers.submission import (
+    delete_submissions_by_exam_id
+)
+from app.api.v1.controllers.retake import (
+    delete_retakes_by_exam_id
+)
 
 logger = Logger("controllers/exam", log_file="exam.log")
 
@@ -27,8 +33,7 @@ def exam_helper(exam: dict) -> dict:
         "title": exam["title"],
         "description": exam["description"],
         "is_active": exam["is_active"],
-        # TODO: remove this get method when all exam data has creator_id
-        "creator_id": exam.get("creator_id", None), 
+        "creator_id": exam["creator_id"],
         "duration": exam["duration"],
         "created_at": str(exam["created_at"]),
         "updated_at": str(exam["updated_at"])
@@ -175,6 +180,20 @@ async def delete_exam(id: str) -> bool:
             raise deleted_exam_problems
         if not deleted_exam_problems:
             raise Exception("Delete exam_problem failed.")
+        
+        # Del submissions (del timer, retake)
+        deleted_submissions = await delete_submissions_by_exam_id(id)
+        if isinstance(deleted_submissions, Exception):
+            raise deleted_submissions
+        if not deleted_submissions:
+            raise Exception("Delete submission failed.")
+        
+        # Del retakes dont have submission
+        deleted_retakes = await delete_retakes_by_exam_id(id)
+        if isinstance(deleted_retakes, Exception):
+            raise deleted_retakes
+        if not deleted_retakes:
+            raise Exception("Delete retake failed.")
 
         # Delete exam in exam collection
         deleted_exam = await exam_collection.delete_one({"_id": ObjectId(id)})

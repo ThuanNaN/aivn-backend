@@ -158,7 +158,7 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
                 newest_retake = retake_exam_detail[0]
                 newest_retake_index = 0
                 for index, retake in enumerate(retake_exam_detail[1:]):
-                    if to_datetime(retake["created_at"]) > to_datetime(newest_retake["created_at"]):
+                    if to_datetime(retake["created_at"]) >= to_datetime(newest_retake["created_at"]):
                         newest_retake = retake
                         newest_retake_index = index + 1
                 contest["available_exam"] = newest_retake

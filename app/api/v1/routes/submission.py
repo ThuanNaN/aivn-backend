@@ -9,20 +9,25 @@ from app.schemas.response import (
     DictResponseModel,
     ErrorResponseModel
 )
+from app.api.v1.controllers.exam import (
+    retrieve_exam,
+    exam_helper
+)
+from app.api.v1.controllers.contest import (
+    retrieve_contest,
+    contest_helper,
+)
+from app.api.v1.controllers.user import (
+    retrieve_user,
+    user_helper
+)
 from app.api.v1.controllers.submission import (
+    submission_helper,
     retrieve_search_filter_pagination,
     retrieve_submission_by_id,
     retrieve_submission_by_id_user_retake,
     delete_submission,
-    export_all_submissions,
     export_submissions_by_search_filter
-)
-from app.api.v1.controllers.timer import (
-    delete_timer_by_exam_retake_user_id
-)
-from app.api.v1.controllers.retake import (
-    retrieve_retake_by_user_exam_id,
-    delete_retake_by_ids
 )
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
@@ -36,8 +41,10 @@ logger = Logger("routes/submission", log_file="submission.log")
             tags=["Admin"],
             description="Get all submissions")
 async def get_submissions(
-    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
-    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
+    search: Optional[str] = Query(
+        None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(
+        None, description="Filter by contest id"),
     exam_id: Optional[str] = Query(None, description="Filter by exam id"),
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     page: int = Query(1, ge=1),
@@ -115,12 +122,45 @@ async def get_submissions(
         },
     ]
 
-    submissions = await retrieve_search_filter_pagination(pipeline, page, per_page)
-    if isinstance(submissions, Exception):
-        return ErrorResponseModel(error=str(submissions),
-                                  message="An error occurred while retrieving submissions.",
+    pipeline_results = await retrieve_search_filter_pagination(pipeline)
+    if isinstance(pipeline_results, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving submissions failed.",
                                   code=status.HTTP_404_NOT_FOUND)
-    return DictResponseModel(data=submissions,
+    if not pipeline_results[0]["submissions"]:
+        return ErrorResponseModel(error="No submissions found.",
+                                  message="No submissions found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+
+    total_submissions = pipeline_results[0]["total"][0]["count"]
+    submissions = pipeline_results[0]["submissions"]
+    if len(submissions) < 1:
+        return_data = {
+            "submissions_data": [],
+            "total_submissions": 0,
+            "total_pages": 0,
+            "current_page": page,
+            "per_page": per_page
+        }
+    else:
+        submissions_data = []
+        for submission in submissions:
+            submissions_data.append(
+                {
+                    **submission_helper(submission),
+                    "contest_info": contest_helper(submission["contest_info"]),
+                    "exam_info": exam_helper(submission["exam_info"]),
+                    "user_info": user_helper(submission["user_info"])
+                }
+            )
+        return_data = {
+            "submissions_data": submissions_data,
+            "total_submissions": total_submissions,
+            "total_pages": (total_submissions + per_page - 1) // per_page,
+            "current_page": page,
+            "per_page": per_page
+        }
+    return DictResponseModel(data=return_data,
                              message="Submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
 
@@ -129,17 +169,19 @@ async def get_submissions(
 async def get_submission_by_user(exam_id: str,
                                  retake_id: Optional[str] = None,
                                  clerk_user_id: str = Depends(is_authenticated)):
-    submission = await retrieve_submission_by_id_user_retake(exam_id, 
+    submission = await retrieve_submission_by_id_user_retake(exam_id,
                                                              retake_id,
                                                              clerk_user_id)
     if isinstance(submission, Exception):
-        return ErrorResponseModel(error=str(submission),
-                                  message="An error occurred while retrieving submission.",
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving submission failed.",
                                   code=status.HTTP_404_NOT_FOUND)
     if not submission:
         return ErrorResponseModel(error="Submission not found.",
                                   message="No submission found.",
                                   code=status.HTTP_404_NOT_FOUND)
+    user_info = await retrieve_user(clerk_user_id)
+    submission["user"] = user_info
     return DictResponseModel(data=submission,
                              message="Your submission retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -147,12 +189,25 @@ async def get_submission_by_user(exam_id: str,
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
-    submission = await retrieve_submission_by_id(id)
-    if isinstance(submission, Exception):
-        return ErrorResponseModel(error=str(submission),
-                                  message="An error occurred while retrieving submission.",
+    submission_info = await retrieve_submission_by_id(id)
+    if isinstance(submission_info, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving submission failed.",
                                   code=status.HTTP_404_NOT_FOUND)
-    return DictResponseModel(data=submission,
+
+    user_info = await retrieve_user(submission_info["clerk_user_id"])
+    exam_info = await retrieve_exam(submission_info["exam_id"])
+    contest_info = await retrieve_contest(exam_info["contest_id"])
+
+    return_data = {
+        **submission_info,
+        "user": user_info,
+        "exam": {
+            **exam_info,
+            "contest": contest_info
+        }
+    }
+    return DictResponseModel(data=return_data,
                              message="Submission retrieved successfully.",
                              code=status.HTTP_200_OK)
 
@@ -161,44 +216,6 @@ async def get_submission(id: str):
                dependencies=[Depends(is_admin)],
                description="Delete a submission with a matching ID")
 async def delete_submission_data(id: str):
-    submission_info = await retrieve_submission_by_id(id)
-    if isinstance(submission_info, Exception):
-        return ErrorResponseModel(error=str(submission_info),
-                                  message="An error occurred while retrieving submission.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    clerk_user_id = submission_info["clerk_user_id"]
-
-    # Delete retake if exists
-    retakes = await retrieve_retake_by_user_exam_id(clerk_user_id=clerk_user_id, 
-                                                    exam_id=submission_info["exam_id"])
-    if isinstance(retakes, Exception):
-        return ErrorResponseModel(error=str(retakes),
-                                  message="An error occurred while retrieving retakes.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if retakes:
-        retake_ids = [ObjectId(retake["id"]) for retake in retakes]
-        deleted_retakes = await delete_retake_by_ids(retake_ids)
-        if isinstance(deleted_retakes, Exception):
-            return ErrorResponseModel(error=str(deleted_retakes),
-                                      message="An error occurred while deleting retakes.",
-                                      code=status.HTTP_404_NOT_FOUND)
-        if not deleted_retakes:
-            return ErrorResponseModel(error="An error occurred while deleting retakes.",
-                                      message="Retakes were not deleted.",
-                                      code=status.HTTP_404_NOT_FOUND)
-    # Delete timer
-    deleted_timer = await delete_timer_by_exam_retake_user_id(exam_id=submission_info["exam_id"],
-                                                              clerk_user_id=clerk_user_id,
-                                                              retake_id=submission_info["retake_id"])
-    if isinstance(deleted_timer, Exception):
-        return ErrorResponseModel(error=str(deleted_timer),
-                                  message="An error occurred while deleting timer.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not deleted_timer:
-        return ErrorResponseModel(error="An error occurred while deleting timer.",
-                                  message="Timer was not deleted.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    # Delete submission
     deleted_submission = await delete_submission(id)
     if isinstance(deleted_submission, Exception):
         return ErrorResponseModel(error=str(deleted_submission),
@@ -220,11 +237,13 @@ async def delete_submission_data(id: str):
             tags=["Admin"],
             description="Export all submissions to CSV file")
 async def export_submissions(
-    search: Optional[str] = Query(None, description="Search by user, email, contest or exam title"),
-    contest_id: Optional[str] = Query(None, description="Filter by contest id"),
+    search: Optional[str] = Query(
+        None, description="Search by user, email, contest or exam title"),
+    contest_id: Optional[str] = Query(
+        None, description="Filter by contest id"),
     exam_id: Optional[str] = Query(None, description="Filter by exam id"),
 ):
-    
+
     match_stage = {"$match": {}}
     if search:
         match_stage["$match"]["$or"] = [
@@ -286,22 +305,50 @@ async def export_submissions(
             }
         },
     ]
-    # submissions = await export_all_submissions()
-    submissions = await export_submissions_by_search_filter(pipeline)
-    
-    if isinstance(submissions, Exception):
+    pipeline_results = await export_submissions_by_search_filter(pipeline)
+    if isinstance(pipeline_results, Exception):
         return ErrorResponseModel(error="Export submissions failed.",
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
+    submissions = pipeline_results[0]["submissions"]
     if not submissions:
         return ErrorResponseModel(error="No submissions found.",
-                                  message="An error occurred.",
+                                  message="No submissions found.",
                                   code=status.HTTP_404_NOT_FOUND)
+    outputs = []
+    for submission in submissions:
+        submitted_problems = submission.pop("submitted_problems")
+
+        return_data = {}
+        return_data["id"] = str(submission["_id"])
+        return_data["user_id"] = submission["clerk_user_id"]
+        return_data["username"] = submission["user_info"]["username"]
+        return_data["email"] = submission["user_info"]["email"]
+        return_data["username"] = submission["user_info"]["username"]
+        return_data["role"] = submission["user_info"]["role"]
+
+        return_data["contest_id"] = str(submission["exam_info"]["contest_id"])
+        return_data["contest_title"] = submission["contest_info"]["title"]
+        return_data["contest_description"] = submission["contest_info"]["description"]
+
+        return_data["exam_id"] = str(submission["exam_id"])
+        return_data["exam_title"] = submission["exam_info"]["title"]
+        return_data["exam_description"] = submission["exam_info"]["description"]
+        return_data["exam_duration"] = submission["exam_info"]["duration"]
+        return_data["retake_exam_id"] = str(submission["retake_id"])
+
+        return_data["total_problems"] = submission["total_problems"]
+        return_data["total_passes"] = submission["total_problems"]
+
+        return_data["submit_at"] = str(submission["created_at"])
+        outputs.append(return_data)
+
     df = pd.DataFrame(submissions)
     output = StringIO()
     df.to_csv(output, index=False)
     output.seek(0)
     return StreamingResponse(output,
                              media_type="text/csv",
-                             headers={"Content-Disposition": "attachment;filename=submissions.csv"}
+                             headers={
+                                 "Content-Disposition": "attachment;filename=submissions.csv"}
                              )

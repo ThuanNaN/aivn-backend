@@ -15,16 +15,12 @@ except Exception as e:
 
 # helper 
 def retake_helper(retake) -> dict:
-    # TODO: remove after all data is updated
-    updated_at = retake.get("updated_at", None)
-    updated_at = str(updated_at) if updated_at else None
     return {
         "id": str(retake["_id"]),
         "clerk_user_id": retake["clerk_user_id"],
         "creator_id": retake["creator_id"],
         "exam_id": str(retake["exam_id"]),
         "created_at": str(retake["created_at"]),
-        "updated_at": updated_at
     }
 
 
@@ -180,7 +176,29 @@ async def delete_retake_by_id(id: str) -> bool:
     except Exception as e:
         logger.error(f"Error when delete retake: {e}")
         return e
-    
+
+
+async def delete_retakes_by_exam_id(exam_id: str) -> bool:
+    """
+    Delete retakes with a matching exam ID
+    :param exam_id: str
+    :return: bool
+    """
+    try:
+        retakes = await retrieve_retake_by_exam_id(exam_id)
+        if isinstance(retakes, Exception):
+            raise retakes
+        if retakes:
+            deleted_retakes = await retake_collection.delete_many({"exam_id": ObjectId(exam_id)})
+            if deleted_retakes.deleted_count > 0:
+                return True
+            return False
+        else:
+            return True # No retake to delete
+    except Exception as e:
+        logger.error(f"Error when delete retakes: {e}")
+        return e
+
     
 async def delete_retake_by_ids(ids: list) -> bool:
     """

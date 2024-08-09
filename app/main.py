@@ -1,11 +1,9 @@
-import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
-from app.utils.logger import Logger
 load_dotenv()
 
 def create_application() -> FastAPI:
