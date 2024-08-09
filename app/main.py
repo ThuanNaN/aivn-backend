@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
+from app.utils.logger import Logger
 load_dotenv()
 
 def create_application() -> FastAPI:
@@ -14,9 +15,7 @@ def create_application() -> FastAPI:
                   )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-           os.getenv("FRONTEND_URL")
-        ],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
