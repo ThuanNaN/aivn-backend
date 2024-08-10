@@ -209,6 +209,11 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
 
     if is_exist_user:  # logged in before
         CURRENT_ROLE = is_exist_user["role"]
+        if CURRENT_ROLE == "admin":
+            return ListResponseModel(data=[],
+                                     message="Current user is an admin.",
+                                     code=status.HTTP_200_OK)
+
         is_whitelist = await check_whitelist_via_id(clerk_user_id)
         if isinstance(is_whitelist, Exception):
             return ErrorResponseModel(error="An error occurred.",
