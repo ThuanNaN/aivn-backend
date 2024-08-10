@@ -14,6 +14,8 @@ from app.api.v1.controllers.user import (
     add_user,
     retrieve_users,
     retrieve_user,
+    retrieve_user_by_email,
+    retrieve_admin_users,
     retrieve_user_clerk,
     update_user,
     add_whitelist,
@@ -88,6 +90,44 @@ async def get_whitelists():
                                   code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=whitelists,
                              message="Whitelists retrieved successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.get("/admins",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Retrieve all admin users")
+async def get_admin_users():
+    users = await retrieve_admin_users()
+    if isinstance(users, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving admin users failed.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not users:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Admin users not found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return ListResponseModel(data=users,
+                             message="Admin users retrieved successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.get("/email/{email}",
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
+            description="Check if email is in whitelist")
+async def get_user_by_email(email: str):
+    user = await retrieve_user_by_email(email)
+    if isinstance(user, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving user failed.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not user:
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="User not found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    return DictResponseModel(data=user,
+                             message="User retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 
@@ -234,9 +274,10 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             return ListResponseModel(data=[],
                                      message="User updated successfully.",
                                      code=status.HTTP_200_OK)
-        return ListResponseModel(data=[],
-                                 message="User updated successfully.",
-                                 code=status.HTTP_200_OK)
+        else:
+            return ListResponseModel(data=[],
+                                    message="Upsert user successfully.",
+                                    code=status.HTTP_200_OK)
 
     # first time -> create new user in DB
     else:
