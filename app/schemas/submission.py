@@ -37,7 +37,7 @@ class SubmittedResult(SubmittedProblem):
     description: str
     public_testcases_results: list | None = None
     private_testcases_results: list | None = None
-    choice_results: dict | None = None
+    choice_results: list | None = None
     is_pass_problem: bool = False
 
 
