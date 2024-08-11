@@ -227,7 +227,7 @@ async def delete_problem(id: str) -> bool:
         if isinstance(deleted_problem_category, Exception):
             raise deleted_problem_category
         if not deleted_problem_category:
-            raise Exception("No problem_category deleted")
+            logger.info("No problem_category found")
         
         deleted_problem = await problem_collection.delete_one({"_id": ObjectId(id)})
         if deleted_problem.deleted_count == 1:
