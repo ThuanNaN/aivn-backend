@@ -106,6 +106,36 @@ async def retrieve_user(clerk_user_id: str) -> dict:
         return e
 
 
+async def retrieve_user_by_email(email: str) -> dict:
+    """
+    Retrieve a user with a matching email
+    :param email: str
+    :return: dict
+    """
+    try:
+        user = await user_collection.find_one({"email": email})
+        if user:
+            return user_helper(user)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def retrieve_admin_users() -> list[dict]:
+    """
+    Retrieve all admin users in database
+    :return: list
+    """
+    try:
+        admins = []
+        async for admin in user_collection.find({"role": "admin"}):
+            admins.append(user_helper(admin))
+        return admins
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
 async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     Update a user with a matching ID

@@ -20,15 +20,15 @@ class Choice(BaseModel):
 class ProblemSchema(BaseModel):
     title: str
     description: str
-    slug: str
+    slug: str | None = None
     difficulty: str | None = DifficultyEnum.EASY.value
     category_ids: List[str] = []
     is_published: bool = True
 
     # >>> code problems
-    admin_template: str
-    code_template: str
-    code_solution: str
+    admin_template: str | None = None
+    code_template: str | None = None
+    code_solution: str | None = None
     public_testcases: List[TestCase] | None = None
     private_testcases:  List[TestCase] | None = None
     # >>> code problems
@@ -80,14 +80,14 @@ class ProblemSchemaDB(BaseModel):
     creator_id: str
     title: str
     description: str
-    slug: str
+    slug: str | None = None
     difficulty: str | None = DifficultyEnum.EASY.value
     is_published: bool = True
 
     # >>> code problems
-    admin_template: str 
-    code_template: str 
-    code_solution: str 
+    admin_template: str | None = None
+    code_template: str | None = None
+    code_solution: str | None = None
     public_testcases: List[TestCase] | None = None
     private_testcases:  List[TestCase] | None = None
     # >>> code problems

@@ -9,22 +9,18 @@ from app.schemas.response import (
     DictResponseModel,
     ErrorResponseModel
 )
-from app.api.v1.controllers.exam import (
-    retrieve_exam,
-    exam_helper
-)
-from app.api.v1.controllers.contest import (
-    retrieve_contest,
-    contest_helper,
-)
+from app.api.v1.controllers.exam import exam_helper
+from app.api.v1.controllers.contest import contest_helper
 from app.api.v1.controllers.user import (
     retrieve_user,
     user_helper
 )
+from app.api.v1.controllers.problem import (
+    retrieve_problem
+)
 from app.api.v1.controllers.submission import (
     submission_helper,
-    retrieve_search_filter_pagination,
-    retrieve_submission_by_id,
+    retrieve_submission_by_pipeline,
     retrieve_submission_by_id_user_retake,
     delete_submission,
     export_submissions_by_search_filter
@@ -122,7 +118,7 @@ async def get_submissions(
         },
     ]
 
-    pipeline_results = await retrieve_search_filter_pagination(pipeline)
+    pipeline_results = await retrieve_submission_by_pipeline(pipeline)
     if isinstance(pipeline_results, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Retrieving submissions failed.",
@@ -189,23 +185,68 @@ async def get_submission_by_user(exam_id: str,
 
 @router.get("/{id}", description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
-    submission_info = await retrieve_submission_by_id(id)
-    if isinstance(submission_info, Exception):
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "clerk_user_id",
+                "foreignField": "clerk_user_id",
+                "as": "user_info"
+            }
+        },
+        {
+            "$unwind": "$user_info"
+        },
+        {
+            "$lookup": {
+                "from": "exams",
+                "localField": "exam_id",
+                "foreignField": "_id",
+                "as": "exam_info"
+            }
+        },
+        {
+            "$unwind": "$exam_info"
+        },
+        {
+            "$lookup": {
+                "from": "contests",
+                "localField": "exam_info.contest_id",
+                "foreignField": "_id",
+                "as": "exam_info.contest_info"
+            }
+        },
+        {
+            "$unwind": "$exam_info.contest_info"
+        },
+        {
+            "$match": {
+                "_id": ObjectId(id)
+            }
+        }
+    ]
+
+    pipeline_results = await retrieve_submission_by_pipeline(pipeline)
+    if isinstance(pipeline_results, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Retrieving submission failed.",
                                   code=status.HTTP_404_NOT_FOUND)
+    if not pipeline_results[0]:
+        return ErrorResponseModel(error="Submission not found.",
+                                  message="No submission found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    
+    for problem in pipeline_results[0]["submitted_problems"]:
+        problem_info = await retrieve_problem(problem["problem_id"], full_return=True)
+        problem["solution_code"] = problem_info["code_solution"]
 
-    user_info = await retrieve_user(submission_info["clerk_user_id"])
-    exam_info = await retrieve_exam(submission_info["exam_id"])
-    contest_info = await retrieve_contest(exam_info["contest_id"])
+    exam_info = exam_helper(pipeline_results[0]["exam_info"])
+    exam_info["contest_info"] = contest_helper(pipeline_results[0]["exam_info"]["contest_info"])
 
     return_data = {
-        **submission_info,
-        "user": user_info,
-        "exam": {
-            **exam_info,
-            "contest": contest_info
-        }
+        **submission_helper(pipeline_results[0]),
+        "user_info": user_helper(pipeline_results[0]["user_info"]),
+        "exam_info": exam_info
     }
     return DictResponseModel(data=return_data,
                              message="Submission retrieved successfully.",

@@ -16,7 +16,7 @@ from app.api.v1.controllers.problem_category import (
     retrieve_by_problem_category_id,
     retrieve_by_categories,
     delete_problem_category,
-    delete_all_by_problem_id
+    upsert_problem_category
 )
 from app.schemas.problem import (
     ProblemSchema,
@@ -107,7 +107,7 @@ async def get_problems(
             None, description="Filter by is_published"),
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100)
-        ):
+):
 
     match_stage = {"$match": {}}
     if search:
@@ -239,27 +239,19 @@ async def update_problem_data(id: str,
                               clerk_user_id: str = Depends(is_authenticated)):
     problem_dict = problem_data.model_dump()
     category_ids = problem_dict.pop("category_ids", [])
-    deleted_problem_category = await delete_all_by_problem_id(id)
-    if isinstance(deleted_problem_category, Exception):
-        return ErrorResponseModel(error=str(deleted_problem_category),
-                                  message="An error occurred while deleting problem-category.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not deleted_problem_category:
-        return ErrorResponseModel(error="No problem-category deleted.",
-                                  message="An error occurred while deleting problem-category.",
-                                  code=status.HTTP_404_NOT_FOUND)
     new_problem_categories = []
     if len(category_ids) > 0:
-        problem_categories: List[dict] = [
+        new_problem_categories: List[dict] = [
             ProblemCategory(problem_id=id,
                             category_id=category_id).model_dump()
             for category_id in category_ids
         ]
-        new_problem_categories = await add_more_problem_category(problem_categories)
-        if isinstance(new_problem_categories, Exception):
-            return ErrorResponseModel(error=str(new_problem_categories),
-                                      message="An error occurred while adding problem-category.",
-                                      code=status.HTTP_404_NOT_FOUND)
+
+    upsert_problem_category_result = await upsert_problem_category(id, new_problem_categories)
+    if isinstance(upsert_problem_category_result, Exception):
+        return ErrorResponseModel(error=str(upsert_problem_category_result),
+                                  message="An error occurred while updating problem-category.",
+                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     updated_data = UpdateProblemSchemaDB(**problem_dict,
                                          creator_id=clerk_user_id)
@@ -316,5 +308,5 @@ async def delete_problem_data(id: str):
                                   message="No problem was deleted.",
                                   code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=[],
-                                message="Problem deleted successfully.",
-                                code=status.HTTP_200_OK)
+                             message="Problem deleted successfully.",
+                             code=status.HTTP_200_OK)

@@ -10,7 +10,7 @@ logger = Logger("controllers/run_code", log_file="run_code.log")
 
 class BuildObject:
     REMOVE_KEYWORDS = ["os", "sys", "import", "cmd", "rm", "remove", "del", "delete"]
-    TIMEOUT_DURATION = 10
+    TIMEOUT_DURATION = 0.5
 
     @staticmethod
     async def exec_code(str_input: str, admin_vars: dict = {}) -> dict:
@@ -26,12 +26,9 @@ class BuildObject:
                 loop.run_in_executor(None, sync_exec),
                 timeout=BuildObject.TIMEOUT_DURATION
             )
-        except asyncio.TimeoutError:
-            # logger.error("Too long to execute the code.")
-            error = "Too long to execute the code."
+        except asyncio.TimeoutError as e:
+            error = f"{type(e).__name__}"
         except Exception as e:
-            logger.error(f"Error convert to variable: {e}")
-            # error = f"{type(e).__name__}: {e}"
             track_error = traceback.format_exc()
             error = track_error.split("exec(str_input, global_vars, local_vars)\n")[-1]
         return {
@@ -141,11 +138,23 @@ class TestPythonFunction:
             return testcase_output
 
         # run method
+        loop = asyncio.get_running_loop()
         try:
             method = getattr(my_object, self.class_method)
-            method_output = method(**input_kwargs)
+
+            def run_method():
+                return method(**input_kwargs)
+
+            method_output = await asyncio.wait_for(
+                loop.run_in_executor(None, run_method),
+                timeout=BuildObject.TIMEOUT_DURATION
+            )
+        except asyncio.TimeoutError as e:
+            testcase_output["error"] = f"{type(e).__name__}"
+            testcase_output["output"] = f"{type(e).__name__}: Limit time to run is 0.5s"
+            return testcase_output
+
         except Exception as e:
-            logger.error(f"Run method error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
