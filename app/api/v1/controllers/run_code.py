@@ -9,7 +9,7 @@ logger = Logger("controllers/run_code", log_file="run_code.log")
 
 
 class BuildObject:
-    REMOVE_KEYWORDS = ["os", "sys", "import", "cmd", "rm", "remove", "del", "delete"]
+    REMOVE_KEYWORDS = ["os", "sys", "shutil", "import", "cmd"]
     TIMEOUT_DURATION = 0.5
 
     @staticmethod
