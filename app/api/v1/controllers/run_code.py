@@ -170,7 +170,6 @@ class TestPythonFunction:
         try:
             is_correct = self.check_output(method_output, expected_output)
         except Exception as e:
-            logger.error(f"Check output error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
