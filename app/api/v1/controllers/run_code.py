@@ -9,7 +9,7 @@ logger = Logger("controllers/run_code", log_file="run_code.log")
 
 
 class BuildObject:
-    REMOVE_KEYWORDS = ["os", "sys", "shutil", "import", "cmd"]
+    REMOVE_KEYWORDS = ["import"]
     TIMEOUT_DURATION = 0.5
 
     @staticmethod
@@ -78,7 +78,9 @@ class TestPythonFunction:
         self.class_method = self.admin_vars["class_method"]
 
         # remove import lines in code_str
+        print(self.code_str)
         self.code_str = BuildObject.remove_import_lines(self.code_str)
+        print(self.code_str)
 
         # run all testcases
         for testcase in self.testcases:
