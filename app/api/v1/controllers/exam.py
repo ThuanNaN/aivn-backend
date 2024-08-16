@@ -113,7 +113,9 @@ async def retrieve_exam_detail(id: str) -> dict:
         for exam_problem in exam_problems:
             problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
             exam_problem["problem"] = problem if problem else None
-        exam["problems"] = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
+        exam_problems_temp = [exam_problem for exam_problem in exam_problems if exam_problem["problem"] is not None]
+        exam_problems_temp.sort(key=lambda x: x["index"])
+        exam["problems"] = exam_problems_temp
         return exam
 
     except Exception as e:
