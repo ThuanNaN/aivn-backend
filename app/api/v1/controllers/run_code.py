@@ -78,9 +78,7 @@ class TestPythonFunction:
         self.class_method = self.admin_vars["class_method"]
 
         # remove import lines in code_str
-        print(self.code_str)
         self.code_str = BuildObject.remove_import_lines(self.code_str)
-        print(self.code_str)
 
         # run all testcases
         for testcase in self.testcases:
