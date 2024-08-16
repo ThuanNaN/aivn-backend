@@ -134,7 +134,6 @@ class TestPythonFunction:
         try:
             my_object = object_vars.get(self.class_name)()
         except Exception as e:
-            logger.error(f"Build object error: {traceback.format_exc()}")
             testcase_output["error"] = f"{type(e).__name__}: {e}"
             testcase_output["output"] = f"{type(e).__name__}: {e}"
             return testcase_output
