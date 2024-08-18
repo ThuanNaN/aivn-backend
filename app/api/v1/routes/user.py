@@ -94,7 +94,7 @@ async def get_users(
             }
         },
     ]
-    users = await retrieve_search_filter_pagination(pipeline, page, per_page)
+    users = await retrieve_user_by_pipeline(pipeline, page, per_page)
     if isinstance(users, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Retrieving users failed.",

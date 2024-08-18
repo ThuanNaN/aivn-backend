@@ -170,8 +170,8 @@ async def retrieve_user_by_pipeline(pipeline: list,
             result_data.append(user_info)
 
         return {
-            "problems_data": result_data,
-            "total_problems": total_users,
+            "users_data": result_data,
+            "total_users": total_users,
             "total_pages": total_pages,
             "current_page": page,
             "per_page": per_page
