@@ -141,7 +141,7 @@ async def retrieve_problem(id: str, full_return: bool = False) -> dict:
         return e
 
 
-async def retrieve_search_filter_pagination(pipeline: list,
+async def retrieve_problem_by_pipeline(pipeline: list,
                                             page: int,
                                             per_page: int, 
                                             role: str

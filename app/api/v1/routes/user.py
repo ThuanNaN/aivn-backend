@@ -14,7 +14,7 @@ from app.core.security import (
 from app.api.v1.controllers.user import (
     add_user,
     retrieve_users,
-    retrieve_search_filter_pagination,
+    retrieve_user_by_pipeline,
     retrieve_user,
     retrieve_user_by_email,
     retrieve_admin_users,

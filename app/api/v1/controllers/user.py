@@ -141,7 +141,7 @@ async def retrieve_admin_users() -> list[dict]:
         return e
 
 
-async def retrieve_search_filter_pagination(pipeline: list,
+async def retrieve_user_by_pipeline(pipeline: list,
                                             page: int,
                                             per_page: int) -> dict:
     """

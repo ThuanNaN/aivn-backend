@@ -7,7 +7,7 @@ from app.api.v1.controllers.problem import (
     retrieve_problem,
     update_problem,
     delete_problem,
-    retrieve_search_filter_pagination,
+    retrieve_problem_by_pipeline,
 )
 from app.api.v1.controllers.user import retrieve_user
 from app.api.v1.controllers.problem_category import (
@@ -207,7 +207,7 @@ async def get_problems(
 
     current_user = await retrieve_user(clerk_user_id)
     role = current_user["role"]
-    problems = await retrieve_search_filter_pagination(pipeline, page, per_page, role)
+    problems = await retrieve_problem_by_pipeline(pipeline, page, per_page, role)
     if isinstance(problems, Exception):
         return ErrorResponseModel(error=str(problems),
                                   message="An error occurred while retrieving problems.",
