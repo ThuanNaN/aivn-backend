@@ -23,7 +23,6 @@ from app.api.v1.controllers.submission import (
     retrieve_submission_by_pipeline,
     retrieve_submission_by_id_user_retake,
     delete_submission,
-    export_submissions_by_search_filter
 )
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
@@ -346,7 +345,7 @@ async def export_submissions(
             }
         },
     ]
-    pipeline_results = await export_submissions_by_search_filter(pipeline)
+    pipeline_results = await retrieve_submission_by_pipeline(pipeline)
     if isinstance(pipeline_results, Exception):
         return ErrorResponseModel(error="Export submissions failed.",
                                   message="An error occurred.",
