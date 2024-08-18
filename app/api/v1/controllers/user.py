@@ -409,3 +409,18 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+
+
+async def delete_whitelist_by_email(email: str) -> bool:
+    """
+    Delete a whitelist with a matching email
+    :param email: str
+    """
+    try:
+        deleted = await whitelist_collection.delete_one({"email": email})
+        if deleted.deleted_count > 0:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e

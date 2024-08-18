@@ -20,12 +20,14 @@ from app.api.v1.controllers.user import (
     retrieve_admin_users,
     retrieve_user_clerk,
     update_user,
+    add_whitelist,
     add_whitelist_via_file,
     retrieve_whitelists,
     check_whitelist_via_email,
     check_whitelist_via_id,
     upsert_whitelist,
-    upsert_admin_list
+    upsert_admin_list,
+    delete_whitelist_by_email
 )
 from app.schemas.user import (
     UserSchema,
@@ -195,9 +197,39 @@ async def get_user(clerk_user_id: str):
               tags=["Admin"],
               description="Update a user with a matching ID")
 async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
+    data_dict = data.model_dump()
+    new_role = data_dict.get("role", None)
+    if new_role is not None:
+        user_data = await retrieve_user(clerk_user_id)
+        is_whitelist = await check_whitelist_via_email(user_data["email"])
+        if isinstance(is_whitelist, Exception):
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Checking whitelist failed.",
+                                      code=status.HTTP_404_NOT_FOUND)
 
+        if new_role == "aio" and not is_whitelist:
+            whitelist_data = WhiteListSchema(
+                email=user_data["email"],
+                nickname=user_data["username"]
+            ).model_dump()
+            new_whitelist = await add_whitelist(whitelist_data)
+            if isinstance(new_whitelist, Exception):
+                return ErrorResponseModel(error="An error occurred.",
+                                        message="Adding email to whitelist failed.",
+                                        code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    updated = await update_user(clerk_user_id, data.model_dump())
+        if new_role == "user" and is_whitelist:
+            deleted_whitelist = await delete_whitelist_by_email(user_data["email"])
+            if isinstance(deleted_whitelist, Exception):
+                return ErrorResponseModel(error="An error occurred.",
+                                        message="Deleting email from whitelist failed.",
+                                        code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if not deleted_whitelist:
+                return ErrorResponseModel(error="An error occurred.",
+                                        message="Email was not deleted from whitelist.",
+                                        code=status.HTTP_404_NOT_FOUND)
+
+    updated = await update_user(clerk_user_id, data_dict)
     if isinstance(updated, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Updating user failed.",
@@ -236,7 +268,10 @@ async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
 @router.post("/whitelist/upsert",
                 dependencies=[Depends(is_admin)],
                 tags=["Admin"],
-                description="Upsert whitelist collection")
+                description="This API will upsert the whitelist data, \
+                            if the email is already in the whitelist FILE, it will be UPDATED. \
+                            Otherwise, if the email is not EXIST, it will be ADDED. \
+                            In case of the email is EXIST in database, but not in the whitelist FILE, It will be DELETED.")
 async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
     csv_reader = await read_csv(whitelist_csv)
     csv_whitelist_data = []
@@ -259,7 +294,8 @@ async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
 @router.post("/admin/upsert", 
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
-             description="Update a user role to admin")
+             description="This API is used to update the user in role 'user', 'aio', or 'admin' to admin role.\
+                          If the current admin not in the Admin FILE, it will be down role to 'aio'.")
 async def update_user_role_to_admin(admin_csv: UploadFile = File(...)):
     csv_reader = await read_csv(admin_csv)
     admin_info = []
