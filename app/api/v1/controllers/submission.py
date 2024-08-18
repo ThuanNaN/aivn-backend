@@ -91,7 +91,7 @@ async def retrieve_submissions() -> list:
 
 
 
-async def retrieve_submission_by_pipeline(pipeline: list) -> tuple:
+async def retrieve_submission_by_pipeline(pipeline: list) -> list:
     """
     Retrieve all submissions with search filter and pagination
     :param pipeline: list
@@ -280,16 +280,3 @@ async def delete_submissions_by_exam_id(exam_id: str) -> bool:
         logger.error(f"{traceback.format_exc()}")
         return e
     
-
-async def export_submissions_by_search_filter(pipeline: list) -> list:
-    """
-    Export submissions by search and filter
-    :param pipeline: list
-    :return: list
-    """
-    try:
-        pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
-        return pipeline_results
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
