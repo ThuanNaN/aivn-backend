@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -34,8 +35,8 @@ def problem_helper(problem) -> dict:
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
-        "created_at": str( problem["created_at"]),
-        "updated_at": str(problem["updated_at"])
+        "created_at": utc_to_local( problem["created_at"]),
+        "updated_at": utc_to_local(problem["updated_at"])
     }
 
 # helper (user)
@@ -61,8 +62,8 @@ def hide_problem_helper(problem) -> dict:
         "public_testcases": problem["public_testcases"],
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
-        "created_at": str( problem["created_at"]),
-        "updated_at": str(problem["updated_at"]),
+        "created_at": utc_to_local( problem["created_at"]),
+        "updated_at": utc_to_local(problem["updated_at"]),
     }
 
 async def add_problem(problem_data: dict) -> dict:

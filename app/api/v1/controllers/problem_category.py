@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from typing import List
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -20,8 +21,8 @@ def problem_category_helper(problem_category) -> dict:
         "id": str(problem_category["_id"]),
         "problem_id": str(problem_category["problem_id"]),
         "category_id": str(problem_category["category_id"]),
-        "created_at": str(problem_category["created_at"]),
-        "updated_at": str(problem_category["updated_at"])
+        "created_at": utc_to_local(problem_category["created_at"]),
+        "updated_at": utc_to_local(problem_category["updated_at"])
     }
 
 def ObjectId_helper(problem_category_data: dict) -> dict:

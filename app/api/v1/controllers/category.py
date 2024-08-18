@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from bson.objectid import ObjectId
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -16,8 +17,8 @@ def category_helper(category) -> dict:
     return {
         "id": str(category["_id"]),
         "category_name": category["category_name"],
-        "created_at": str(category["created_at"]),
-        "updated_at": str(category["updated_at"])
+        "created_at": utc_to_local(category["created_at"]),
+        "updated_at": utc_to_local(category["updated_at"])
     }
 
 async def add_category(category_data: dict) -> dict:

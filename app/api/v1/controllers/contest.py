@@ -1,5 +1,5 @@
 import traceback
-from datetime import datetime
+from app.utils.time import utc_to_local, created_before
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -31,14 +31,9 @@ def contest_helper(contest) -> dict:
         "description": contest["description"],
         "is_active": contest["is_active"],
         "creator_id": contest["creator_id"], # clerk_user_id
-        "created_at": str(contest["created_at"]),
-        "updated_at": str(contest["updated_at"])
+        "created_at": utc_to_local(contest["created_at"]),
+        "updated_at": utc_to_local(contest["updated_at"])
     }
-
-
-def to_datetime(date_str: str) -> datetime:
-    return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
-
 
 
 async def add_contest(contest_data: dict) -> dict:
@@ -157,9 +152,9 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
             elif len(retake_exam_detail) > 1: # multiple retake exam
                 newest_retake = retake_exam_detail[0]
                 newest_retake_index = 0
-                for index, retake in enumerate(retake_exam_detail[1:]):
-                    if to_datetime(retake["created_at"]) >= to_datetime(newest_retake["created_at"]):
-                        newest_retake = retake
+                for index, cur_retake in enumerate(retake_exam_detail[1:]):
+                    if created_before(cur_retake["created_at"], newest_retake["created_at"]):
+                        newest_retake = cur_retake
                         newest_retake_index = index + 1
                 contest["available_exam"] = newest_retake
                 contest["retake_id"] = retake_ids[newest_retake_index]

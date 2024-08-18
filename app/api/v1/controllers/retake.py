@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from typing import List
 from app.core.database import mongo_db
 from app.utils.logger import Logger
@@ -20,7 +21,7 @@ def retake_helper(retake) -> dict:
         "clerk_user_id": retake["clerk_user_id"],
         "creator_id": retake["creator_id"],
         "exam_id": str(retake["exam_id"]),
-        "created_at": str(retake["created_at"]),
+        "created_at": utc_to_local(retake["created_at"]),
     }
 
 

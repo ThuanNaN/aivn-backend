@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -35,8 +36,8 @@ def exam_helper(exam: dict) -> dict:
         "is_active": exam["is_active"],
         "creator_id": exam["creator_id"],
         "duration": exam["duration"],
-        "created_at": str(exam["created_at"]),
-        "updated_at": str(exam["updated_at"])
+        "created_at": utc_to_local(exam["created_at"]),
+        "updated_at": utc_to_local(exam["updated_at"])
     }
 
 

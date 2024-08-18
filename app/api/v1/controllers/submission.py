@@ -1,4 +1,5 @@
 import traceback
+from app.utils.time import utc_to_local
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -31,7 +32,7 @@ def submission_helper(submission) -> dict:
         "submitted_problems": submission["submitted_problems"],
         "total_problems": submission["total_problems"],
         "total_problems": submission["total_score"],
-        "created_at": str(submission["created_at"]),
+        "created_at": utc_to_local(submission["created_at"]),
     }
 
 
