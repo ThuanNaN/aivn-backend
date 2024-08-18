@@ -1,9 +1,10 @@
+from typing import Optional
 from app.utils.logger import Logger
 import csv
 from io import StringIO
 from fastapi import (
     APIRouter,
-    UploadFile, File,
+    UploadFile, File, Query,
     Body, Depends, status
 )
 from app.core.security import (
@@ -13,6 +14,7 @@ from app.core.security import (
 from app.api.v1.controllers.user import (
     add_user,
     retrieve_users,
+    retrieve_search_filter_pagination,
     retrieve_user,
     retrieve_user_by_email,
     retrieve_admin_users,
@@ -50,14 +52,54 @@ async def read_csv(file: UploadFile):
 @router.get("/users",
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
-            description="Retrieve all users")
-async def get_users():
-    users = await retrieve_users()
+            description="Retrieve all users with matching search and filter")
+async def get_users(
+    search: Optional[str] = Query(
+        None,
+        description="Search by problem title or description"),
+    role: Optional[str] = Query(
+        None,
+        description="Filter by role"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100)
+):
+    match_stage = {"$match": {}}
+    if search:
+        match_stage["$match"]["$or"] = [
+            {"email": {"$regex": search, "$options": "i"}},
+            {"username": {"$regex": search, "$options": "i"}},
+            {"role": {"$regex": search, "$options": "i"}},
+        ]
+
+    if role is not None:
+        match_stage["$match"]["role"] = role
+
+    pipeline = [
+        match_stage,
+        {
+            "$facet": {
+                "users": [
+                    {
+                        "$skip": (page - 1) * per_page
+                    },
+                    {
+                        "$limit": per_page
+                    }
+                ],
+                "total": [
+                    {
+                        "$count": "count"
+                    }
+                ]
+            }
+        },
+    ]
+    users = await retrieve_search_filter_pagination(pipeline, page, per_page)
     if isinstance(users, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Retrieving users failed.",
                                   code=status.HTTP_404_NOT_FOUND)
-    return ListResponseModel(data=users,
+    return DictResponseModel(data=users,
                              message="Users retrieved successfully.",
                              code=status.HTTP_200_OK)
 

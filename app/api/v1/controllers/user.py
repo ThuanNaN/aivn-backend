@@ -16,6 +16,8 @@ except Exception as e:
     exit(1)
 
 # helper
+
+
 def user_helper(user) -> dict:
     return {
         "id": str(user["_id"]),
@@ -27,6 +29,7 @@ def user_helper(user) -> dict:
         "created_at": str(user["created_at"]),
         "updated_at": str(user["updated_at"])
     }
+
 
 def clerk_user_helper(user) -> dict:
     email = user["email_addresses"][0]["email_address"]
@@ -42,7 +45,7 @@ def clerk_user_helper(user) -> dict:
         image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.facebook.com%2Faivietnam.edu.vn%2F&psig=AOvVaw1Y_V6Js0AFy7P34aNqjBn3&ust=1719491806171000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCPiK8qOk-YYDFQAAAAAdAAAAABAE"
     else:
         image_url = user["image_url"]
-    
+
     return {
         "id": user["id"],
         "clerk_user_id": user["id"],
@@ -52,6 +55,7 @@ def clerk_user_helper(user) -> dict:
         "avatar": image_url,
         "email": email
     }
+
 
 def whitelist_helper(user) -> dict:
     return {
@@ -136,6 +140,46 @@ async def retrieve_admin_users() -> list[dict]:
         return e
 
 
+async def retrieve_search_filter_pagination(pipeline: list,
+                                            page: int,
+                                            per_page: int) -> dict:
+    """
+    Retrieve users with search filter and pagination
+    :param pipeline: list
+    :param page: int
+    :param per_page: int
+    :return: dict
+    """
+    try:
+        pipeline_results = await user_collection.aggregate(pipeline).to_list(length=None)
+        users = pipeline_results[0]["users"]
+        if len(users) < 1:
+            return {
+                "users_data": [],
+                "total_users": 0,
+                "total_pages": 0,
+                "current_page": page,
+                "per_page": per_page
+            }
+        total_users = pipeline_results[0]["total"][0]["count"]
+        total_pages = (total_users + per_page - 1) // per_page
+        result_data = []
+        for user in users:
+            user_info = user_helper(user)
+            result_data.append(user_info)
+
+        return {
+            "problems_data": result_data,
+            "total_problems": total_users,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": per_page
+        }
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
 async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     Update a user with a matching ID
@@ -149,7 +193,7 @@ async def update_user(clerk_user_id: str, data: dict) -> bool:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user:
             raise Exception("User not found")
-        
+
         updated_user = await user_collection.update_one(
             {"clerk_user_id": clerk_user_id}, {"$set": data}
         )
@@ -255,7 +299,7 @@ async def check_whitelist_via_id(clerk_user_id: str) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-    
+
 
 async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
     """
@@ -266,14 +310,15 @@ async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
     try:
         # Get the emails of the new whitelist
         new_emails = {whitelist["email"] for whitelist in new_whitelists}
-        
+
         # Retrieve current whitelist emails from the database
         current_whitelists = await whitelist_collection.find({}, {"email": 1}).to_list(length=None)
-        current_emails = {whitelist["email"] for whitelist in current_whitelists}
-        
+        current_emails = {whitelist["email"]
+                          for whitelist in current_whitelists}
+
         # Determine which emails to delete
         emails_to_delete = current_emails - new_emails
-        
+
         # Prepare bulk operations
         operations = [
             UpdateOne(
@@ -282,10 +327,11 @@ async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
                 upsert=True
             ) for whitelist in new_whitelists
         ]
-        
+
         # Add delete operations for emails no longer in the new whitelist
-        operations.extend(DeleteOne({"email": email}) for email in emails_to_delete)
-        
+        operations.extend(DeleteOne({"email": email})
+                          for email in emails_to_delete)
+
         if operations:
             result = await whitelist_collection.bulk_write(operations)
             logger.info(f"Bulk write result: {result.bulk_api_result}")
@@ -293,8 +339,7 @@ async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-    
-    
+
 
 async def upsert_admin_list(new_admins: list[dict]) -> bool:
     """
@@ -307,19 +352,19 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
     try:
         # Get the emails of the new admin list
         new_admin_emails = {admin["email"] for admin in new_admins}
-        
+
         # Retrieve current admin emails from the database
         current_admins = await user_collection.find({"role": "admin"}, {"email": 1}).to_list(length=None)
         current_admin_emails = {admin["email"] for admin in current_admins}
-        
+
         # Determine which emails to update
 
         # user/aio -> admin
-        emails_to_upgrade = new_admin_emails -  current_admin_emails
+        emails_to_upgrade = new_admin_emails - current_admin_emails
 
         # admin -> aio
         emails_to_downgrade = current_admin_emails - new_admin_emails
-        
+
         # Prepare bulk operations
         operations = []
 
@@ -340,7 +385,7 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
                         {"email": admin["email"]},
                         {"$set": {"role": "aio"}}
                     )
-                )        
+                )
         if operations:
             result = await user_collection.bulk_write(operations)
             logger.info(f"Bulk write result: {result.bulk_api_result}")
