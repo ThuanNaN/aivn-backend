@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -28,16 +28,14 @@ class UserSchema(BaseModel):
 
 
 class UpdateUserSchema(BaseModel):
-    username: Optional[str]
-    avatar: Optional[str]
-    role: Optional[str]
+    role: Optional[Literal["user", "aio", "admin"]] 
     updated_at: datetime = datetime.now()
 
 
-class UpdateUserInfoSchema(BaseModel):
-    username: Optional[str]
-    avatar: Optional[str]
-    updated_at: datetime = datetime.now()
+# class UpdateUserInfoSchema(BaseModel):
+#     username: Optional[str]
+#     avatar: Optional[str]
+#     updated_at: datetime = datetime.now()
 
 
 class UpdateUserRoleSchema(BaseModel):
