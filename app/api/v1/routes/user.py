@@ -218,7 +218,7 @@ async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
     csv_whitelist_data = []
     for row in csv_reader:
         if len(row) >= 2:
-            csv_whitelist_data.append(WhiteListSchema(email=row[0], nickname=row[1]))
+            csv_whitelist_data.append(WhiteListSchema(email=row[0].lower(), nickname=row[1]))
     whitelist_data = [data.model_dump() for data in csv_whitelist_data]
 
     whitelist = await add_whitelist(whitelist_data)
@@ -240,7 +240,7 @@ async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
     csv_whitelist_data = []
     for row in csv_reader:
         if len(row) >= 2:
-            csv_whitelist_data.append(WhiteListSchema(email=row[0], nickname=row[1]))
+            csv_whitelist_data.append(WhiteListSchema(email=row[0].lower(), nickname=row[1]))
     whitelist_data = [data.model_dump() for data in csv_whitelist_data]
 
     updated_whitelist = await upsert_whitelist(whitelist_data)
