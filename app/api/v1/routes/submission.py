@@ -335,60 +335,42 @@ async def export_submissions(
         },
         match_stage,
         {
-            "$facet": {
-                "submissions": [],
-                "total": [
-                    {
-                        "$count": "count"
-                    }
-                ]
+            "$project": {
+                "_id": 1,
+                "contest_title": "$contest_info.title",
+                "exam_title": "$exam_info.title",
+                "exam_duration": "$exam_info.duration",
+                "email": "$user_info.email",
+                "username": "$user_info.username",
+                "retake_id": 1,
+                "total_problems": 1,
+                "total_score": 1,
+                "created_at": 1,
             }
-        },
+        }
     ]
-    pipeline_results = await retrieve_submission_by_pipeline(pipeline)
-    if isinstance(pipeline_results, Exception):
+    submissions = await retrieve_submission_by_pipeline(pipeline)
+    if isinstance(submissions, Exception):
         return ErrorResponseModel(error="Export submissions failed.",
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
-    submissions = pipeline_results[0]["submissions"]
     if not submissions:
         return ErrorResponseModel(error="No submissions found.",
                                   message="No submissions found.",
                                   code=status.HTTP_404_NOT_FOUND)
-    outputs = []
     for submission in submissions:
-        submitted_problems = submission.pop("submitted_problems")
-
-        return_data = {}
-        return_data["id"] = str(submission["_id"])
-        return_data["user_id"] = submission["clerk_user_id"]
-        return_data["username"] = submission["user_info"]["username"]
-        return_data["email"] = submission["user_info"]["email"]
-        return_data["username"] = submission["user_info"]["username"]
-        return_data["role"] = submission["user_info"]["role"]
-
-        return_data["contest_id"] = str(submission["exam_info"]["contest_id"])
-        return_data["contest_title"] = submission["contest_info"]["title"]
-        return_data["contest_description"] = submission["contest_info"]["description"]
-
-        return_data["exam_id"] = str(submission["exam_id"])
-        return_data["exam_title"] = submission["exam_info"]["title"]
-        return_data["exam_description"] = submission["exam_info"]["description"]
-        return_data["exam_duration"] = submission["exam_info"]["duration"]
-        return_data["retake_exam_id"] = str(submission["retake_id"])
-
-        return_data["total_problems"] = submission["total_problems"]
-        return_data["total_passes"] = submission["total_problems"]
-
-        return_data["submit_at"] = str(submission["created_at"])
-        outputs.append(return_data)
+        submission["_id"] = str(submission["_id"])
+        submission["retake_id"] = str(submission["retake_id"])
+        submission["created_at"] = submission["created_at"].isoformat()
 
     df = pd.DataFrame(submissions)
+    df = df.loc[:, ["_id", "contest_title", "exam_title", "exam_duration", 
+                    "email", "username", "retake_id", 
+                    "total_problems", "total_score", "created_at"]]
+
     output = StringIO()
     df.to_csv(output, index=False)
     output.seek(0)
     return StreamingResponse(output,
                              media_type="text/csv",
-                             headers={
-                                 "Content-Disposition": "attachment;filename=submissions.csv"}
-                             )
+                             headers={"Content-Disposition": "attachment;filename=submissions.csv"})
