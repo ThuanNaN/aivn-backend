@@ -1,5 +1,5 @@
 from typing import Optional, Literal
-from datetime import datetime
+from datetime import datetime, UTC
 from pydantic import BaseModel
 
 
@@ -9,8 +9,8 @@ class UserSchema(BaseModel):
     username: str 
     role: str 
     avatar: str 
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
+    updated_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -20,8 +20,8 @@ class UserSchema(BaseModel):
                 "username": "example",
                 "role": "user",
                 "avatar": "example.jpg",
-                "created_at": datetime.now(),
-                "updated_at": datetime.now()
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC)
             }
         }
     }
@@ -29,18 +29,18 @@ class UserSchema(BaseModel):
 
 class UpdateUserSchema(BaseModel):
     role: Optional[Literal["user", "aio", "admin"]] 
-    updated_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now(UTC)
 
 
 # class UpdateUserInfoSchema(BaseModel):
 #     username: Optional[str]
 #     avatar: Optional[str]
-#     updated_at: datetime = datetime.now()
+#     updated_at: datetime = datetime.now(UTC)
 
 
 class UpdateUserRoleSchema(BaseModel):
     role: Optional[str]
-    updated_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now(UTC)
 
 
 class WhiteListSchema(BaseModel):

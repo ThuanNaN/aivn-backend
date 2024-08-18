@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, UTC
 
 class ExamSchema(BaseModel):
     contest_id: str
@@ -7,8 +7,8 @@ class ExamSchema(BaseModel):
     description: str
     is_active: bool
     duration: int
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
+    updated_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -20,8 +20,8 @@ class ExamSchema(BaseModel):
                     "is_active": True,
                     "duration": 60,
                     "is_active": True,
-                    "created_at": datetime.now(),
-                    "updated_at": datetime.now()
+                    "created_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC)
                 }
             ]
         }
@@ -37,7 +37,7 @@ class UpdateExamSchema(BaseModel):
     description: str
     is_active: bool
     duration: int
-    updated_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -49,7 +49,7 @@ class UpdateExamSchema(BaseModel):
                     "duration": 60,
                     "description": "Python exam for beginners.",
                     "is_active": True,
-                    "updated_at": datetime.now()
+                    "updated_at": datetime.now(UTC)
                 }
             ]
         }

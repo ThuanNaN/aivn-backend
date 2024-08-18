@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class RetakeSchema(BaseModel):
     clerk_user_id: str
-    created_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
 
 
 class RetakeSchemaDB(RetakeSchema):

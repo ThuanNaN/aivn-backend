@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ class SubmittedProblem(BaseModel):
 class Submission(BaseModel):
     submitted_problems: List[SubmittedProblem] | None = None
     retake_id: str | None = None
-    created_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -25,7 +25,7 @@ class Submission(BaseModel):
                         }
                     ],
                     "retake_id": "66a8b8e5b743acd788da41da",
-                    "created_at": datetime.now()
+                    "created_at": datetime.now(UTC)
                 }
             ]
         }
@@ -48,7 +48,7 @@ class SubmissionDB(BaseModel):
     submitted_problems: List[SubmittedResult] | None = None
     total_score: int | None = None
     total_problems: int | None = None
-    created_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
 
 
 class UpdateSubmissionDB(BaseModel):
@@ -56,5 +56,5 @@ class UpdateSubmissionDB(BaseModel):
     submitted_problems: List[SubmittedResult] | None = None
     total_score: int | None = None
     total_problems: int | None = None
-    created_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
     
