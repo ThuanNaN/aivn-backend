@@ -17,8 +17,6 @@ except Exception as e:
     exit(1)
 
 # helper
-
-
 def user_helper(user) -> dict:
     return {
         "id": str(user["_id"]),
@@ -194,7 +192,7 @@ async def update_user(clerk_user_id: str, data: dict) -> bool:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user:
             raise Exception("User not found")
-
+    
         updated_user = await user_collection.update_one(
             {"clerk_user_id": clerk_user_id}, {"$set": data}
         )
@@ -234,10 +232,27 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         return e
 
 
-async def add_whitelist(whitelist_data: list[dict]) -> dict:
+
+async def add_whitelist(whitelist_data: dict) -> dict:
     """
     Create a new whitelist
     :param whitelist_data: dict
+    :return: dict
+    """
+    try:
+        whitelist = await whitelist_collection.insert_one(whitelist_data)
+        new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
+        return whitelist_helper(new_whitelist)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+
+async def add_whitelist_via_file(whitelist_data: list[dict]) -> dict:
+    """
+    Create a new whitelist
+    :param whitelist_data: list
     :return: dict
     """
     try:

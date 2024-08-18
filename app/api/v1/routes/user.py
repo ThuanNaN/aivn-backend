@@ -20,7 +20,7 @@ from app.api.v1.controllers.user import (
     retrieve_admin_users,
     retrieve_user_clerk,
     update_user,
-    add_whitelist,
+    add_whitelist_via_file,
     retrieve_whitelists,
     check_whitelist_via_email,
     check_whitelist_via_id,
@@ -195,6 +195,8 @@ async def get_user(clerk_user_id: str):
               tags=["Admin"],
               description="Update a user with a matching ID")
 async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
+
+
     updated = await update_user(clerk_user_id, data.model_dump())
     if isinstance(updated, Exception):
         return ErrorResponseModel(error="An error occurred.",
@@ -221,7 +223,7 @@ async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
             csv_whitelist_data.append(WhiteListSchema(email=row[0].lower(), nickname=row[1]))
     whitelist_data = [data.model_dump() for data in csv_whitelist_data]
 
-    whitelist = await add_whitelist(whitelist_data)
+    whitelist = await add_whitelist_via_file(whitelist_data)
     if isinstance(whitelist, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Adding email to whitelist failed.",
