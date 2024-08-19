@@ -119,7 +119,7 @@ async def retrieve_retake_by_exam_id(exam_id: str) -> list:
         return e
 
 
-async def retrieve_retake_by_user_exam_id(clerk_user_id: str, 
+async def retrieve_retakes_by_user_exam_id(clerk_user_id: str, 
                                           exam_id: str
                                           ) -> list:
     """

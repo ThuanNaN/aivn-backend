@@ -4,7 +4,7 @@ from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.retake import (
-    retrieve_retake_by_user_exam_id,
+    retrieve_retakes_by_user_exam_id,
     delete_retake_by_ids
 )
 from app.api.v1.controllers.timer import (
@@ -158,9 +158,11 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         return e
 
 
+
 async def retrieve_submission_by_id_user_retake(exam_id: str,
                                                 retake_id: str | None,
-                                                clerk_user_id: str
+                                                clerk_user_id: str,
+                                                check_none: bool = True
                                                 ) -> dict:
     """
     Retrieve a submission by exam ID, retake ID and user ID
@@ -180,7 +182,9 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                 "clerk_user_id": clerk_user_id
             }
         )
-        if submission and submission["submitted_problems"] is not None:
+        if submission:
+            if check_none and submission["submitted_problems"] is None:
+                return None
             return submission_helper(submission)
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
@@ -228,7 +232,7 @@ async def delete_submission(id: str) -> bool:
         clerk_user_id = submission_info["clerk_user_id"]
 
         # Delete retake if exists
-        retakes = await retrieve_retake_by_user_exam_id(clerk_user_id=clerk_user_id, 
+        retakes = await retrieve_retakes_by_user_exam_id(clerk_user_id=clerk_user_id, 
                                                         exam_id=submission_info["exam_id"])
         if isinstance(retakes, Exception):
             raise retakes
