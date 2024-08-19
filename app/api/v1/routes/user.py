@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime, UTC
 from app.utils.logger import Logger
 import csv
 from io import StringIO
@@ -30,9 +31,9 @@ from app.api.v1.controllers.user import (
     delete_whitelist_by_email
 )
 from app.schemas.user import (
-    UserSchema,
+    UserSchemaDB,
     UpdateUserSchema,
-    UpdateUserRoleSchema,
+    UpdateUserSchemaDB,
     WhiteListSchema,
 )
 from app.schemas.response import (
@@ -228,8 +229,8 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
                 return ErrorResponseModel(error="An error occurred.",
                                         message="Email was not deleted from whitelist.",
                                         code=status.HTTP_404_NOT_FOUND)
-
-    updated = await update_user(clerk_user_id, data_dict)
+    new_user_data = UpdateUserSchemaDB(updated_at=datetime.now(UTC), **data_dict)
+    updated = await update_user(clerk_user_id, new_user_data.model_dump())
     if isinstance(updated, Exception):
         return ErrorResponseModel(error="An error occurred.",
                                   message="Updating user failed.",
@@ -341,7 +342,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                                       code=status.HTTP_404_NOT_FOUND)
         if is_whitelist and CURRENT_ROLE != "aio":
             NEW_ROLE = "aio"
-            update_role_data = UpdateUserRoleSchema(role=NEW_ROLE)
+            update_role_data = UpdateUserSchemaDB(role=NEW_ROLE, 
+                                                  updated_at=datetime.now(UTC))
             updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
             if isinstance(updated_role, Exception):
                 return ErrorResponseModel(error="An error occurred.",
@@ -374,12 +376,14 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         if is_whitelist:
             ROLE = "aio"
         # Create a new user
-        new_user_data = UserSchema(
+        new_user_data = UserSchemaDB(
             clerk_user_id=clerk_user_id,
             email=clerk_user_data["email"],
             username=clerk_user_data["username"],
             role=ROLE,
-            avatar=clerk_user_data["avatar"]
+            avatar=clerk_user_data["avatar"],
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
         )
         new_user = await add_user(new_user_data.model_dump())
         if isinstance(new_user, Exception):
