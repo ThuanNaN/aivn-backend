@@ -11,7 +11,7 @@ from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id
 )
 from app.api.v1.controllers.retake import (
-    retrieve_retake_by_clerk_user_id
+    retrieve_retakes_by_user_exam_id
 )
 
 logger = Logger("controllers/contest", log_file="contest.log")
@@ -114,56 +114,45 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
         contest = await retrieve_contest(id)
         if isinstance(contest, Exception):
             raise contest
-
-        retakes = await retrieve_retake_by_clerk_user_id(clerk_user_id)
-        if isinstance(retakes, Exception):
-            raise retakes
-        exam_retake_ids = []
-        if retakes: # not empty
-            exam_retake_ids = [retake["exam_id"] for retake in retakes]
-            retake_ids = [retake["id"] for retake in retakes]
-            
+        
         all_exam = await retrieve_exam_by_contest(contest["id"])
         if isinstance(all_exam, Exception):
             raise all_exam
         
+        if not all_exam:
+            contest["available_exam"] = None
+            contest["retake_id"] = None
+            contest["exams"] = []
+            return contest
+            
         all_exam_detail = []
-        retake_exam_detail = [] 
-        retake_ids_exam = []
-        contest["available_exam"] = None
-        contest["retake_id"] = None
-        if all_exam:
-            for exam in all_exam:
-                exam_id = exam["id"]
-                exam_problems = await retrieve_by_exam_id(exam_id)
-                if isinstance(exam_problems, Exception):
-                    raise exam_problems
-                exam["problems"] = exam_problems
-                all_exam_detail.append(exam)
+        retake_info = []
+        for exam in all_exam:
 
-                if exam_id in exam_retake_ids:
-                    retake_index = exam_retake_ids.index(exam_id)
-                    retake_ids_exam.append(retake_ids[retake_index])
-                    retake_exam_detail.append(exam)
+            exam_id = exam["id"]
+            exam_problems = await retrieve_by_exam_id(exam_id)
+            if isinstance(exam_problems, Exception):
+                raise exam_problems
+            exam["problems"] = exam_problems
+            all_exam_detail.append(exam)
 
-            if len(retake_exam_detail) < 1: # no retake exam
-                contest["available_exam"] = all_exam_detail[0]
-
-            elif len(retake_exam_detail) > 1: # multiple retake exam
-                newest_retake = retake_exam_detail[0]
-                newest_retake_index = 0
-                for index, cur_retake in enumerate(retake_exam_detail[1:]):
-                    if created_before(cur_retake["created_at"], newest_retake["created_at"]):
-                        newest_retake = cur_retake
-                        newest_retake_index = index + 1
-                contest["available_exam"] = newest_retake
-                contest["retake_id"] = retake_ids[newest_retake_index]
-
-            else: # only one retake exam
-                contest["available_exam"] = retake_exam_detail[0]
-                contest["retake_id"] = retake_ids_exam[0]
+            retakes = await retrieve_retakes_by_user_exam_id(clerk_user_id, exam_id)
+            if isinstance(retakes, Exception):
+                raise retakes
+            retake_info.extend(retakes)
 
         contest["exams"] = all_exam_detail
+        # Exist retake
+        if retake_info: 
+            newest_retake = max(retake_info, key=lambda x: x["created_at"])
+            newest_exam_id = newest_retake["exam_id"]
+            contest["available_exam"] = next((exam for exam in all_exam_detail if exam["id"] == newest_exam_id), None)
+            contest["retake_id"] = newest_retake["id"]
+        # No retake
+        else: 
+            contest["retake_id"] = None
+            contest["available_exam"] = all_exam_detail[0]
+
         return contest
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
