@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.schemas.exam import (
@@ -66,7 +67,9 @@ async def create_exam(exam: ExamSchema,
                       creator_id: str = Depends(is_authenticated)):
     exam_dict = ExamSchemaDB(
         **exam.model_dump(),
-        creator_id=creator_id
+        creator_id=creator_id,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     ).model_dump()
     new_exam = await add_exam(exam_dict)
     if isinstance(new_exam, Exception):
@@ -126,7 +129,8 @@ async def create_retake(exam_id: str,
     retake_db = RetakeSchemaDB(
         **retake_data.model_dump(),
         creator_id=clerk_user_id,
-        exam_id=exam_id
+        exam_id=exam_id,
+        created_at=datetime.now(UTC)
     ).model_dump()
     new_retake = await add_retake(retake_db)
     if isinstance(new_retake, Exception):
@@ -223,7 +227,8 @@ async def update_exam_data(id: str,
                            creator_id=Depends(is_authenticated)):
     exam_dict = UpdateExamSchemaDB(
         **exam.model_dump(),
-        creator_id=creator_id
+        creator_id=creator_id,
+        updated_at=datetime.now(UTC)
     ).model_dump()
     updated_exam = await update_exam(id, exam_dict)
     if isinstance(updated_exam, Exception):
