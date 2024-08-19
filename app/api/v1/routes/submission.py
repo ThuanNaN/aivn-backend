@@ -234,10 +234,12 @@ async def get_submission(id: str):
         return ErrorResponseModel(error="Submission not found.",
                                   message="No submission found.",
                                   code=status.HTTP_404_NOT_FOUND)
-    
-    for problem in pipeline_results[0]["submitted_problems"]:
-        problem_info = await retrieve_problem(problem["problem_id"], full_return=True)
-        problem["solution_code"] = problem_info["code_solution"]
+    if pipeline_results[0]["submitted_problems"] is None:
+        pipeline_results[0]["submitted_problems"] = []
+    else:
+        for problem in pipeline_results[0]["submitted_problems"]:
+            problem_info = await retrieve_problem(problem["problem_id"], full_return=True)
+            problem["solution_code"] = problem_info["code_solution"]
 
     exam_info = exam_helper(pipeline_results[0]["exam_info"])
     exam_info["contest_info"] = contest_helper(pipeline_results[0]["exam_info"]["contest_info"])
