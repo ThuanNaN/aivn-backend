@@ -1,3 +1,4 @@
+import traceback
 from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
@@ -24,7 +25,7 @@ from app.api.v1.controllers.run_code import (
 )
 from app.api.v1.controllers.submission import (
     update_submission,
-    retrieve_submission_by_exam_user_id
+    retrieve_submission_by_id_user_retake
 )
 from app.schemas.submission import (
     SubmittedProblem,
@@ -169,28 +170,20 @@ async def create_submission(exam_id: str,
                 )
             )
     try:
-        # Insert submission to database
-
-        # submission_db = SubmissionDB(
-        #     exam_id=exam_id,
-        #     clerk_user_id=clerk_user_id,
-        #     retake_id=submission_data.retake_id,
-        #     submitted_problems=submitted_results
-        # ).model_dump()
-        # new_submission = await add_submission(submission_db)
-        # if isinstance(new_submission, Exception):
-        #     return ErrorResponseModel(error=str(new_submission),
-        #                               message="An error occurred while create submission.",
-        #                               code=status.HTTP_404_NOT_FOUND)
-
         # Upsert submission to database
-
-        pseudo_submission = await retrieve_submission_by_exam_user_id(exam_id, clerk_user_id)
-        submission_id = pseudo_submission["id"]
+        pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
+                                                                        clerk_user_id=clerk_user_id,
+                                                                        retake_id=submission_data.retake_id,
+                                                                        check_none=False)
         if isinstance(pseudo_submission, Exception):
-            return ErrorResponseModel(error=str(pseudo_submission),
-                                      message="Pseudo submission not found.",
+            return ErrorResponseModel(error="An error occurred.",
+                                      message="Retrieving pseudo submission failed.",
+                                      code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not pseudo_submission:
+            return ErrorResponseModel(error="No pseudo submission found.",
+                                      message="Retrieving pseudo submission failed.",
                                       code=status.HTTP_404_NOT_FOUND)
+
         upsert_submission = UpdateSubmissionDB(
             retake_id=submission_data.retake_id,
             submitted_problems=submitted_results,
@@ -199,7 +192,7 @@ async def create_submission(exam_id: str,
             created_at=datetime.now(UTC)
         ).model_dump()
 
-        updated_submission = await update_submission(submission_id, upsert_submission)
+        updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
         if isinstance(updated_submission, Exception):
             return ErrorResponseModel(error=str(updated_submission),
                                       message="An error occurred while updating submission.",
@@ -217,7 +210,7 @@ async def create_submission(exam_id: str,
             message="Submission added successfully.",
             code=status.HTTP_201_CREATED)
     except Exception as e:
-        logger.error(e)
+        logger.error(f"{traceback.format_exc()}")
         return ErrorResponseModel(error="Error when submit code.",
                                   message="Submission not created.",
                                   code=status.HTTP_404_NOT_FOUND)
