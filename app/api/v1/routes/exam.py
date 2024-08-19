@@ -84,18 +84,11 @@ async def create_exam(exam: ExamSchema,
 @router.post("/{exam_id}/timer",
              description="Add a new timer")
 async def create_timer(exam_id: str,
-                       start_time: TimerSchema,
-                       clerk_user_id: str = Depends(is_authenticated)):
-    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
-                                                        clerk_user_id,
-                                                        retake_id=None)
-    if timer:
-        return ErrorResponseModel(error="Timer already exists.",
-                                  code=status.HTTP_400_BAD_REQUEST,
-                                  message="Timer already exists.")
-    # create new timer
+                       timer_data: TimerSchema,
+                       clerk_user_id: str = Depends(is_authenticated)): 
+    timer_dict = timer_data.model_dump()
     timer_data = TimerSchemaDB(
-        **start_time.model_dump(),
+        **timer_dict,
         exam_id=exam_id,
         clerk_user_id=clerk_user_id
     )
@@ -104,10 +97,11 @@ async def create_timer(exam_id: str,
         return ErrorResponseModel(error=str(new_timer),
                                   code=status.HTTP_404_NOT_FOUND,
                                   message="An error occurred while adding the timer.")
+    
     submission_db = SubmissionDB(
         exam_id=exam_id,
         clerk_user_id=clerk_user_id,
-        retake_id=None,
+        retake_id=timer_dict["retake_id"],
         submitted_problems=None,
         created_at=datetime.now(UTC)
 
@@ -181,9 +175,9 @@ async def get_timer(exam_id: str,
                                                         clerk_user_id, 
                                                         retake_id)
     if isinstance(timer, Exception):
-        return ErrorResponseModel(error=str(timer),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while retrieving timer.")
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Get timer failed.",
+                                  code=status.HTTP_404_NOT_FOUND)
     if not timer:
         return ErrorResponseModel(error="No timer found.",
                                   message="No timer found.",
@@ -194,13 +188,13 @@ async def get_timer(exam_id: str,
 
 
 @router.get("/{exam_id}/retake",
-            description="Retrieve a problem with a matching exam_id ID")
+            description="Retrieve a all retakes with a matching exam_id ID")
 async def get_retake(exam_id: str):
     retake = await retrieve_retake_by_exam_id(exam_id)
     if isinstance(retake, Exception):
-        return ErrorResponseModel(error=str(retake),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred.")
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Get retake failed.",
+                                  code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=retake,
                              message="Retake retrieved successfully.",
                              code=status.HTTP_200_OK)
