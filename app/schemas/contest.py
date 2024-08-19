@@ -1,12 +1,11 @@
 from pydantic import BaseModel
-from datetime import datetime, UTC
+from datetime import datetime
 
 class ContestSchema(BaseModel):
     title: str
     description: str
     is_active: bool
-    created_at: datetime = datetime.now(UTC)
-    updated_at: datetime = datetime.now(UTC)
+
 
     model_config = {
         "json_schema_extra": {
@@ -15,8 +14,6 @@ class ContestSchema(BaseModel):
                     "title": "Python Contest",
                     "description": "Python contest for beginners.",
                     "is_active": True,
-                    "created_at": datetime.now(UTC),
-                    "updated_at": datetime.now(UTC)
                 }
             ]
         }
@@ -24,14 +21,13 @@ class ContestSchema(BaseModel):
 
 class ContestSchemaDB(ContestSchema):
     creator_id: str
-
+    created_at: datetime
+    updated_at: datetime
 
 class UpdateContestSchema(BaseModel):
     title: str | None = None
     description: str | None = None
     is_active: bool | None = None
-    updated_at: datetime = datetime.now(UTC)
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -39,7 +35,6 @@ class UpdateContestSchema(BaseModel):
                     "title": "Python Contest",
                     "description": "Python contest for beginners.",
                     "is_active": True,
-                    "updated_at": datetime.now(UTC)
                 }
             ]
         }
@@ -47,3 +42,4 @@ class UpdateContestSchema(BaseModel):
 
 class UpdateContestSchemaDB(UpdateContestSchema):
     creator_id: str
+    updated_at: datetime

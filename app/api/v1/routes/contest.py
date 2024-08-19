@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import APIRouter, Depends, status
 from app.api.v1.controllers.contest import (
@@ -59,7 +60,9 @@ async def create_contest(contest: ContestSchema,
                          creator_id=Depends(is_authenticated)):
     contest_dict = ContestSchemaDB(
         **contest.model_dump(), 
-        creator_id=creator_id
+        creator_id=creator_id,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     ).model_dump()
     new_contest = await add_contest(contest_dict)
     if isinstance(new_contest, Exception):
@@ -282,7 +285,8 @@ async def update_contest_data(id: str,
                               creator_id=Depends(is_authenticated)):
     contest_dict = UpdateContestSchemaDB(
         **contest.model_dump(),
-        creator_id=creator_id
+        creator_id=creator_id,
+        updated_at = datetime.now(UTC)
     ).model_dump()
     updated_contest = await update_contest(id, contest_dict)
     if isinstance(updated_contest, Exception):
