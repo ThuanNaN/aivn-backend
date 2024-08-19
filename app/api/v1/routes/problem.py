@@ -26,7 +26,7 @@ from app.schemas.problem import (
     UpdateProblemSchemaDB
 )
 from app.schemas.problem_category import (
-    ProblemCategory
+    ProblemCategoryDB
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -61,8 +61,11 @@ async def create_problem(problem: ProblemSchema, clerk_user_id: str = Depends(is
     new_problem_categories = []
     if category_ids:
         problem_categories: List[dict] = [
-            ProblemCategory(problem_id=new_problem["id"],
-                            category_id=category_id).model_dump()
+            ProblemCategoryDB(problem_id=new_problem["id"],
+                            category_id=category_id,
+                            created_at=datetime.now(UTC),
+                            updated_at=datetime.now(UTC)
+                            ).model_dump()
             for category_id in category_ids
         ]
         new_problem_categories = await add_more_problem_category(problem_categories)
@@ -82,9 +85,11 @@ async def create_problem(problem: ProblemSchema, clerk_user_id: str = Depends(is
              tags=["Admin"],
              description="Add a new problem-category")
 async def create_problem_category(id: str, category_id: str):
-    problem_category_dict = ProblemCategory(
+    problem_category_dict = ProblemCategoryDB(
         problem_id=id,
-        category_id=category_id
+        category_id=category_id,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     ).model_dump()
     new_problem_category = await add_problem_category(problem_category_dict)
     if isinstance(new_problem_category, Exception):
@@ -245,8 +250,11 @@ async def update_problem_data(id: str,
     new_problem_categories = []
     if len(category_ids) > 0:
         new_problem_categories: List[dict] = [
-            ProblemCategory(problem_id=id,
-                            category_id=category_id).model_dump()
+            ProblemCategoryDB(problem_id=id,
+                              category_id=category_id,
+                              created_at=datetime.now(UTC),
+                              updated_at=datetime.now(UTC)
+                              ).model_dump()
             for category_id in category_ids
         ]
 
