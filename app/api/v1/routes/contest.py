@@ -28,7 +28,7 @@ from app.api.v1.controllers.submission import (
 )
 from app.schemas.submission import (
     SubmittedProblem,
-    SubmissionSchemas,
+    SubmissionSchema,
     SubmittedResult,
     UpdateSubmissionDB
 )
@@ -100,7 +100,7 @@ async def create_exam_problem(exam_id: str,
              dependencies=[Depends(is_authenticated)],
              description="Submit problems to a contest")
 async def create_submission(exam_id: str,
-                            submission_data: SubmissionSchemas,
+                            submission_data: SubmissionSchema,
                             clerk_user_id: str = Depends(is_authenticated)):
     submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
 

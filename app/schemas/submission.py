@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import List
 from pydantic import BaseModel
 
@@ -8,7 +8,7 @@ class SubmittedProblem(BaseModel):
     submitted_code: str | None = None
     submitted_choice: str | None = None
 
-class SubmissionSchemas(BaseModel):
+class SubmissionSchema(BaseModel):
     submitted_problems: List[SubmittedProblem] | None = None
     retake_id: str | None = None
 
