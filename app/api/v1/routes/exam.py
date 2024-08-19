@@ -108,7 +108,9 @@ async def create_timer(exam_id: str,
         exam_id=exam_id,
         clerk_user_id=clerk_user_id,
         retake_id=None,
-        submitted_problems=None
+        submitted_problems=None,
+        created_at=datetime.now(UTC)
+
     ).model_dump()
     pseudo_submission = await add_submission(submission_db)
     if isinstance(pseudo_submission, Exception):

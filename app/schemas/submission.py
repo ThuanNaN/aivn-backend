@@ -8,10 +8,9 @@ class SubmittedProblem(BaseModel):
     submitted_code: str | None = None
     submitted_choice: str | None = None
 
-class Submission(BaseModel):
+class SubmissionSchemas(BaseModel):
     submitted_problems: List[SubmittedProblem] | None = None
     retake_id: str | None = None
-    created_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -25,12 +24,10 @@ class Submission(BaseModel):
                         }
                     ],
                     "retake_id": "66a8b8e5b743acd788da41da",
-                    "created_at": datetime.now(UTC)
                 }
             ]
         }
     }
-
 
 class SubmittedResult(SubmittedProblem):
     title: str
@@ -48,7 +45,7 @@ class SubmissionDB(BaseModel):
     submitted_problems: List[SubmittedResult] | None = None
     total_score: int | None = None
     total_problems: int | None = None
-    created_at: datetime = datetime.now(UTC)
+    created_at: datetime
 
 
 class UpdateSubmissionDB(BaseModel):
@@ -56,5 +53,5 @@ class UpdateSubmissionDB(BaseModel):
     submitted_problems: List[SubmittedResult] | None = None
     total_score: int | None = None
     total_problems: int | None = None
-    created_at: datetime = datetime.now(UTC)
+    created_at: datetime
     
