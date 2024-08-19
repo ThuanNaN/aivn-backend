@@ -1,5 +1,5 @@
 from typing import List
-from datetime import datetime, UTC
+from datetime import datetime
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
 from .difficulty import DifficultyEnum
@@ -37,9 +37,6 @@ class ProblemSchema(BaseModel):
     choices: List[Choice] | None = None
     # >>> choice problems
 
-    created_at: datetime = datetime.now(UTC)
-    updated_at: datetime = datetime.now(UTC)
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -68,8 +65,6 @@ class ProblemSchema(BaseModel):
                         }
                     ],
                     "choices": None,
-                    "created_at": datetime.now(UTC),
-                    "updated_at": datetime.now(UTC)
                 }
             ]
         }
@@ -96,8 +91,8 @@ class ProblemSchemaDB(BaseModel):
     choices: List[Choice] | None = None
     # >>> choice problems
 
-    created_at: datetime = datetime.now(UTC)
-    updated_at: datetime = datetime.now(UTC)
+    created_at: datetime
+    updated_at: datetime
 
 
 class UpdateProblemSchema(BaseModel):
@@ -113,7 +108,6 @@ class UpdateProblemSchema(BaseModel):
     public_testcases: List[TestCase] | None = None
     private_testcases: List[TestCase] | None = None
     choices: List[Choice] | None = None
-    updated_at: datetime = datetime.now(UTC)
 
     model_config = {
         "json_schema_extra": {
@@ -143,7 +137,6 @@ class UpdateProblemSchema(BaseModel):
                         }
                     ],
                     "choices": None,
-                    "updated_at": datetime.now(UTC)
                 }
             ]
         }
@@ -162,4 +155,4 @@ class UpdateProblemSchemaDB(BaseModel):
     public_testcases: List[TestCase] | None = None
     private_testcases: List[TestCase] | None = None
     choices: List[Choice] | None = None
-    updated_at: datetime = datetime.now(UTC)
+    updated_at: datetime

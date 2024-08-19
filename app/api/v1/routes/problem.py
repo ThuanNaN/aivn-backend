@@ -1,4 +1,5 @@
 from typing import Optional, List
+from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import APIRouter, Body, Depends, Query, status
 from bson.objectid import ObjectId
@@ -48,7 +49,9 @@ async def create_problem(problem: ProblemSchema, clerk_user_id: str = Depends(is
 
     problem_db = ProblemSchemaDB(
         **problem_dict,
-        creator_id=clerk_user_id
+        creator_id=clerk_user_id,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     )
     new_problem = await add_problem(problem_db.model_dump())
     if isinstance(new_problem, Exception):
@@ -254,7 +257,8 @@ async def update_problem_data(id: str,
                                   code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     updated_data = UpdateProblemSchemaDB(**problem_dict,
-                                         creator_id=clerk_user_id)
+                                         creator_id=clerk_user_id,
+                                         updated_at=datetime.now(UTC))
     updated_problem = await update_problem(id, updated_data.model_dump())
     if isinstance(updated_problem, Exception):
         return ErrorResponseModel(error=str(updated_problem),
