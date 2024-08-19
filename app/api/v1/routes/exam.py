@@ -14,7 +14,7 @@ from app.schemas.timer import (
     TimerSchemaDB
 )
 from app.schemas.exam_problem import (
-    UpdateExamProblem
+    UpdateExamProblemDB
 )
 from app.schemas.retake import (
     RetakeSchema,
@@ -314,9 +314,10 @@ async def order_problems_in_exam(id: str,
             return ErrorResponseModel(error=str(exam_problem),
                                       code=status.HTTP_404_NOT_FOUND,
                                       message="An error occurred while retrieving exam-problem.")
-        new_exam_problem = UpdateExamProblem(
+        new_exam_problem = UpdateExamProblemDB(
             index=order.index,
-            creator_id=creator_id
+            creator_id=creator_id,
+            updated_at=datetime.now(UTC)
         )
         updated_exam_problem = await update_exam_problem(exam_problem["id"],
                                                          new_exam_problem.model_dump())

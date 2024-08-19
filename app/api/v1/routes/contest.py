@@ -85,7 +85,9 @@ async def create_exam_problem(exam_id: str,
     exam_problem_dict = ExamProblemDB(exam_id=exam_id,
                                       problem_id=problem_id,
                                       index=index,
-                                      creator_id=clerk_user_id)
+                                      creator_id=clerk_user_id,
+                                      created_at=datetime.now(UTC),
+                                      updated_at=datetime.now(UTC))
     new_exam_problem = await add_exam_problem(exam_problem_dict.model_dump())
     if isinstance(new_exam_problem, Exception):
         return ErrorResponseModel(error=str(new_exam_problem),
