@@ -11,8 +11,6 @@ allow_origins = [
     os.getenv("FRONTEND_URL"),
 ]
 
-print(allow_origins)
-
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
                 #   openapi_url="/api/v1/openapi.json",
