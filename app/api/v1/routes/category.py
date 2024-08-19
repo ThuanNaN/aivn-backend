@@ -1,4 +1,5 @@
 from app.utils.logger import Logger
+from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, status
 from app.api.v1.controllers.category import (
     add_category,
@@ -7,8 +8,10 @@ from app.api.v1.controllers.category import (
     update_category
 )
 from app.schemas.category import (
-    CategoryModel,
-    UpdateCategorySchema
+    CategorySchema,
+    CategorySchemaDB,
+    UpdateCategorySchema,
+    UpdateCategorySchemaDB
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -25,9 +28,13 @@ logger = Logger("routes/category", log_file="category.log")
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Create a new category")
-async def create_category(category: CategoryModel):
-    category_dict = category.model_dump()
-    new_category = await add_category(category_dict)
+async def create_category(category: CategorySchema):
+    category_db = CategorySchemaDB(
+        **category.model_dump(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
+    )
+    new_category = await add_category(category_db)
     if isinstance(new_category, Exception):
         return ErrorResponseModel(error=str(new_category),
                                   message="Occur error when create category.",
@@ -69,8 +76,11 @@ async def get_category(id: str):
               dependencies=[Depends(is_admin)],
               description="Update a category with a matching ID")
 async def update_category_data(id: str, category: UpdateCategorySchema):
-    category_dict = category.model_dump()
-    update_result = await update_category(id, category_dict)
+    category_db = UpdateCategorySchemaDB(
+        **category.model_dump(),
+        updated_at=datetime.now(UTC)
+    )
+    update_result = await update_category(id, category_db)
     if isinstance(update_result, Exception):
         return ErrorResponseModel(error=str(update_result),
                                   message="Occur error when update category.",
