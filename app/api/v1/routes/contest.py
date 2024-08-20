@@ -2,7 +2,10 @@ import traceback
 from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
-from fastapi import APIRouter, Depends, status
+from fastapi import (
+    APIRouter, Depends, 
+    status, HTTPException
+)
 from app.api.v1.controllers.contest import (
     add_contest,
     retrieve_contests,
@@ -11,6 +14,9 @@ from app.api.v1.controllers.contest import (
     update_contest,
     delete_contest,
     retrieve_available_contests
+)
+from app.api.v1.controllers.exam import (
+    retrieve_exam
 )
 from app.api.v1.controllers.problem import (
     retrieve_problem
@@ -105,6 +111,31 @@ async def create_exam_problem(exam_id: str,
 async def create_submission(exam_id: str,
                             submission_data: SubmissionSchema,
                             clerk_user_id: str = Depends(is_authenticated)):
+    # Check the exam still open (is active)
+    exam_info = await retrieve_exam(exam_id)
+    if isinstance(exam_info, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="An error occurred while retrieve exam."
+        )
+    if exam_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The exam is not active."
+        )
+    # Check the contest still open (is active)
+    contest_info = await retrieve_contest(exam_info["contest_id"])
+    if isinstance(contest_info, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="An error occurred while retrieve contest."
+        )
+    if contest_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The contest is not active."
+        )
+
     submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
 
     if submitted_problems is None:
