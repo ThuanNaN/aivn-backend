@@ -124,7 +124,6 @@ async def retrieve_exam_detail(id: str) -> dict:
         return e
 
 
-
 async def retrieve_exam_by_contest(contest_id: str) -> list:
     """
     Retrieve all exams with a matching contest ID
@@ -134,6 +133,22 @@ async def retrieve_exam_by_contest(contest_id: str) -> list:
     try:
         exams = []
         async for exam in exam_collection.find({"contest_id": ObjectId(contest_id)}):
+            exams.append(exam_helper(exam))
+        return exams
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+    
+
+async def retrieve_active_exams_by_contest(contest_id: str) -> list:
+    """
+    Retrieve all active exams with a matching contest ID
+    :param contest_id: str
+    :return: list
+    """
+    try:
+        exams = []
+        async for exam in exam_collection.find({"contest_id": ObjectId(contest_id), "is_active": True}):
             exams.append(exam_helper(exam))
         return exams
     except Exception as e:
