@@ -4,7 +4,7 @@ from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam import (
-    retrieve_active_exams_by_contest,
+    retrieve_exams_by_contest,
     delete_all_by_contest_id
 )
 from app.api.v1.controllers.exam_problem import (
@@ -115,7 +115,7 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
         if isinstance(contest, Exception):
             raise contest
         
-        all_exam = await retrieve_active_exams_by_contest(contest["id"])
+        all_exam = await retrieve_exams_by_contest(contest["id"])
         if isinstance(all_exam, Exception):
             raise all_exam
         
@@ -210,4 +210,3 @@ async def delete_contest(id: str) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-

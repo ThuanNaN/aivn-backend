@@ -124,7 +124,7 @@ async def retrieve_exam_detail(id: str) -> dict:
         return e
 
 
-async def retrieve_exam_by_contest(contest_id: str) -> list:
+async def retrieve_exams_by_contest(contest_id: str) -> list:
     """
     Retrieve all exams with a matching contest ID
     :param contest_id: str
@@ -231,7 +231,7 @@ async def delete_all_by_contest_id(contest_id: str) -> bool:
     :return: bool
     """
     try:
-        exams = await retrieve_exam_by_contest(contest_id)
+        exams = await retrieve_exams_by_contest(contest_id)
         if isinstance(exams, Exception):
             raise exams
         for exam in exams:
