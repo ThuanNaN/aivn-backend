@@ -415,9 +415,26 @@ async def delete_whitelist_by_email(email: str) -> bool:
     """
     Delete a whitelist with a matching email
     :param email: str
+    :return: bool
     """
     try:
         deleted = await whitelist_collection.delete_one({"email": email})
+        if deleted.deleted_count > 0:
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
+    """
+    Delete a user with a matching clerk_user_id
+    :param clerk_user_id: str
+    :return: bool
+    """
+    try:
+        deleted = await user_collection.delete_one({"clerk_user_id": clerk_user_id})
         if deleted.deleted_count > 0:
             return True
         return False

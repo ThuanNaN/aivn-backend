@@ -5,8 +5,9 @@ import csv
 from io import StringIO
 from fastapi import (
     APIRouter,
-    UploadFile, File, Query,
-    Body, Depends, status
+    UploadFile, 
+    File, Query, Body, Depends, 
+    HTTPException, status
 )
 from app.core.security import (
     is_authenticated,
@@ -14,7 +15,6 @@ from app.core.security import (
 )
 from app.api.v1.controllers.user import (
     add_user,
-    retrieve_users,
     retrieve_user_by_pipeline,
     retrieve_user,
     retrieve_user_by_email,
@@ -28,7 +28,8 @@ from app.api.v1.controllers.user import (
     check_whitelist_via_id,
     upsert_whitelist,
     upsert_admin_list,
-    delete_whitelist_by_email
+    delete_whitelist_by_email,
+    delete_user_by_clerk_user_id
 )
 from app.schemas.user import (
     UserSchemaDB,
@@ -38,8 +39,7 @@ from app.schemas.user import (
 )
 from app.schemas.response import (
     ListResponseModel,
-    DictResponseModel,
-    ErrorResponseModel
+    DictResponseModel
 )
 
 router = APIRouter()
@@ -99,9 +99,10 @@ async def get_users(
     ]
     users = await retrieve_user_by_pipeline(pipeline, page, per_page)
     if isinstance(users, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving users failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
     return DictResponseModel(data=users,
                              message="Users retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -111,9 +112,10 @@ async def get_users(
 async def get_me(clerk_user_id: str = Depends(is_authenticated)):
     user = await retrieve_user(clerk_user_id)
     if isinstance(user, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving user failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -126,13 +128,15 @@ async def get_me(clerk_user_id: str = Depends(is_authenticated)):
 async def get_whitelists():
     whitelists = await retrieve_whitelists()
     if isinstance(whitelists, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving whitelists failed.",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Get whitelists failed."
+        )
     if not whitelists:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Whitelists not found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Whitelists not found."
+        )
     return ListResponseModel(data=whitelists,
                              message="Whitelists retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -145,13 +149,15 @@ async def get_whitelists():
 async def get_admin_users():
     users = await retrieve_admin_users()
     if isinstance(users, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving admin users failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Get admin list failed."
+        )
     if not users:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Admin users not found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admins not found."
+        )
     return ListResponseModel(data=users,
                              message="Admin users retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -164,13 +170,15 @@ async def get_admin_users():
 async def get_user_by_email(email: str):
     user = await retrieve_user_by_email(email)
     if isinstance(user, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving user failed.",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Get user failed."
+        )
     if not user:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User not found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -181,13 +189,15 @@ async def get_user_by_email(email: str):
 async def get_user(clerk_user_id: str):
     user = await retrieve_user(clerk_user_id)
     if isinstance(user, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving user failed.",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Get user failed."
+        )
     if not user:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User not found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -204,9 +214,10 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
         user_data = await retrieve_user(clerk_user_id)
         is_whitelist = await check_whitelist_via_email(user_data["email"])
         if isinstance(is_whitelist, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Checking whitelist failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Checking whitelist failed."
+            )
 
         if new_role == "aio" and not is_whitelist:
             whitelist_data = WhiteListSchema(
@@ -215,30 +226,35 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
             ).model_dump()
             new_whitelist = await add_whitelist(whitelist_data)
             if isinstance(new_whitelist, Exception):
-                return ErrorResponseModel(error="An error occurred.",
-                                        message="Adding email to whitelist failed.",
-                                        code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Add whitelist failed."
+                )
 
         if new_role == "user" and is_whitelist:
             deleted_whitelist = await delete_whitelist_by_email(user_data["email"])
             if isinstance(deleted_whitelist, Exception):
-                return ErrorResponseModel(error="An error occurred.",
-                                        message="Deleting email from whitelist failed.",
-                                        code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred."
+                )
             if not deleted_whitelist:
-                return ErrorResponseModel(error="An error occurred.",
-                                        message="Email was not deleted from whitelist.",
-                                        code=status.HTTP_404_NOT_FOUND)
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Deleting email from whitelist failed."
+                )
     new_user_data = UpdateUserSchemaDB(updated_at=datetime.now(UTC), **data_dict)
     updated = await update_user(clerk_user_id, new_user_data.model_dump())
     if isinstance(updated, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Updating user failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
     if not updated:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User was not updated.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User was not updated."
+        )
     return ListResponseModel(data=[],
                              message="User updated successfully.",
                              code=200)
@@ -258,9 +274,10 @@ async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
 
     whitelist = await add_whitelist_via_file(whitelist_data)
     if isinstance(whitelist, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Adding email to whitelist failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
     return DictResponseModel(data=whitelist,
                              message="Email added to whitelist successfully.",
                              code=status.HTTP_200_OK)
@@ -283,9 +300,10 @@ async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
 
     updated_whitelist = await upsert_whitelist(whitelist_data)
     if isinstance(updated_whitelist, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Updating whitelist failed.",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
     return ListResponseModel(data=[],
                              message="Email added to whitelist successfully.",
                              code=status.HTTP_200_OK)
@@ -308,13 +326,15 @@ async def update_user_role_to_admin(admin_csv: UploadFile = File(...)):
             })
     updated_admin = await upsert_admin_list(admin_info)
     if isinstance(updated_admin, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Updating admin list failed.",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
     if not updated_admin:
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="User role was not updated.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Update admin list failed."
+        )
     return ListResponseModel(data=[],
                              message="User role updated to admin successfully.",
                              code=status.HTTP_200_OK)
@@ -337,22 +357,25 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
 
         is_whitelist = await check_whitelist_via_id(clerk_user_id)
         if isinstance(is_whitelist, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Checking whitelist failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Checking whitelist failed."
+            )
         if is_whitelist and CURRENT_ROLE != "aio":
             NEW_ROLE = "aio"
             update_role_data = UpdateUserSchemaDB(role=NEW_ROLE, 
                                                   updated_at=datetime.now(UTC))
             updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
             if isinstance(updated_role, Exception):
-                return ErrorResponseModel(error="An error occurred.",
-                                          message="Updating user role failed.",
-                                          code=status.HTTP_404_NOT_FOUND)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred."
+                )
             if not updated_role:
-                return ErrorResponseModel(error="An error occurred.",
-                                          message="User role was not updated.",
-                                          code=status.HTTP_404_NOT_FOUND)
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Updating user role failed."
+                )
             return ListResponseModel(data=[],
                                      message="User updated successfully.",
                                      code=status.HTTP_200_OK)
@@ -365,14 +388,16 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     else:
         clerk_user_data = await retrieve_user_clerk(clerk_user_id)
         if isinstance(clerk_user_data, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Retrieving user data failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Retrieving user data failed."
+            )
         is_whitelist = await check_whitelist_via_email(clerk_user_data["email"])
         if isinstance(is_whitelist, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Checking whitelist failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Checking whitelist failed."
+            )
         if is_whitelist:
             ROLE = "aio"
         # Create a new user
@@ -387,9 +412,31 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         )
         new_user = await add_user(new_user_data.model_dump())
         if isinstance(new_user, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Adding user failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Adding user failed."
+            )
         return DictResponseModel(data=new_user,
                                  message="User added successfully.",
                                  code=status.HTTP_200_OK)
+
+
+@router.delete("/{clerk_user_id}",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
+               description="Delete a user with a matching clerk_user_id")
+async def delete_user(clerk_user_id: str):
+    deleted = await delete_user_by_clerk_user_id(clerk_user_id)
+    if isinstance(deleted, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User was not deleted."
+        )
+    return ListResponseModel(data=[],
+                             message="User deleted successfully.",
+                             code=status.HTTP_200_OK)
