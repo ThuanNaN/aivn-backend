@@ -203,6 +203,36 @@ async def get_user(clerk_user_id: str):
                              code=status.HTTP_200_OK)
 
 
+@router.patch("/me/update",
+              description="Update a user with Clerk data")
+async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated), 
+                                data: UpdateUserSchema = Body(...)):
+    data_dict = data.model_dump()
+
+    current_user = await retrieve_user(clerk_user_id)
+    current_user_role = current_user["role"]
+
+    if current_user_role != "admin":
+        data_dict.pop("role")
+
+    new_user_data = UpdateUserSchemaDB(updated_at=datetime.now(UTC), **data_dict)
+    updated = await update_user(clerk_user_id, new_user_data.model_dump())
+
+    if isinstance(updated, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred."
+        )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User was not updated."
+        )
+    return ListResponseModel(data=[],
+                             message="User updated successfully.",
+                             code=200)
+
+
 @router.patch("/{clerk_user_id}",
               dependencies=[Depends(is_admin)],
               tags=["Admin"],

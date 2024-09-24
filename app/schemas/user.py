@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Literal
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -8,7 +8,9 @@ class UserSchema(BaseModel):
     email: str 
     username: str 
     role: str 
-    avatar: str 
+    avatar: str
+    fullname: str | None = ""
+    bio: str | None = ""
 
     model_config = {
         "json_schema_extra": {
@@ -29,17 +31,15 @@ class UserSchemaDB(UserSchema):
 
 
 class UpdateUserSchema(BaseModel):
-    role: Optional[Literal["user", "aio", "admin"]] 
+    role: Literal["user", "aio", "admin"] | None = None
+    avatar: str | None = ""
+    fullname: str | None = ""
+    bio: str | None = ""
 
 
 class UpdateUserSchemaDB(UpdateUserSchema):
     updated_at : datetime
-
-
-# class UpdateUserInfoSchema(BaseModel):
-#     username: Optional[str]
-#     avatar: Optional[str]
-
+    
 
 class WhiteListSchema(BaseModel):
     email: str

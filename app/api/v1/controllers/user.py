@@ -25,6 +25,8 @@ def user_helper(user) -> dict:
         "username": user["username"],
         "role": user["role"],
         "avatar": user["avatar"],
+        "fullname": user["fullname"] if "fullname" in user else "",
+        "bio": user["bio"] if "bio" in user else "",
         "created_at": utc_to_local(user["created_at"]),
         "updated_at": utc_to_local(user["updated_at"])
     }
