@@ -1,6 +1,7 @@
 from typing import Optional
 import pandas as pd
 from io import StringIO
+from app.utils.time import local_to_utc
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from bson.objectid import ObjectId
@@ -179,6 +180,84 @@ async def get_submission_by_user(exam_id: str,
     submission["user"] = user_info
     return DictResponseModel(data=submission,
                              message="Your submission retrieved successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.get("/me/submissions", 
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve all submissions by user ID")
+async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)):
+    pipeline = [
+        {
+            "$match": {
+                "clerk_user_id": clerk_user_id
+            }
+        },
+        {
+            "$lookup": {
+                "from": "exams",
+                "localField": "exam_id",
+                "foreignField": "_id",
+                "as": "exam_info"
+            }
+        },
+        {
+            "$unwind": "$exam_info"
+        },
+        {
+            "$lookup": {
+                "from": "contests",
+                "localField": "exam_info.contest_id",
+                "foreignField": "_id",
+                "as": "contest_info"
+            }
+        },
+        {
+            "$unwind": "$contest_info"
+        }
+    ]
+
+    pipeline_results = await retrieve_submission_by_pipeline(pipeline)
+    
+    if isinstance(pipeline_results, Exception):
+        return ErrorResponseModel(error="An error occurred.",
+                                  message="Retrieving submissions failed.",
+                                  code=status.HTTP_404_NOT_FOUND)
+    if not pipeline_results:
+        return ErrorResponseModel(error="No submissions found.",
+                                  message="No submissions found.",
+                                  code=status.HTTP_404_NOT_FOUND)
+
+    submissions_outputs = []
+    for submission in pipeline_results:
+        contest_info = contest_helper(submission["contest_info"])
+        if contest_info["id"] in [submission["contest_info"]["id"] for submission in submissions_outputs]:
+            # Append the latest submission of duplicate submissions
+            for sub in submissions_outputs:
+                if sub["contest_info"]["id"] == contest_info["id"]:
+                    if submission["created_at"] > local_to_utc(sub["created_at"]):
+                        submissions_outputs.remove(sub)
+                        submissions_outputs.append(
+                            {
+                                **submission_helper(submission),
+                                "contest_info": contest_info,
+                                "exam_info": exam_helper(submission["exam_info"]),
+                            }
+                        )
+        else:
+            submissions_outputs.append(
+                {
+                    **submission_helper(submission),
+                    "contest_info": contest_info,
+                    "exam_info": exam_helper(submission["exam_info"])
+                }
+            )
+    for submission in submissions_outputs:
+        is_passed = True if submission["total_score"] / submission["total_problems"] >= 0.5 else False
+        submission["is_passed_contest"] = is_passed
+
+    return ListResponseModel(data=submissions_outputs,
+                             message="Your submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 
