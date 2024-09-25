@@ -29,17 +29,24 @@ class UserSchemaDB(UserSchema):
     created_at : datetime
     updated_at : datetime
 
-
-class UpdateUserSchema(BaseModel):
+    
+class UpdateUserRole(BaseModel):
     role: Literal["user", "aio", "admin"] | None = None
+
+
+class UpdateUserInfo(BaseModel):
     avatar: str | None = ""
     fullname: str | None = ""
-    bio: str | None = ""
+    bio: str | None = "" 
 
 
-class UpdateUserSchemaDB(UpdateUserSchema):
+class UpdateUserRoleDB(UpdateUserRole):
     updated_at : datetime
-    
+
+
+class UpdateUserInfoDB(UpdateUserInfo):
+    updated_at : datetime
+
 
 class WhiteListSchema(BaseModel):
     email: str

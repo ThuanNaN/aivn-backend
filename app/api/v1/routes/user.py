@@ -33,8 +33,10 @@ from app.api.v1.controllers.user import (
 )
 from app.schemas.user import (
     UserSchemaDB,
-    UpdateUserSchema,
-    UpdateUserSchemaDB,
+    UpdateUserInfo,
+    UpdateUserRole,
+    UpdateUserInfoDB,
+    UpdateUserRoleDB,
     WhiteListSchema,
 )
 from app.schemas.response import (
@@ -206,16 +208,9 @@ async def get_user(clerk_user_id: str):
 @router.patch("/me/update",
               description="Update a user with Clerk data")
 async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated), 
-                                data: UpdateUserSchema = Body(...)):
+                                data: UpdateUserInfo = Body(...)):
     data_dict = data.model_dump()
-
-    current_user = await retrieve_user(clerk_user_id)
-    current_user_role = current_user["role"]
-
-    if current_user_role != "admin":
-        data_dict.pop("role")
-
-    new_user_data = UpdateUserSchemaDB(updated_at=datetime.now(UTC), **data_dict)
+    new_user_data = UpdateUserInfoDB(updated_at=datetime.now(UTC), **data_dict)
     updated = await update_user(clerk_user_id, new_user_data.model_dump())
 
     if isinstance(updated, Exception):
@@ -237,7 +232,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated),
               dependencies=[Depends(is_admin)],
               tags=["Admin"],
               description="Update a user with a matching ID")
-async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...)):
+async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...)):
     data_dict = data.model_dump()
     new_role = data_dict.get("role", None)
     if new_role is not None:
@@ -273,7 +268,7 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserSchema = Body(...
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Deleting email from whitelist failed."
                 )
-    new_user_data = UpdateUserSchemaDB(updated_at=datetime.now(UTC), **data_dict)
+    new_user_data = UpdateUserRoleDB(updated_at=datetime.now(UTC), **data_dict)
     updated = await update_user(clerk_user_id, new_user_data.model_dump())
     if isinstance(updated, Exception):
         raise HTTPException(
@@ -393,8 +388,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             )
         if is_whitelist and CURRENT_ROLE != "aio":
             NEW_ROLE = "aio"
-            update_role_data = UpdateUserSchemaDB(role=NEW_ROLE, 
-                                                  updated_at=datetime.now(UTC))
+            update_role_data = UpdateUserRoleDB(role=NEW_ROLE, 
+                                                updated_at=datetime.now(UTC))
             updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
             if isinstance(updated_role, Exception):
                 raise HTTPException(
