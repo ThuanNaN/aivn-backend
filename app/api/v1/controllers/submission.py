@@ -31,7 +31,7 @@ def submission_helper(submission) -> dict:
         "retake_id": retake_id,
         "submitted_problems": submission["submitted_problems"],
         "total_problems": submission["total_problems"],
-        "total_problems": submission["total_score"],
+        "total_score": submission["total_score"],
         "created_at": utc_to_local(submission["created_at"]),
     }
 
