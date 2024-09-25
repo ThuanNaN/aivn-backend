@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime, UTC
 import pandas as pd
 from io import StringIO
 from app.utils.time import local_to_utc
@@ -25,6 +26,11 @@ from app.api.v1.controllers.submission import (
     retrieve_submission_by_id_user_retake,
     delete_submission,
 )
+from app.api.v1.controllers.certificate import (
+    add_certificate,
+    retrieve_certificate_by_submission_id
+)
+from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
 from app.utils.logger import Logger
 
@@ -249,14 +255,36 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                 {
                     **submission_helper(submission),
                     "contest_info": contest_info,
-                    "exam_info": exam_helper(submission["exam_info"])
+                    "exam_info": exam_helper(submission["exam_info"]),
                 }
             )
+    
     for submission in submissions_outputs:
-        is_passed = True if submission["total_score"] / submission["total_problems"] >= 0.5 else False
-        submission["is_passed_contest"] = is_passed
+        certificate = await retrieve_certificate_by_submission_id(submission["id"])
 
-    return ListResponseModel(data=submissions_outputs,
+        # Not exist certificate
+        if isinstance(certificate, Exception):
+            # Gen new certificate
+            certificate_data = CertificateDB(
+                clerk_user_id=clerk_user_id,
+                submission_id=submission["id"],
+                # TODO: Map to score with weight
+                score=f"{submission['total_score']}/{submission['total_problems']}",
+                created_at=datetime.now(UTC)
+            ).model_dump()
+            new_certificate = await add_certificate(certificate_data)
+
+            submission["certificate_info"] = new_certificate
+        else:
+            submission["certificate_info"] = certificate
+
+    user_info = await retrieve_user(clerk_user_id)
+
+    return_data = {
+        "user_info": user_info,
+        "submissions_info": submissions_outputs,
+    }
+    return DictResponseModel(data=return_data,
                              message="Your submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
 
