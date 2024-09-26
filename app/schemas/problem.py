@@ -37,6 +37,8 @@ class ProblemSchema(BaseModel):
     choices: List[Choice] | None = None
     # >>> choice problems
 
+    problem_score: int = 1
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -65,6 +67,7 @@ class ProblemSchema(BaseModel):
                         }
                     ],
                     "choices": None,
+                    "problem_score": 100
                 }
             ]
         }
@@ -137,6 +140,7 @@ class UpdateProblemSchema(BaseModel):
                         }
                     ],
                     "choices": None,
+                    "problem_score": 110
                 }
             ]
         }
