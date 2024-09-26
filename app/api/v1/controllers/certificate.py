@@ -58,6 +58,7 @@ async def retrieve_certificates() -> list[dict]:
         return e
 
 
+
 async def retrieve_certificates_by_clerk_user_id(clerk_user_id: str) -> list[dict]:
     """
     Retrieve all certificates by clerk_user_id in database
@@ -83,7 +84,8 @@ async def retrieve_certificate_by_submission_id(submission_id: str) -> dict:
     """
     try:
         certificate = await certificate_collection.find_one({"submission_id": submission_id})
-        return certificate_helper(certificate)
+        if certificate:
+            return certificate_helper(certificate)
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -109,6 +111,7 @@ async def update_certificate(id: str, data: dict) -> dict:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+
 async def delete_certificate(id: str) -> dict:
     """
     Delete a certificate with a matching ID
@@ -119,6 +122,23 @@ async def delete_certificate(id: str) -> dict:
         certificate = await certificate_collection.find_one({"_id": ObjectId(id)})
         if certificate:
             await certificate_collection.delete_one({"_id": ObjectId(id)})
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def delete_certificate_by_submission_id(submission_id: str) -> dict:
+    """
+    Delete a certificate with a matching submission_id
+    :param submission_id: str
+    :return: dict
+    """
+    try:
+        certificate = await certificate_collection.find_one({"submission_id": submission_id})
+        if certificate:
+            await certificate_collection.delete_one({"submission_id": submission_id})
             return True
         return False
     except Exception as e:
