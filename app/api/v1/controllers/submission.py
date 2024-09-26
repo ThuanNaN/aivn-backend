@@ -10,6 +10,9 @@ from app.api.v1.controllers.retake import (
 from app.api.v1.controllers.timer import (
     delete_timer_by_exam_retake_user_id
 )
+from app.api.v1.controllers.certificate import (
+    delete_certificate_by_submission_id
+)
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -32,8 +35,7 @@ def submission_helper(submission) -> dict:
         "submitted_problems": submission["submitted_problems"],
         "total_problems": submission["total_problems"],
         "total_score": submission["total_score"],
-        # TODO remove after update in DB
-        "max_score": submission["max_score"] if "max_score" in submission else 50,
+        "max_score": submission["max_score"],
         "created_at": utc_to_local(submission["created_at"]),
     }
 
@@ -218,7 +220,7 @@ async def update_submission(id: str, submission_data: dict) -> dict:
 
 async def delete_submission(id: str) -> bool:
     """
-    Delete a submission with a matching ID
+    Delete a submission and retake (if exists) with a matching ID
     :param id: str
     :return: bool
     """
@@ -235,7 +237,7 @@ async def delete_submission(id: str) -> bool:
 
         # Delete retake if exists
         retakes = await retrieve_retakes_by_user_exam_id(clerk_user_id=clerk_user_id, 
-                                                        exam_id=submission_info["exam_id"])
+                                                        exam_id=submission_info["exam_id"])        
         if isinstance(retakes, Exception):
             raise retakes
         if retakes:
@@ -246,6 +248,7 @@ async def delete_submission(id: str) -> bool:
             if not deleted_retakes:
                 raise Exception("Delete retake failed.")
 
+
         # Delete timer
         deleted_timer = await delete_timer_by_exam_retake_user_id(exam_id=submission_info["exam_id"],
                                                                 clerk_user_id=clerk_user_id,
@@ -254,6 +257,15 @@ async def delete_submission(id: str) -> bool:
             raise deleted_timer
         if not deleted_timer:
             raise Exception("Delete timer failed.")
+
+
+        # Delete certificate
+        deleted_certificate = await delete_certificate_by_submission_id(id)
+        if isinstance(deleted_certificate, Exception):
+            raise deleted_certificate
+        if not deleted_certificate:
+            raise Exception("Delete certificate failed.")
+        
 
         # Delete submission
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
