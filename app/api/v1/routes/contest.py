@@ -142,7 +142,9 @@ async def create_submission(exam_id: str,
         submitted_results = None
     else:
         submitted_results = []
-        total_score = 0
+        TOTAL_SCORE = 0
+        MAX_SCORE = 0
+        TOTAL_PASSED = 0
         for submitted_problem in submitted_problems:
             problem_id = submitted_problem.problem_id
             problem_info = await retrieve_problem(problem_id, full_return=True)
@@ -150,7 +152,7 @@ async def create_submission(exam_id: str,
                 return ErrorResponseModel(error=str(problem_info),
                                         message="An error occurred while retrieve problem.",
                                         code=status.HTTP_404_NOT_FOUND)
-
+            MAX_SCORE += problem_info["problem_score"]
             submitted_code = submitted_problem.submitted_code
             public_results, private_results = None, None
             if submitted_code is not None:
@@ -171,7 +173,9 @@ async def create_submission(exam_id: str,
                 )
 
                 is_pass_problem = is_pass_public and is_pass_private
-                total_score += int(is_pass_problem)
+                if is_pass_problem:
+                    TOTAL_SCORE += problem_info["problem_score"]
+                    TOTAL_PASSED += 1 
 
             submitted_choice = submitted_problem.submitted_choice
             if submitted_choice is not None:
@@ -185,7 +189,10 @@ async def create_submission(exam_id: str,
                 else:
                     is_pass_problem = sorted(
                         choice_answers) == sorted(true_answers_id)
-                total_score += int(is_pass_problem)
+                
+                if is_pass_problem:
+                    TOTAL_SCORE += problem_info["problem_score"]
+                    TOTAL_PASSED += 1
 
             submitted_results.append(
                 SubmittedResult(
@@ -218,8 +225,10 @@ async def create_submission(exam_id: str,
         upsert_submission = UpdateSubmissionDB(
             retake_id=submission_data.retake_id,
             submitted_problems=submitted_results,
-            total_score=total_score,
+            total_score=TOTAL_SCORE,
+            max_score=MAX_SCORE,
             total_problems=len(submitted_problems),
+            total_problems_passed=TOTAL_PASSED,
             created_at=datetime.now(UTC)
         ).model_dump()
 
@@ -235,8 +244,10 @@ async def create_submission(exam_id: str,
 
         return DictResponseModel(
             data={
-                "total_score": total_score,
-                "total_problems": len(submitted_problems)
+                "total_score": TOTAL_SCORE,
+                "max_score": MAX_SCORE,
+                "total_problems": len(submitted_problems),
+                "total_problems_passed": TOTAL_PASSED
             },
             message="Submission added successfully.",
             code=status.HTTP_201_CREATED)
