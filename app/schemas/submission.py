@@ -43,15 +43,17 @@ class SubmissionDB(BaseModel):
     clerk_user_id: str
     retake_id: str | None = None
     submitted_problems: List[SubmittedResult] | None = None
-    total_score: int | None = None
-    total_problems: int | None = None
+    total_score: int = 0
+    max_score: int = 0
+    total_problems: int = 0
     created_at: datetime
 
 
 class UpdateSubmissionDB(BaseModel):
     retake_id: str | None = None
     submitted_problems: List[SubmittedResult] | None = None
-    total_score: int | None = None
-    total_problems: int | None = None
+    total_score: int = 0
+    max_score: int = 0
+    total_problems: int = 0
     created_at: datetime
     
