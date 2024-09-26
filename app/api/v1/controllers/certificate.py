@@ -21,7 +21,7 @@ def certificate_helper(certificate) -> dict:
         "validation_id": certificate["validation_id"],
         "clerk_user_id": certificate["clerk_user_id"],
         "submission_id": certificate["submission_id"],
-        "score": certificate["score"],
+        "result_score": certificate["result_score"],
         "created_at": utc_to_local(certificate["created_at"]),
     }
 
