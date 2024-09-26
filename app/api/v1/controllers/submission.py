@@ -32,6 +32,8 @@ def submission_helper(submission) -> dict:
         "submitted_problems": submission["submitted_problems"],
         "total_problems": submission["total_problems"],
         "total_score": submission["total_score"],
+        # TODO remove after update in DB
+        "max_score": submission["max_score"] if "max_score" in submission else 50,
         "created_at": utc_to_local(submission["created_at"]),
     }
 
