@@ -3,7 +3,10 @@ from datetime import datetime, UTC
 import pandas as pd
 from io import StringIO
 from app.utils.time import local_to_utc
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import (
+    APIRouter, Depends, Query, 
+    status, HTTPException
+)
 from fastapi.responses import StreamingResponse
 from bson.objectid import ObjectId
 from app.schemas.response import (
@@ -193,6 +196,7 @@ async def get_submission_by_user(exam_id: str,
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all submissions by user ID")
 async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)):
+    user_info = await retrieve_user(clerk_user_id)
     pipeline = [
         {
             "$match": {
@@ -224,66 +228,69 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
     ]
 
     pipeline_results = await retrieve_submission_by_pipeline(pipeline)
-    
     if isinstance(pipeline_results, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Retrieving submissions failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not pipeline_results:
-        return ErrorResponseModel(error="No submissions found.",
-                                  message="No submissions found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving submissions."
+        )
+    if pipeline_results:
+        submissions_outputs = []
+        for submission in pipeline_results:
+            contest_info = contest_helper(submission["contest_info"])
+            if contest_info["id"] in [submission["contest_info"]["id"] for submission in submissions_outputs]:
+                # Append the latest submission of duplicate submissions
+                for sub in submissions_outputs:
+                    if sub["contest_info"]["id"] == contest_info["id"]:
+                        if submission["created_at"] > local_to_utc(sub["created_at"]):
+                            submissions_outputs.remove(sub)
+                            submissions_outputs.append(
+                                {
+                                    **submission_helper(submission),
+                                    "contest_info": contest_info,
+                                    "exam_info": exam_helper(submission["exam_info"]),
+                                }
+                            )
+            else:
+                submissions_outputs.append(
+                    {
+                        **submission_helper(submission),
+                        "contest_info": contest_info,
+                        "exam_info": exam_helper(submission["exam_info"]),
+                    }
+                )
+        
+        for submission in submissions_outputs:
+            certificate = await retrieve_certificate_by_submission_id(submission["id"])
 
-    submissions_outputs = []
-    for submission in pipeline_results:
-        contest_info = contest_helper(submission["contest_info"])
-        if contest_info["id"] in [submission["contest_info"]["id"] for submission in submissions_outputs]:
-            # Append the latest submission of duplicate submissions
-            for sub in submissions_outputs:
-                if sub["contest_info"]["id"] == contest_info["id"]:
-                    if submission["created_at"] > local_to_utc(sub["created_at"]):
-                        submissions_outputs.remove(sub)
-                        submissions_outputs.append(
-                            {
-                                **submission_helper(submission),
-                                "contest_info": contest_info,
-                                "exam_info": exam_helper(submission["exam_info"]),
-                            }
-                        )
-        else:
-            submissions_outputs.append(
-                {
-                    **submission_helper(submission),
-                    "contest_info": contest_info,
-                    "exam_info": exam_helper(submission["exam_info"]),
-                }
-            )
-    
-    for submission in submissions_outputs:
-        certificate = await retrieve_certificate_by_submission_id(submission["id"])
+            # Not exist certificate
+            if isinstance(certificate, Exception):
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred while retrieving certificate."
+                )
 
-        # Not exist certificate
-        if isinstance(certificate, Exception):
-            # Gen new certificate
-            certificate_data = CertificateDB(
-                clerk_user_id=clerk_user_id,
-                submission_id=submission["id"],
-                # TODO: Map to score with weight
-                score=f"{submission['total_score']}/{submission['total_problems']}",
-                created_at=datetime.now(UTC)
-            ).model_dump()
-            new_certificate = await add_certificate(certificate_data)
+            if certificate is None:
+                # Create a new certificate
+                certificate_data = CertificateDB(
+                    clerk_user_id=clerk_user_id,
+                    submission_id=submission["id"],
+                    result_score=f"{submission['total_score']}/{submission['max_score']}",
+                    created_at=datetime.now(UTC)
+                ).model_dump()
+                new_certificate = await add_certificate(certificate_data)
 
-            submission["certificate_info"] = new_certificate
-        else:
-            submission["certificate_info"] = certificate
+                submission["certificate_info"] = new_certificate
+            else:
+                submission["certificate_info"] = certificate
 
-    user_info = await retrieve_user(clerk_user_id)
-
+    else:
+        submissions_outputs = []
+        
     return_data = {
         "user_info": user_info,
         "submissions_info": submissions_outputs,
     }
+
     return DictResponseModel(data=return_data,
                              message="Your submissions retrieved successfully.",
                              code=status.HTTP_200_OK)
