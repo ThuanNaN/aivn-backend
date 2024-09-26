@@ -36,7 +36,7 @@ def problem_helper(problem) -> dict:
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
         # TODO remove after update in DB
-        "problem_score": problem["problem_score"] if "problem_score" in problem else 1,
+        "problem_score": problem["problem_score"] if "problem_score" in problem else 0,
         "created_at": utc_to_local( problem["created_at"]),
         "updated_at": utc_to_local(problem["updated_at"])
     }
@@ -65,7 +65,7 @@ def hide_problem_helper(problem) -> dict:
         "private_testcases": problem["private_testcases"],
         "choices": problem["choices"],
         # TODO remove after update in DB
-        "problem_score": int(problem["problem_score"]) if "problem_score" in problem else 1,
+        "problem_score": int(problem["problem_score"]) if "problem_score" in problem else 0,
         "created_at": utc_to_local( problem["created_at"]),
         "updated_at": utc_to_local(problem["updated_at"]),
     }

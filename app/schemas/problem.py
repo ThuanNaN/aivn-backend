@@ -94,6 +94,8 @@ class ProblemSchemaDB(BaseModel):
     choices: List[Choice] | None = None
     # >>> choice problems
 
+    problem_score: int = 1
+
     created_at: datetime
     updated_at: datetime
 
@@ -111,6 +113,7 @@ class UpdateProblemSchema(BaseModel):
     public_testcases: List[TestCase] | None = None
     private_testcases: List[TestCase] | None = None
     choices: List[Choice] | None = None
+    problem_score: int = 1
 
     model_config = {
         "json_schema_extra": {
@@ -159,4 +162,5 @@ class UpdateProblemSchemaDB(BaseModel):
     public_testcases: List[TestCase] | None = None
     private_testcases: List[TestCase] | None = None
     choices: List[Choice] | None = None
+    problem_score: int = 1
     updated_at: datetime
