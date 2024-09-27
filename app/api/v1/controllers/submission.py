@@ -259,13 +259,11 @@ async def delete_submission(id: str) -> bool:
             raise Exception("Delete timer failed.")
 
 
-        # Delete certificate
+        # Delete certificate if exists
         deleted_certificate = await delete_certificate_by_submission_id(id)
         if isinstance(deleted_certificate, Exception):
             raise deleted_certificate
-        if not deleted_certificate:
-            raise Exception("Delete certificate failed.")
-        
+
 
         # Delete submission
         submission = await submission_collection.find_one({"_id": ObjectId(id)})

@@ -260,28 +260,37 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                 )
         
         for submission in submissions_outputs:
-            certificate = await retrieve_certificate_by_submission_id(submission["id"])
+            submission["certificate_info"] = None
 
-            # Not exist certificate
-            if isinstance(certificate, Exception):
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="An error occurred while retrieving certificate."
-                )
+            # TODO: remove hard code
+            if submission["contest_info"]["id"] == "66f400f066d58d40d7660852":
+                certificate = await retrieve_certificate_by_submission_id(submission["id"])
 
-            if certificate is None:
-                # Create a new certificate
-                certificate_data = CertificateDB(
-                    clerk_user_id=clerk_user_id,
-                    submission_id=submission["id"],
-                    result_score=f"{submission['total_score']}/{submission['max_score']}",
-                    created_at=datetime.now(UTC)
-                ).model_dump()
-                new_certificate = await add_certificate(certificate_data)
+                # Not exist certificate
+                if isinstance(certificate, Exception):
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="An error occurred while retrieving certificate."
+                    )
 
-                submission["certificate_info"] = new_certificate
-            else:
-                submission["certificate_info"] = certificate
+                if certificate is not None:
+                    submission["certificate_info"] = certificate
+
+                elif submission['total_score'] >= 500:
+                    # Create a new certificate
+                    certificate_data = CertificateDB(
+                        clerk_user_id=clerk_user_id,
+                        submission_id=submission["id"],
+                        result_score=f"{submission['total_score']}/{submission['max_score']}",
+                        created_at=datetime.now(UTC)
+                    ).model_dump()
+                    new_certificate = await add_certificate(certificate_data)
+                    if isinstance(new_certificate, Exception):
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred while creating certificate."
+                        )
+                    submission["certificate_info"] = new_certificate
 
     else:
         submissions_outputs = []
