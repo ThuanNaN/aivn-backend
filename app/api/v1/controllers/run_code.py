@@ -10,7 +10,7 @@ logger = Logger("controllers/run_code", log_file="run_code.log")
 
 class BuildObject:
     REMOVE_KEYWORDS = ["import"]
-    TIMEOUT_DURATION = 0.5
+    TIMEOUT_DURATION = 1.0
 
     @staticmethod
     async def exec_code(str_input: str, admin_vars: dict = {}) -> dict:
