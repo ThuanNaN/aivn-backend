@@ -48,8 +48,7 @@ async def retrieve_certificates() -> list[dict]:
     """
     try:
         certificate_list = []
-        certificates = await certificate_collection.find()
-        async for certificate in certificates:
+        async for certificate in certificate_collection.find():
             certificate_list.append(certificate_helper(certificate))
         return certificate_list
 
@@ -67,8 +66,7 @@ async def retrieve_certificates_by_clerk_user_id(clerk_user_id: str) -> list[dic
     """
     try:
         certificate_list = []
-        certificates = await certificate_collection.find({"clerk_user_id": clerk_user_id})
-        async for certificate in certificates:
+        async for certificate in certificate_collection.find({"clerk_user_id": clerk_user_id}):
             certificate_list.append(certificate_helper(certificate))
         return certificate_list
     except Exception as e:
@@ -90,6 +88,23 @@ async def retrieve_certificate_by_submission_id(submission_id: str) -> dict:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+
+async def retrieve_certificate_by_validation_id(validation_id: str) -> dict:
+    """
+    Retrieve certificate by validation_id
+    :validation_id: str
+    :return: dict
+    """
+    try:
+        certificate = await certificate_collection.find_one(
+            {"validation_id": validation_id}
+        )
+        if certificate:
+            return certificate_helper(certificate)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+    
 
 async def update_certificate(id: str, data: dict) -> dict:
     """
