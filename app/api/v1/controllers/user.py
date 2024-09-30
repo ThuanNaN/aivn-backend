@@ -18,6 +18,8 @@ except Exception as e:
 
 # helper
 def user_helper(user) -> dict:
+    if "fullname" not in user or user["fullname"] == "":
+        user["fullname"] = user["username"]
     return {
         "id": str(user["_id"]),
         "clerk_user_id": user["clerk_user_id"],
@@ -25,7 +27,7 @@ def user_helper(user) -> dict:
         "username": user["username"],
         "role": user["role"],
         "avatar": user["avatar"],
-        "fullname": user["fullname"] if "fullname" in user else user["username"],
+        "fullname": user["fullname"],
         "bio": user["bio"] if "bio" in user else "",
         "created_at": utc_to_local(user["created_at"]),
         "updated_at": utc_to_local(user["updated_at"])
