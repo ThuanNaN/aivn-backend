@@ -1,13 +1,16 @@
 import os
 import asyncio
-from dotenv import load_dotenv
 import motor.motor_asyncio
+from app.core.config import settings
 from app.utils.logger import Logger
-load_dotenv()
 logger = Logger("core/database", log_file="database.log")
 
 try:
-    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGODB_URI'), uuidRepresentation="standard")
+    MONGODB_URI = settings.MONGODB_URI
+    logger.info("Connecting to MongoDB")
+    logger.info(f"MongoDB URI: {MONGODB_URI}")
+    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGODB_URI, 
+                                                          uuidRepresentation="standard")
     conn = mongo_client.admin.command('ping')
     mongo_client.get_io_loop = asyncio.get_running_loop
     logger.info("Connected to MongoDB")
