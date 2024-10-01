@@ -1,4 +1,3 @@
-import traceback
 from app.core.database import mongo_db
 import asyncio
 import pandas as pd
@@ -10,7 +9,7 @@ except Exception as e:
     exit(1)
 
 
-registrant_file = './registrant_template.csv'
+registrant_file = './app/tests/registrant_template.csv'
 
 
 async def check_whitelist():

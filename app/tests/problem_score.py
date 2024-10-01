@@ -1,7 +1,5 @@
-import traceback
 from app.core.database import mongo_db
 import asyncio
-import pandas as pd
 
 try:
     problem_collection = mongo_db["problems"]
