@@ -13,8 +13,10 @@ class CertificateEnum(Enum):
     """
     Enum class for Certificate Template
     """
-    
+
     FOUNDATION = "foundation"
+    INSIGHT = "insight"
+    FINAL = "final"
 
     @classmethod
     def get_list(cls) -> list[str]:
