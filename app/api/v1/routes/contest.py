@@ -14,7 +14,8 @@ from app.api.v1.controllers.contest import (
     retrieve_contest_detail,
     update_contest,
     delete_contest,
-    retrieve_available_contests
+    retrieve_available_contests,
+    retrieve_contest_by_slug
 )
 from app.api.v1.controllers.exam import (
     retrieve_exam
@@ -271,6 +272,26 @@ async def get_contests():
                                   code=status.HTTP_404_NOT_FOUND)
     return ListResponseModel(data=contests,
                              message="Contests retrieved successfully.",
+                             code=status.HTTP_200_OK)
+
+
+@router.get("/contest/instruction/{slug}",
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve a contest instruction with a matching slug")
+async def get_contest_instruction(slug: str):
+    contest = await retrieve_contest_by_slug(slug)
+    if isinstance(contest, Exception):
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="An error occurred."
+        )
+    return_data = {
+        "title": contest["title"],
+        "description": contest["description"],
+        "instruction": contest["instruction"],
+    }
+    return DictResponseModel(data=return_data,
+                             message="Contest instruction retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 

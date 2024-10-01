@@ -105,6 +105,21 @@ async def retrieve_contest(id: str) -> dict:
         return e
 
 
+async def retrieve_contest_by_slug(slug: str) -> dict:
+    """
+    Retrieve a contest with a matching slug
+    :param slug: str
+    :return: dict
+    """
+    try:
+        contest = await contest_collection.find_one({"slug": slug})
+        if not contest:
+            raise Exception("Contest not found")
+        return contest_helper(contest)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
