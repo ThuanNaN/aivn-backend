@@ -1,5 +1,5 @@
 import traceback
-from app.utils.time import utc_to_local, created_before
+from app.utils.time import utc_to_local
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -33,6 +33,7 @@ def contest_helper(contest) -> dict:
         "is_active": contest["is_active"],
         "certificate_template": contest["certificate_template"],
         "creator_id": contest["creator_id"],
+        "slug": contest["slug"],
         "created_at": utc_to_local(contest["created_at"]),
         "updated_at": utc_to_local(contest["updated_at"])
     }

@@ -7,7 +7,7 @@ class ContestSchema(BaseModel):
     description: str = "Description of the contest."
     instruction: str = "Details and instruction for the contest."
     is_active: bool = False
-    certificate_template: str | None
+    certificate_template: str | None = None
     
     model_config = {
         "json_schema_extra": {
@@ -25,6 +25,7 @@ class ContestSchema(BaseModel):
 
 class ContestSchemaDB(ContestSchema):
     creator_id: str
+    slug: str = "auto-gen-from-title"
     created_at: datetime
     updated_at: datetime
 
@@ -52,4 +53,5 @@ class UpdateContestSchema(BaseModel):
 
 class UpdateContestSchemaDB(UpdateContestSchema):
     creator_id: str
+    slug: str = "auto-gen-from-title"
     updated_at: datetime

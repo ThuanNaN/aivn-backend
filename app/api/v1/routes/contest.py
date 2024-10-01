@@ -2,6 +2,7 @@ import traceback
 from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
+from slugify import slugify
 from fastapi import (
     APIRouter, Depends, 
     status, HTTPException
@@ -68,6 +69,7 @@ async def create_contest(contest: ContestSchema,
     contest_dict = ContestSchemaDB(
         **contest.model_dump(), 
         creator_id=creator_id,
+        slug=slugify(contest.title),
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     ).model_dump()
@@ -324,6 +326,7 @@ async def update_contest_data(id: str,
     contest_dict = UpdateContestSchemaDB(
         **contest.model_dump(),
         creator_id=creator_id,
+        slug=slugify(contest.title),
         updated_at = datetime.now(UTC)
     ).model_dump()
     updated_contest = await update_contest(id, contest_dict)
