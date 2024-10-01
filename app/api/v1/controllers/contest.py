@@ -130,7 +130,6 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     try:
         contest = await retrieve_contest(id)
-        print(contest)
         if isinstance(contest, Exception):
             raise contest
         
