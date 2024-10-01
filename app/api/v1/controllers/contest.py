@@ -29,8 +29,10 @@ def contest_helper(contest) -> dict:
         "id": str(contest["_id"]),
         "title": contest["title"],
         "description": contest["description"],
+        "instruction": contest["instruction"],
         "is_active": contest["is_active"],
-        "creator_id": contest["creator_id"], # clerk_user_id
+        "certificate_template": contest["certificate_template"],
+        "creator_id": contest["creator_id"],
         "created_at": utc_to_local(contest["created_at"]),
         "updated_at": utc_to_local(contest["updated_at"])
     }
@@ -112,6 +114,7 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     try:
         contest = await retrieve_contest(id)
+        print(contest)
         if isinstance(contest, Exception):
             raise contest
         
