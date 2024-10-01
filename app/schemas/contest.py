@@ -1,19 +1,23 @@
 from pydantic import BaseModel
 from datetime import datetime
+from .enum_category import CertificateEnum
 
 class ContestSchema(BaseModel):
-    title: str
-    description: str
-    is_active: bool
-
-
+    title: str = "Contest"
+    description: str = "Description of the contest."
+    instruction: str = "Details and instruction for the contest."
+    is_active: bool = False
+    certificate_template: str | None
+    
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "title": "Python Contest",
                     "description": "Python contest for beginners.",
+                    "instruction": "Details and instruction for the contest.",
                     "is_active": True,
+                    "certificate_template": CertificateEnum.FOUNDATION.value
                 }
             ]
         }
@@ -24,17 +28,23 @@ class ContestSchemaDB(ContestSchema):
     created_at: datetime
     updated_at: datetime
 
+
 class UpdateContestSchema(BaseModel):
     title: str | None = None
+    instruction: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    certificate_template: str | None = None
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "title": "Python Contest",
                     "description": "Python contest for beginners.",
+                    "instruction": "Details and instruction for the contest.",
                     "is_active": True,
+                    "certificate_template": CertificateEnum.FOUNDATION.value
                 }
             ]
         }
