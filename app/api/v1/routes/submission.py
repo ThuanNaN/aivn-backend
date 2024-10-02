@@ -261,9 +261,7 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
         
         for submission in submissions_outputs:
             submission["certificate_info"] = None
-
-            # TODO: remove hard code
-            if submission["contest_info"]["id"] == "66f400f066d58d40d7660852":
+            if submission["contest_info"]["certificate_template"] is not None:
                 certificate = await retrieve_certificate_by_submission_id(submission["id"])
 
                 # Not exist certificate
@@ -276,7 +274,7 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                 if certificate is not None:
                     submission["certificate_info"] = certificate
 
-                elif submission['total_score'] >= 500:
+                elif submission['total_score'] >= 0:
                     # Create a new certificate
                     certificate_data = CertificateDB(
                         clerk_user_id=clerk_user_id,
