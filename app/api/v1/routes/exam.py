@@ -1,7 +1,10 @@
 from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
-from fastapi import APIRouter, Depends, status
+from fastapi import (
+    APIRouter, Depends, 
+    status, HTTPException
+)
 from app.schemas.exam import (
     ExamSchema,
     ExamSchemaDB,
@@ -39,6 +42,7 @@ from app.api.v1.controllers.exam import (
 )
 from app.api.v1.controllers.submission import (
     add_submission,
+    retrieve_submission_by_id_user_retake
 )
 from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_retake_user_id,
@@ -86,6 +90,30 @@ async def create_exam(exam: ExamSchema,
 async def create_timer(exam_id: str,
                        timer_data: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)): 
+    # Check if timer already exists
+    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
+                                                        clerk_user_id, 
+                                                        timer_data.retake_id)
+    if isinstance(timer, Exception):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="An error occurred while retrieving timer.")
+    if timer:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Timer already exists.")
+    
+    # Check if submission already exists
+    pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
+                                                                    clerk_user_id=clerk_user_id,
+                                                                    retake_id=timer_data.retake_id,
+                                                                    check_none=False)
+    if isinstance(pseudo_submission, Exception):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="An error occurred while retrieving submission.")
+    if pseudo_submission:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Submission already exists.")
+    
+    # Add timer
     timer_dict = timer_data.model_dump()
     timer_data = TimerSchemaDB(
         **timer_dict,
@@ -98,13 +126,13 @@ async def create_timer(exam_id: str,
                                   code=status.HTTP_404_NOT_FOUND,
                                   message="An error occurred while adding the timer.")
     
+    # Add submission
     submission_db = SubmissionDB(
         exam_id=exam_id,
         clerk_user_id=clerk_user_id,
         retake_id=timer_dict["retake_id"],
         submitted_problems=None,
         created_at=datetime.now(UTC)
-
     ).model_dump()
     pseudo_submission = await add_submission(submission_db)
     if isinstance(pseudo_submission, Exception):
