@@ -2,7 +2,6 @@ from typing import Optional
 from datetime import datetime, UTC
 import pandas as pd
 from io import StringIO
-from app.utils.time import local_to_utc
 from fastapi import (
     APIRouter, Depends, Query, 
     status, HTTPException
@@ -238,10 +237,10 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
         for submission in pipeline_results:
             contest_info = contest_helper(submission["contest_info"])
             if contest_info["id"] in [submission["contest_info"]["id"] for submission in submissions_outputs]:
-                # Append the latest submission of duplicate submissions
+                # Append the highest submission score of duplicate submissions
                 for sub in submissions_outputs:
                     if sub["contest_info"]["id"] == contest_info["id"]:
-                        if submission["created_at"] > local_to_utc(sub["created_at"]):
+                        if submission["total_score"] > sub["total_score"]:
                             submissions_outputs.remove(sub)
                             submissions_outputs.append(
                                 {
