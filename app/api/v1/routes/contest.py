@@ -1,4 +1,3 @@
-import traceback
 from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
@@ -210,56 +209,60 @@ async def create_submission(exam_id: str,
                     is_pass_problem=is_pass_problem
                 )
             )
-    try:
-        # Upsert submission to database
-        pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
-                                                                        clerk_user_id=clerk_user_id,
-                                                                        retake_id=submission_data.retake_id,
-                                                                        check_none=False)
-        if isinstance(pseudo_submission, Exception):
-            return ErrorResponseModel(error="An error occurred.",
-                                      message="Retrieving pseudo submission failed.",
-                                      code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if not pseudo_submission:
-            return ErrorResponseModel(error="No pseudo submission found.",
-                                      message="Retrieving pseudo submission failed.",
-                                      code=status.HTTP_404_NOT_FOUND)
 
-        upsert_submission = UpdateSubmissionDB(
-            retake_id=submission_data.retake_id,
-            submitted_problems=submitted_results,
-            total_score=TOTAL_SCORE,
-            max_score=MAX_SCORE,
-            total_problems=len(submitted_problems),
-            total_problems_passed=TOTAL_PASSED,
-            created_at=datetime.now(UTC)
-        ).model_dump()
+    # Upsert submission to database
+    pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
+                                                                    clerk_user_id=clerk_user_id,
+                                                                    retake_id=submission_data.retake_id,
+                                                                    check_none=False)
+    if isinstance(pseudo_submission, Exception):
+        logger.error(f"An error occurred while retrieve pseudo submission: {pseudo_submission}")
+        return HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred when submit problems."
+        )
+    
+    if not pseudo_submission:
+        logger.error(f"No pseudo submission was found.")
+        return HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred when submit problems."
+        )
 
-        updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
-        if isinstance(updated_submission, Exception):
-            return ErrorResponseModel(error=str(updated_submission),
-                                      message="An error occurred while updating submission.",
-                                      code=status.HTTP_400_BAD_REQUEST)
-        if not updated_submission:
-            return ErrorResponseModel(error="No submission was created.",
-                                      message="An error occurred while updating submission.",
-                                      code=status.HTTP_404_NOT_FOUND)
+    upsert_submission = UpdateSubmissionDB(
+        retake_id=submission_data.retake_id,
+        submitted_problems=submitted_results,
+        total_score=TOTAL_SCORE,
+        max_score=MAX_SCORE,
+        total_problems=len(submitted_problems),
+        total_problems_passed=TOTAL_PASSED,
+        created_at=datetime.now(UTC)
+    ).model_dump()
 
-        return DictResponseModel(
-            data={
-                "total_score": TOTAL_SCORE,
-                "max_score": MAX_SCORE,
-                "total_problems": len(submitted_problems),
-                "total_problems_passed": TOTAL_PASSED
-            },
-            message="Submission added successfully.",
-            code=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return ErrorResponseModel(error="Error when submit code.",
-                                  message="Submission not created.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
+    if isinstance(updated_submission, Exception):
+        logger.error(f"An error occurred while update submission: {updated_submission}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred when submit problems."
+        )
+    if not updated_submission:
+        logger.error(f"Update submission failed.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred when submit problems."
+        )
 
+    return DictResponseModel(
+        data={
+            "total_score": TOTAL_SCORE,
+            "max_score": MAX_SCORE,
+            "total_problems": len(submitted_problems),
+            "total_problems_passed": TOTAL_PASSED
+        },
+        message="Submission added successfully.",
+        code=status.HTTP_201_CREATED)
+    
 
 @router.get("/contests",
             dependencies=[Depends(is_authenticated)],
