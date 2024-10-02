@@ -30,7 +30,8 @@ from app.api.v1.controllers.submission import (
 )
 from app.api.v1.controllers.certificate import (
     add_certificate,
-    retrieve_certificate_by_submission_id
+    retrieve_certificate_by_submission_id,
+    retrieve_certificate_by_validation_id
 )
 from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
@@ -275,9 +276,14 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                     submission["certificate_info"] = certificate
 
                 elif submission['total_score'] >= 0:
+                    validation_id = generate_id()
+                    # Check if validation_id is exist
+                    while await retrieve_certificate_by_validation_id(validation_id):
+                        validation_id = generate_id()
+
                     # Create a new certificate
                     certificate_data = CertificateDB(
-                        validation_id=generate_id(),
+                        validation_id=validation_id,
                         clerk_user_id=clerk_user_id,
                         submission_id=submission["id"],
                         result_score=f"{submission['total_score']}/{submission['max_score']}",
