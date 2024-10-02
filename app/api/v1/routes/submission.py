@@ -34,6 +34,7 @@ from app.api.v1.controllers.certificate import (
 )
 from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
+from app.utils.generate import generate_id
 from app.utils.logger import Logger
 
 router = APIRouter()
@@ -276,6 +277,7 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                 elif submission['total_score'] >= 0:
                     # Create a new certificate
                     certificate_data = CertificateDB(
+                        validation_id=generate_id(),
                         clerk_user_id=clerk_user_id,
                         submission_id=submission["id"],
                         result_score=f"{submission['total_score']}/{submission['max_score']}",

@@ -2,7 +2,7 @@ import os
 import random
 import time
 
-def generate_id(length=10):
+def generate_id(length=8):
     """Generates a unique ID string using integers only.
 
     Args:
