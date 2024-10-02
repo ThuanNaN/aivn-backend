@@ -8,7 +8,7 @@ logger = Logger("core/database", log_file="database.log")
 try:
     MONGODB_URI = settings.MONGODB_URI
     logger.info("Connecting to MongoDB")
-    logger.info(f"MongoDB URI: {MONGODB_URI}")
+    logger.info(f"MongoDB Cluster: {MONGODB_URI.split('appName=')[-1]}")
     mongo_client = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGODB_URI, 
                                                           uuidRepresentation="standard")
     conn = mongo_client.admin.command('ping')
