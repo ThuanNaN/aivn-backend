@@ -275,7 +275,7 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                 if certificate is not None:
                     submission["certificate_info"] = certificate
 
-                elif submission['total_score'] >= 0:
+                elif submission['max_score'] > 0 and submission['total_score'] / submission['max_score'] >= 0.5:
                     validation_id = generate_id()
                     # Check if validation_id is exist
                     while await retrieve_certificate_by_validation_id(validation_id):
