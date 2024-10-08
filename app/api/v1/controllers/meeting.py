@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 
 logger = Logger("controllers/meeting", log_file="meeting.log")
 try:
-    exam_collection = mongo_db["meetings"]
+    meeting_collection = mongo_db["meetings"]
 except Exception as e:
     logger.error(f"Error when connect to exam: {e}")
     exit(1)
@@ -34,8 +34,8 @@ async def add_meeting(meeting_data: dict) -> dict:
     :return: dict
     """
     try:
-        meeting = await exam_collection.insert_one(meeting_data)
-        new_meeting = await exam_collection.find_one({"_id": meeting.inserted_id})
+        meeting = await meeting_collection.insert_one(meeting_data)
+        new_meeting = await meeting_collection.find_one({"_id": meeting.inserted_id})
         return meeting_helper(new_meeting)
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
@@ -50,13 +50,27 @@ async def retrieve_meetings() -> list:
     try:
         logger.info("Retrieve all meetings")
         meetings = []
-        async for meeting in exam_collection.find():
+        async for meeting in meeting_collection.find():
             meetings.append(meeting_helper(meeting))
         return meetings
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-    
+
+
+async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
+    """
+    Retrieve all meetings from database by pipe
+    :param pipe: list
+    :return: list
+    """
+    try:
+        pipeline_results = await meeting_collection.aggregate(pipeline).to_list(length=None)
+        return [meeting_helper(meeting) for meeting in pipeline_results]
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
 
 async def retrieve_meeting_by_id(id: str) -> dict:
     """
@@ -65,7 +79,7 @@ async def retrieve_meeting_by_id(id: str) -> dict:
     :return: dict
     """
     try:
-        meeting = await exam_collection.find_one({"_id": ObjectId(id)})
+        meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if meeting:
             return meeting_helper(meeting)
     except Exception as e:
@@ -81,17 +95,17 @@ async def update_meeting(id: str, meeting_data: dict) -> dict:
     :return: dict
     """
     try:
-        meeting = await exam_collection.find_one({"_id": ObjectId(id)})
+        meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
             raise Exception("Meeting not found")
         
-        updated_meeting = await exam_collection.update_one(
+        updated_meeting = await meeting_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": meeting_data}
         )
         if not updated_meeting:
             raise Exception("Update meeting failed")
         if updated_meeting:
-            updated_meeting_data = await exam_collection.find_one({"_id": ObjectId(id)})
+            updated_meeting_data = await meeting_collection.find_one({"_id": ObjectId(id)})
             return meeting_helper(updated_meeting_data)
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
@@ -107,12 +121,12 @@ async def delete_meeting(id: str) -> bool:
     :return: bool
     """
     try:
-        meeting = await exam_collection.find_one({"_id": ObjectId(id)})
+        meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
             raise Exception("Meeting not found")
         if is_past(meeting["date"]):
             raise Exception("Cannot delete meeting in the past")
-        deleted_info = await exam_collection.delete_one({"_id": ObjectId(id)})
+        deleted_info = await meeting_collection.delete_one({"_id": ObjectId(id)})
         if deleted_info.deleted_count == 1:
             return True
         raise Exception("Delete meeting failed")
