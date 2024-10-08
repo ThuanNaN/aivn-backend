@@ -2,6 +2,7 @@ from app.core.config import settings
 from fastapi import APIRouter, Depends
 from app.api.v1.routes.visualize import router as visualize_router
 from app.api.v1.routes.user import router as user_router
+from app.api.v1.routes.meeting import router as meeting_router
 from app.api.v1.routes.contest import router as contest_router
 from app.api.v1.routes.exam import router as exam_router
 from app.api.v1.routes.category import router as category_router
@@ -43,6 +44,11 @@ router.include_router(sleep_router,
                       dependencies=[Depends(is_admin)],
                       prefix="/sleep",
                       tags=["Sleep"])
+
+router.include_router(meeting_router,
+                      dependencies=[Depends(is_admin)],
+                      prefix="/meeting",
+                      tags=["Meeting"])
 
 # Dev (admin only) Routes
 if settings.ENV_TYPE == "development":
