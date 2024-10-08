@@ -1,14 +1,14 @@
-from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import (
-    APIRouter, Depends, 
+    APIRouter, Depends, Query,
     status, HTTPException
 )
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.meeting import (
     add_meeting, 
     retrieve_meetings,
+    retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
     update_meeting,
     delete_meeting
@@ -23,6 +23,7 @@ from app.schemas.response import (
     DictResponseModel,
     ListResponseModel
 )
+from app.utils.time import local_to_utc
 
 router = APIRouter()
 logger = Logger("routes/meeting", log_file="meeting.log")
@@ -57,12 +58,40 @@ async def create_meeting(meeting_data: MeetingSchema,
         code=status.HTTP_201_CREATED
     )
 
-@router.get("",
-            dependencies=[Depends(is_admin)],
-            tags=["Admin"],
+@router.get("/meetings",
+            dependencies=[Depends(is_authenticated)],
             description="Retrieve all meetings")
-async def get_meetings():
-    meetings = await retrieve_meetings()
+async def get_meetings(
+    time_from: str = Query(None, description="Meeting time from"),
+    time_to: str = Query(None, description="Meeting time to"),
+):
+    if time_from is None or time_to is None:
+        meetings = await retrieve_meetings()
+        if isinstance(meetings, Exception):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Retrieve meetings failed"
+            )
+        return ListResponseModel(
+            data=meetings,
+            message="Meetings retrieved successfully",
+            code=status.HTTP_200_OK
+        )
+    
+    time_from = local_to_utc(time_from)
+    time_to = local_to_utc(time_to)
+
+    pipeline = [
+        {
+            "$match": {
+                "date": {
+                    "$gte": time_from,
+                    "$lte": time_to
+                }
+            }
+        }
+    ]
+    meetings = await retrieve_meeting_by_pipeline(pipeline)
     if isinstance(meetings, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -76,8 +105,7 @@ async def get_meetings():
 
 
 @router.get("/{id}",
-            dependencies=[Depends(is_admin)],
-            tags=["Admin"],
+            dependencies=[Depends(is_authenticated)],
             description="Retrieve a meeting by meeting id")
 async def get_meeting_by_id(id: str):
     meeting = await retrieve_meeting_by_id(id)
