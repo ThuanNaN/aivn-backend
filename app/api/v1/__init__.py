@@ -45,11 +45,6 @@ router.include_router(sleep_router,
                       prefix="/sleep",
                       tags=["Sleep"])
 
-router.include_router(meeting_router,
-                      dependencies=[Depends(is_admin)],
-                      prefix="/meeting",
-                      tags=["Meeting"])
-
 # Dev (admin only) Routes
 if settings.ENV_TYPE == "development":
     AIO_DEPENDENCIES = [Depends(is_admin)]
@@ -90,3 +85,8 @@ router.include_router(submission_router,
                       dependencies=AIO_DEPENDENCIES,
                       prefix="/submission",
                       tags=["Submission"])
+
+router.include_router(meeting_router,
+                      dependencies=AIO_DEPENDENCIES,
+                      prefix="/meeting",
+                      tags=["Meeting"])
