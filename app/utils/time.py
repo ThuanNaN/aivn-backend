@@ -20,3 +20,12 @@ def str_to_datetime(str_datetime: str) -> datetime.datetime:
 
 def created_before(datetime1: str, datetime2: str) -> bool:
     return str_to_datetime(datetime1) < str_to_datetime(datetime2)
+
+
+def is_past(datetime_input: datetime.datetime) -> bool:
+    """
+    Check if datetime_input is in the past. Using UTC time
+    :param datetime_input: datetime
+    :return: bool
+    """
+    return datetime_input < datetime.datetime.now()
