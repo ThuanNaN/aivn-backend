@@ -1,12 +1,14 @@
 import traceback
+from pymongo.errors import ConnectionFailure, OperationFailure
 from app.utils.time import utc_to_local, is_past
-from app.core.database import mongo_db
+from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 
 logger = Logger("controllers/meeting", log_file="meeting.log")
 try:
     meeting_collection = mongo_db["meetings"]
+    document_collection = mongo_db["documents"]
 except Exception as e:
     logger.error(f"Error when connect to exam: {e}")
     exit(1)
@@ -117,20 +119,38 @@ async def delete_meeting(id: str) -> bool:
     Delete a meeting from database by ID. 
 
     But check if the meeting is in the past dont allow to delete
+
     :param id: str
+
     :return: bool
     """
     try:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
             raise Exception("Meeting not found")
+        
         if is_past(meeting["date"]):
             raise Exception("Cannot delete meeting in the past")
-        deleted_info = await meeting_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_info.deleted_count == 1:
-            return True
-        raise Exception("Delete meeting failed")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    
+    # Transaction to delete meeting and documents
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                del_meeting = await meeting_collection.delete_one(
+                    {"_id": ObjectId(id)},
+                    session=session)
 
+                del_documents = await document_collection.delete_many(
+                    {"meeting_id": ObjectId(id)},
+                    session=session)
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            if del_meeting.deleted_count == 1 and del_documents.deleted_count > 0:
+                return True
+            raise Exception("Delete meeting failed")
+        

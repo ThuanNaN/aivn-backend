@@ -16,7 +16,6 @@ from app.api.v1.controllers.meeting import (
 from app.api.v1.controllers.document import (
     document_helper,
     retrieve_document_by_meeting_id,
-    delete_documents_by_meeting_id,
     upsert_document_by_meeting_id,
 )
 from app.schemas.meeting import (
@@ -229,12 +228,6 @@ async def delete_meeting_data(id: str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(deleted_meeting)
-        )
-    deleted_documents = await delete_documents_by_meeting_id(id)
-    if isinstance(deleted_documents, Exception):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(deleted_documents)
         )
     return ListResponseModel(
         data=[],
