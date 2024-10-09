@@ -6,12 +6,17 @@ from fastapi import (
 )
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.meeting import (
+    meeting_helper,
     add_meeting, 
-    retrieve_meetings,
     retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
     update_meeting,
     delete_meeting
+)
+from app.api.v1.controllers.document import (
+    document_helper,
+    retrieve_document_by_meeting_id,
+    delete_documents_by_meeting_id
 )
 from app.schemas.meeting import (
     MeetingSchema, 
@@ -23,7 +28,11 @@ from app.schemas.response import (
     DictResponseModel,
     ListResponseModel
 )
-from app.utils.time import local_to_utc
+from app.utils.time import (
+    local_to_utc, 
+    utc_to_local_default,
+    local_to_utc_default
+)
 
 router = APIRouter()
 logger = Logger("routes/meeting", log_file="meeting.log")
@@ -66,22 +75,25 @@ async def get_meetings(
     time_to: str = Query(None, description="Meeting time to"),
 ):
     if time_from is None or time_to is None:
-        meetings = await retrieve_meetings()
-        if isinstance(meetings, Exception):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Retrieve meetings failed"
-            )
-        return ListResponseModel(
-            data=meetings,
-            message="Meetings retrieved successfully",
-            code=status.HTTP_200_OK
-        )
-    
-    time_from = local_to_utc(time_from)
-    time_to = local_to_utc(time_to)
+        now_hcm = utc_to_local_default(datetime.now(UTC))
+        
+        time_from = local_to_utc_default(
+            now_hcm.replace(hour=0, minute=0, second=0, microsecond=0))
+        time_to = local_to_utc_default(
+            now_hcm.replace(hour=23, minute=59, second=59, microsecond=999999))
+    else:
+        time_from = local_to_utc(time_from)
+        time_to = local_to_utc(time_to)
 
     pipeline = [
+        {
+            "$lookup": {
+                "from": "documents",
+                "localField": "_id",
+                "foreignField": "meeting_id",
+                "as": "documents"
+            }
+        },
         {
             "$match": {
                 "date": {
@@ -91,14 +103,23 @@ async def get_meetings(
             }
         }
     ]
-    meetings = await retrieve_meeting_by_pipeline(pipeline)
-    if isinstance(meetings, Exception):
+    pipeline_results = await retrieve_meeting_by_pipeline(pipeline)
+    if isinstance(pipeline_results, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Retrieve meetings failed"
         )
+    
+    return_data = []
+    for result in pipeline_results:
+        documents = [document_helper(document) for document in result["documents"]]
+        return_data.append({
+            **meeting_helper(result),
+            "documents":documents,
+        })
+
     return ListResponseModel(
-        data=meetings,
+        data=return_data,
         message="Meetings retrieved successfully",
         code=status.HTTP_200_OK
     )
@@ -108,14 +129,23 @@ async def get_meetings(
             dependencies=[Depends(is_authenticated)],
             description="Retrieve a meeting by meeting id")
 async def get_meeting_by_id(id: str):
-    meeting = await retrieve_meeting_by_id(id)
-    if isinstance(meeting, Exception):
+    meeting_data = await retrieve_meeting_by_id(id)
+    if isinstance(meeting_data, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Retrieve meeting failed"
         )
+    if meeting_data is not None:
+        documents = await retrieve_document_by_meeting_id(id)
+        if isinstance(documents, Exception):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Retrieve documents failed"
+            )
+        meeting_data["documents"] = documents
+
     return DictResponseModel(
-        data=meeting,
+        data=meeting_data,
         message="Meeting retrieved successfully",
         code=status.HTTP_200_OK
     )
@@ -162,6 +192,12 @@ async def delete_meeting_data(id: str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Delete meeting failed"
+        )
+    deleted_documents = await delete_documents_by_meeting_id(id)
+    if isinstance(deleted_documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Delete documents failed"
         )
     return ListResponseModel(
         data=[],
