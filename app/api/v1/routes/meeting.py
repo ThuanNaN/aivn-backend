@@ -184,9 +184,9 @@ async def update_meeting_data(id: str,
     # Upsert documents
     upsert_document_db = [
         DocumentSchemaDB(
-            file_name=document.file_name,
-            meeting_id=id,
-            mask_url=document.mask_url,
+            file_name=document["file_name"],
+            meeting_id=document["meeting_id"],
+            mask_url=document["mask_url"],
             creator_id=creator_id,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)
