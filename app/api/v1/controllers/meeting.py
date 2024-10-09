@@ -66,7 +66,7 @@ async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
     """
     try:
         pipeline_results = await meeting_collection.aggregate(pipeline).to_list(length=None)
-        return [meeting_helper(meeting) for meeting in pipeline_results]
+        return pipeline_results
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
