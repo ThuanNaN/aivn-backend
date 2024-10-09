@@ -137,16 +137,15 @@ async def get_meeting_by_id(id: str):
     if isinstance(meeting_data, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Retrieve meeting failed"
+            detail=str(meeting_data)
         )
-    if meeting_data is not None:
-        documents = await retrieve_document_by_meeting_id(id)
-        if isinstance(documents, Exception):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Retrieve documents failed"
-            )
-        meeting_data["documents"] = documents
+    documents = await retrieve_document_by_meeting_id(id)
+    if isinstance(documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(documents)
+        )
+    meeting_data["documents"] = documents
 
     return DictResponseModel(
         data=meeting_data,
@@ -178,7 +177,7 @@ async def update_meeting_data(id: str,
     if isinstance(updated_meeting, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Update meeting failed"
+            detail=str(updated_meeting)
         )
     
     # Upsert documents
@@ -200,7 +199,7 @@ async def update_meeting_data(id: str,
     if isinstance(upserted_documents, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Upsert documents failed"
+            detail=str(upserted_documents)
         )
 
     new_documents = await retrieve_document_by_meeting_id(id)
@@ -220,7 +219,6 @@ async def update_meeting_data(id: str,
         code=status.HTTP_200_OK
     )
 
-# TODO: Check
 @router.delete("/{id}",
                dependencies=[Depends(is_admin)],
                tags=["Admin"],
@@ -230,13 +228,13 @@ async def delete_meeting_data(id: str):
     if isinstance(deleted_meeting, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Delete meeting failed"
+            detail=str(deleted_meeting)
         )
     deleted_documents = await delete_documents_by_meeting_id(id)
     if isinstance(deleted_documents, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Delete documents failed"
+            detail=str(deleted_documents)
         )
     return ListResponseModel(
         data=[],

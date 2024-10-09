@@ -179,7 +179,6 @@ async def delete_document_by_id(id: str) -> bool:
         logger.error(f"{traceback.format_exc()}")
         return e
 
-# TODO: Check
 async def delete_documents_by_meeting_id(meeting_id: str) -> bool:
     """
     Delete all documents with a matching meeting ID
@@ -192,9 +191,9 @@ async def delete_documents_by_meeting_id(meeting_id: str) -> bool:
         deleted_info = await document_collection.delete_many(
             {"meeting_id": ObjectId(meeting_id)}
         )
-        if deleted_info.deleted_count >= 1:
+        if deleted_info.deleted_count > 0:
             return True
-        raise Exception("Documents could not be deleted")
+        raise Exception("Delete documents failed")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e

@@ -48,7 +48,6 @@ async def retrieve_meetings() -> list:
     :return: list
     """
     try:
-        logger.info("Retrieve all meetings")
         meetings = []
         async for meeting in meeting_collection.find():
             meetings.append(meeting_helper(meeting))
@@ -82,6 +81,7 @@ async def retrieve_meeting_by_id(id: str) -> dict:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if meeting:
             return meeting_helper(meeting)
+        raise Exception("Meeting not found")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -104,7 +104,7 @@ async def update_meeting(id: str, meeting_data: dict) -> dict:
         )
         if not updated_meeting:
             raise Exception("Update meeting failed")
-        if updated_meeting:
+        if updated_meeting.modified_count > 0:
             updated_meeting_data = await meeting_collection.find_one({"_id": ObjectId(id)})
             return meeting_helper(updated_meeting_data)
     except Exception as e:
