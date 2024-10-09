@@ -13,15 +13,15 @@ except Exception as e:
 
 
 # helper
-def document_helper(meeting: dict) -> dict:
+def document_helper(document: dict) -> dict:
     return {
-        "id": str(meeting["_id"]),
-        "file_name": meeting["file_name"],
-        "meeting_id": str(meeting["meeting_id"]),
-        "mask_url": meeting["mask_url"],
-        "creator_id": meeting["creator_id"],
-        "created_at": utc_to_local(meeting["created_at"]),
-        "updated_at": utc_to_local(meeting["updated_at"])
+        "id": str(document["_id"]),
+        "file_name": document["file_name"],
+        "meeting_id": str(document["meeting_id"]),
+        "mask_url": document["mask_url"],
+        "creator_id": document["creator_id"],
+        "created_at": utc_to_local(document["created_at"]),
+        "updated_at": utc_to_local(document["updated_at"])
     }
 
 
@@ -112,7 +112,7 @@ async def update_document(id: str, data: dict) -> dict:
         updated_document = await document_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        
+
         if updated_document.modified_count == 1:
             document = await document_collection.find_one({"_id": ObjectId(id)})
             return document_helper(document)
