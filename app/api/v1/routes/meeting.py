@@ -1,4 +1,3 @@
-from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import (
@@ -27,10 +26,7 @@ from app.schemas.meeting import (
     UpdateMeetingSchemaDB
 )
 from app.schemas.document import (
-    DocumentSchema,
-    DocumentSchemaDB,
-    UpdateDocumentSchema,
-    UpdateDocumentSchemaDB
+    DocumentSchemaDB
 )
 from app.schemas.response import (
     DictResponseModel,
@@ -195,7 +191,7 @@ async def update_meeting_data(id: str,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)
         ).model_dump()
-        for document in meeting_data.documents
+        for document in meeting_data.document_data
     ]
     upserted_documents = await upsert_document_by_meeting_id(
         id,
