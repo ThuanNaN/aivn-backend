@@ -3,6 +3,7 @@ from app.utils.time import utc_to_local
 from app.core.database import mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
+from pymongo import DeleteOne, InsertOne
 
 logger = Logger("controllers/document", log_file="document.log")
 try:
@@ -38,6 +39,42 @@ async def add_document(document_data: dict) -> dict:
         document = await document_collection.insert_one(document_data)
         new_document = await document_collection.find_one({"_id": document.inserted_id})
         return document_helper(new_document)
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
+
+
+async def upsert_document_by_meeting_id(meeting_id: str, 
+                                        document_data: list[dict]) -> dict:
+    """
+    From a list of documents with a matching meeting ID,
+    If the document exists, update it. If not, add it.
+    If the document which existed is not in the list, delete it.
+    
+    :param meeting_id: str
+    :param document_data: list[dict]
+
+    :return: dict
+    """
+    try:
+        # Delete all current documents
+        current_documents = await document_collection.find({"meeting_id": ObjectId(meeting_id)}).to_list(length=None)
+        delete_documents = []
+        for current_document in current_documents:
+            delete_documents.append(DeleteOne({"_id": current_document["_id"]}))
+
+        # Insert new documents
+        insert_documents = []
+        for document in document_data:
+            document["meeting_id"] = ObjectId(meeting_id)
+            insert_documents.append(InsertOne(document))
+        
+        # Bulk write
+        result = await document_collection.bulk_write(delete_documents + insert_documents)
+        logger.info(f"Upsert documents result: {result}")
+        if result.inserted_count == len(document_data) and result.deleted_count == len(current_documents):
+            return True
+        raise Exception("Upsert documents failed")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -142,7 +179,7 @@ async def delete_document_by_id(id: str) -> bool:
         logger.error(f"{traceback.format_exc()}")
         return e
 
-
+# TODO: Check
 async def delete_documents_by_meeting_id(meeting_id: str) -> bool:
     """
     Delete all documents with a matching meeting ID

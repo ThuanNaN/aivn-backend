@@ -1,3 +1,4 @@
+from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import (
@@ -16,13 +17,20 @@ from app.api.v1.controllers.meeting import (
 from app.api.v1.controllers.document import (
     document_helper,
     retrieve_document_by_meeting_id,
-    delete_documents_by_meeting_id
+    delete_documents_by_meeting_id,
+    upsert_document_by_meeting_id,
 )
 from app.schemas.meeting import (
     MeetingSchema, 
     MeetingSchemaDB,
     UpdateMeetingSchema,
     UpdateMeetingSchemaDB
+)
+from app.schemas.document import (
+    DocumentSchema,
+    DocumentSchemaDB,
+    UpdateDocumentSchema,
+    UpdateDocumentSchemaDB
 )
 from app.schemas.response import (
     DictResponseModel,
@@ -156,8 +164,10 @@ async def get_meeting_by_id(id: str):
             tags=["Admin"],
             description="Update a meeting by meeting id")
 async def update_meeting_data(id: str, 
-                         meeting_data: UpdateMeetingSchema,
-                         creator_id: str = Depends(is_authenticated)):
+                              meeting_data: UpdateMeetingSchema,
+                              document_data: List[DocumentSchema],
+                              creator_id: str = Depends(is_authenticated)):
+    # Update meeting
     meeting_db = UpdateMeetingSchemaDB(
         title=meeting_data.title,
         description=meeting_data.description,
@@ -175,13 +185,47 @@ async def update_meeting_data(id: str,
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Update meeting failed"
         )
+    
+    # Upsert documents
+    upsert_document_db = [
+        DocumentSchemaDB(
+            file_name=document.file_name,
+            meeting_id=id,
+            mask_url=document.mask_url,
+            creator_id=creator_id,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
+        ).model_dump()
+        for document in document_data
+    ]
+    upserted_documents = await upsert_document_by_meeting_id(
+        id,
+        upsert_document_db,
+    )
+    if isinstance(upserted_documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upsert documents failed"
+        )
+
+    new_documents = await retrieve_document_by_meeting_id(id)
+    if isinstance(new_documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retrieve documents failed"
+        )
+    return_data = {
+        **updated_meeting,
+        "documents": new_documents
+    }
+
     return DictResponseModel(
-        data=updated_meeting,
+        data=return_data,
         message="Meeting updated successfully",
         code=status.HTTP_200_OK
     )
 
-
+# TODO: Check
 @router.delete("/{id}",
                dependencies=[Depends(is_admin)],
                tags=["Admin"],
