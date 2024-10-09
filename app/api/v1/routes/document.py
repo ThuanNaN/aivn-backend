@@ -126,7 +126,7 @@ async def delete_document(id: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Delete document failed"
         )
-    return DictResponseModel(
+    return ListResponseModel(
         data=[],
         message="Document deleted successfully",
         code=status.HTTP_200_OK
