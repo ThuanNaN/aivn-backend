@@ -163,8 +163,8 @@ async def delete_meeting_data(id: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Delete meeting failed"
         )
-    return DictResponseModel(
-        data=deleted_meeting,
+    return ListResponseModel(
+        data=[],
         message="Meeting deleted successfully",
         code=status.HTTP_200_OK
     )
