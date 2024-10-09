@@ -165,7 +165,6 @@ async def get_meeting_by_id(id: str):
             description="Update a meeting by meeting id")
 async def update_meeting_data(id: str, 
                               meeting_data: UpdateMeetingSchema,
-                              document_data: List[DocumentSchema],
                               creator_id: str = Depends(is_authenticated)):
     # Update meeting
     meeting_db = UpdateMeetingSchemaDB(
@@ -196,7 +195,7 @@ async def update_meeting_data(id: str,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)
         ).model_dump()
-        for document in document_data
+        for document in meeting_data.documents
     ]
     upserted_documents = await upsert_document_by_meeting_id(
         id,

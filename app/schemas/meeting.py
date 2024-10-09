@@ -43,6 +43,7 @@ class UpdateMeetingSchema(BaseModel):
     date: str | None = None
     start_time: str | None = None
     end_time: str | None = None
+    document_data: list[dict] | None = None
 
     model_config = {
         "json_schema_extra": {
@@ -53,7 +54,14 @@ class UpdateMeetingSchema(BaseModel):
                     "lecturer": "Dr.Quang Vinh",
                     "date": "2024-10-08T01:45:21.527550",
                     "start_time": "2024-10-08T01:47:24.432219",
-                    "end_time": "2024-10-08T01:47:34.334284"
+                    "end_time": "2024-10-08T01:47:34.334284",
+                    "document_data": [
+                        {
+                            "file_name": "test_image.jpg",
+                            "mask_url": "https://www.google.com/test_image.jpg",
+                            "meeting_id": "6698921e0ab511463f14d0a9"
+                        }
+                    ]
                 }
             ]
         }
