@@ -3,9 +3,10 @@ import datetime
 hcm_difference = datetime.timedelta(hours=7)
 
 def utc_to_local_default(utc_time: datetime.datetime) -> datetime.datetime:
-    local_time = utc_time + hcm_difference
-    return local_time
+    return utc_time + hcm_difference
 
+def local_to_utc_default(local_time: datetime.datetime) -> datetime.datetime:
+    return local_time - hcm_difference
 
 def utc_to_local(utc_time: datetime.datetime) -> str:
     local_time = utc_time + hcm_difference
