@@ -69,7 +69,7 @@ async def upsert_document_by_meeting_id(meeting_id: str,
             document["meeting_id"] = ObjectId(meeting_id)
             insert_documents.append(InsertOne(document))
         
-        if delete_documents and insert_documents:
+        if delete_documents or insert_documents:
             # Bulk write
             result = await document_collection.bulk_write(delete_documents + insert_documents)
             logger.info(f"Upsert documents result: {result}")
