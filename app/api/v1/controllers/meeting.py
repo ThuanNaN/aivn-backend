@@ -150,7 +150,7 @@ async def delete_meeting(id: str) -> bool:
             logger.error(f"{traceback.format_exc()}")
             return e
         else:
-            if del_meeting.deleted_count == 1 and del_documents.deleted_count > 0:
+            if del_meeting.deleted_count == 1:
                 return True
             raise Exception("Delete meeting failed")
         
