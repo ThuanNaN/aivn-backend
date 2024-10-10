@@ -69,15 +69,19 @@ async def upsert_document_by_meeting_id(meeting_id: str,
             document["meeting_id"] = ObjectId(meeting_id)
             insert_documents.append(InsertOne(document))
         
-        # Bulk write
-        result = await document_collection.bulk_write(delete_documents + insert_documents)
-        logger.info(f"Upsert documents result: {result}")
-        if result.inserted_count == len(document_data) and result.deleted_count == len(current_documents):
-            return True
-        raise Exception("Upsert documents failed")
+        if delete_documents and insert_documents:
+            # Bulk write
+            result = await document_collection.bulk_write(delete_documents + insert_documents)
+            logger.info(f"Upsert documents result: {result}")
+            if result.inserted_count == len(document_data) and result.deleted_count == len(current_documents):
+                return True
+            raise Exception("Upsert documents failed")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    else:
+        logger.info("No documents to upsert")
+        return True
 
 
 async def retrieve_documents() -> list[dict]:
