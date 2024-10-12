@@ -1,4 +1,5 @@
 import traceback
+from datetime import datetime, UTC
 from pymongo.errors import ConnectionFailure, OperationFailure
 from app.utils.time import utc_to_local, is_past
 from app.core.database import mongo_client, mongo_db
@@ -160,3 +161,24 @@ async def delete_meeting(id: str) -> bool:
                 return True
             raise Exception("Delete meeting failed")
         
+
+async def retrieve_upcoming_meeting() -> dict:
+    """
+    Get all an upcoming meeting
+
+    :return: dict
+    """
+    try:
+        current_utc_time = datetime.now(UTC)
+        pipeline = [
+            {"$match": {"date": {"$gte": current_utc_time}}},
+            {"$sort": {"date": 1}},
+            {"$limit": 1}
+        ]
+        upcoming_meeting = await meeting_collection.aggregate(pipeline).to_list(length=None)
+        if upcoming_meeting:
+            return meeting_helper(upcoming_meeting[0])
+        raise Exception("Upcoming meeting not found")
+    except Exception as e:
+        logger.error(f"{traceback.format_exc()}")
+        return e
