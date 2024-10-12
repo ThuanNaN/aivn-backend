@@ -1,15 +1,22 @@
+from typing import List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
 from fastapi import (
     APIRouter, Depends, Query,
     status, HTTPException
 )
+from app.utils.time import (
+    local_to_utc,
+    utc_to_local_default,
+    local_to_utc_default
+)
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.meeting import (
     meeting_helper,
-    add_meeting, 
+    add_meeting,
     retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
+    retrieve_upcoming_meeting,
     update_meeting,
     delete_meeting
 )
@@ -18,8 +25,13 @@ from app.api.v1.controllers.document import (
     retrieve_document_by_meeting_id,
     upsert_document_by_meeting_id,
 )
+from app.api.v1.controllers.attendee import (
+    add_attendees,
+    retrieve_attendees_by_meeting_id,
+    delete_attendees_by_emails
+)
 from app.schemas.meeting import (
-    MeetingSchema, 
+    MeetingSchema,
     MeetingSchemaDB,
     UpdateMeetingSchema,
     UpdateMeetingSchemaDB
@@ -31,11 +43,7 @@ from app.schemas.response import (
     DictResponseModel,
     ListResponseModel
 )
-from app.utils.time import (
-    local_to_utc, 
-    utc_to_local_default,
-    local_to_utc_default
-)
+
 
 router = APIRouter()
 logger = Logger("routes/meeting", log_file="meeting.log")
@@ -70,16 +78,38 @@ async def create_meeting(meeting_data: MeetingSchema,
         code=status.HTTP_201_CREATED
     )
 
+
+@router.post("/{id}/attendees",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
+             description="Add attendees to a meeting")
+async def add_attendees_to_meeting(id: str,
+                                   attendee_ids: List[str] | None = None,
+                                   attendee_emails: List[str] | None = None
+                                   ):
+    new_attendees = await add_attendees(id, attendee_ids, attendee_emails)
+    if isinstance(new_attendees, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add attendees failed"
+        )
+    return ListResponseModel(
+        data=new_attendees,
+        message="Attendees added successfully",
+        code=status.HTTP_201_CREATED
+    )
+
+
 @router.get("/meetings",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve all meetings")
 async def get_meetings(
     time_from: str = Query(None, description="Meeting time from"),
-    time_to: str = Query(None, description="Meeting time to"),
+    time_to: str = Query(None, description="Meeting time to")
 ):
     if time_from is None or time_to is None:
         now_hcm = utc_to_local_default(datetime.now(UTC))
-        
+
         time_from = local_to_utc_default(
             now_hcm.replace(hour=0, minute=0, second=0, microsecond=0))
         time_to = local_to_utc_default(
@@ -105,6 +135,7 @@ async def get_meetings(
                 }
             }
         }
+
     ]
     pipeline_results = await retrieve_meeting_by_pipeline(pipeline)
     if isinstance(pipeline_results, Exception):
@@ -112,18 +143,36 @@ async def get_meetings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Retrieve meetings failed"
         )
-    
+
     return_data = []
     for result in pipeline_results:
-        documents = [document_helper(document) for document in result["documents"]]
+        documents = [document_helper(document)
+                     for document in result["documents"]]
         return_data.append({
             **meeting_helper(result),
-            "documents":documents,
+            "documents": documents,
         })
 
     return ListResponseModel(
         data=return_data,
         message="Meetings retrieved successfully",
+        code=status.HTTP_200_OK
+    )
+
+
+@router.get("/upcoming",
+            dependencies=[Depends(is_authenticated)],
+            description="Retrieve upcoming meetings")
+async def get_upcoming_meetings():
+    upcoming = await retrieve_upcoming_meeting()
+    if isinstance(upcoming, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retrieve upcoming meetings failed"
+        )
+    return DictResponseModel(
+        data=upcoming,
+        message="Upcoming meetings retrieved successfully",
         code=status.HTTP_200_OK
     )
 
@@ -153,11 +202,28 @@ async def get_meeting_by_id(id: str):
     )
 
 
+@router.get("/{id}/attendees",
+            dependencies=[Depends(is_admin)],
+            description="Retrieve attendees by meeting id")
+async def get_attendees_by_meeting_id(id: str):
+    users = await retrieve_attendees_by_meeting_id(id)
+    if isinstance(users, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retrieve attendees failed"
+        )
+    return ListResponseModel(
+        data=users,
+        message="Attendees retrieved successfully",
+        code=status.HTTP_200_OK
+    )
+
+
 @router.put("/{id}",
             dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Update a meeting by meeting id")
-async def update_meeting_data(id: str, 
+async def update_meeting_data(id: str,
                               meeting_data: UpdateMeetingSchema,
                               creator_id: str = Depends(is_authenticated)):
     # Update meeting
@@ -178,7 +244,7 @@ async def update_meeting_data(id: str,
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(updated_meeting)
         )
-    
+
     # Upsert documents
     upsert_document_db = [
         DocumentSchemaDB(
@@ -218,6 +284,7 @@ async def update_meeting_data(id: str,
         code=status.HTTP_200_OK
     )
 
+
 @router.delete("/{id}",
                dependencies=[Depends(is_admin)],
                tags=["Admin"],
@@ -232,5 +299,23 @@ async def delete_meeting_data(id: str):
     return ListResponseModel(
         data=[],
         message="Meeting deleted successfully",
+        code=status.HTTP_200_OK
+    )
+
+
+@router.delete("/{id}/attendees",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
+               description="Delete attendees by emails")
+async def delete_attendees_data_by_emails(id: str, emails: List[str]):
+    deleted_attendees = await delete_attendees_by_emails(id, emails)
+    if isinstance(deleted_attendees, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(deleted_attendees)
+        )
+    return ListResponseModel(
+        data=[],
+        message="Attendees deleted successfully",
         code=status.HTTP_200_OK
     )
