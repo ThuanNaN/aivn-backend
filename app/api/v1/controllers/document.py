@@ -9,7 +9,7 @@ logger = Logger("controllers/document", log_file="document.log")
 try:
     document_collection = mongo_db["documents"]
 except Exception as e:
-    logger.error(f"Error when connect to exam: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 

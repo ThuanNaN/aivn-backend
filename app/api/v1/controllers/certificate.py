@@ -10,7 +10,7 @@ logger = Logger("controllers/certificate", log_file="certificate.log")
 try:
     certificate_collection = mongo_db["certificate"]
 except Exception as e:
-    logger.error(f"Error when connect to certificate: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 

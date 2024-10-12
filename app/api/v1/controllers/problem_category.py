@@ -11,7 +11,7 @@ logger = Logger("controllers/problem_category", log_file="problem_category.log")
 try:
     problem_category_collection = mongo_db["problem_category"]
 except Exception as e:
-    logger.error(f"Error when connect to problem_category: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 

@@ -19,7 +19,7 @@ logger = Logger("controllers/contest", log_file="contest.log")
 try:
     contest_collection = mongo_db["contests"]
 except Exception as e:
-    logger.error(f"Error when connect to contest: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 
@@ -201,7 +201,7 @@ async def update_contest(id: str, data: dict) -> bool:
         return e
 
 
-
+# TODO: Add transaction
 async def delete_contest(id: str) -> bool:
     """
     Delete a contest with a matching ID

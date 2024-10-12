@@ -19,7 +19,7 @@ logger = Logger("controllers/submission", log_file="submission.log")
 try:
     submission_collection = mongo_db["submissions"]
 except Exception as e:
-    logger.error(f"Error when connect to submissions: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 
@@ -218,6 +218,7 @@ async def update_submission(id: str, submission_data: dict) -> dict:
         return e
 
 
+# TODO: Add transaction
 async def delete_submission(id: str) -> bool:
     """
     Delete a submission and retake (if exists) with a matching ID

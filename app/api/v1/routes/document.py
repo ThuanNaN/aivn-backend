@@ -22,7 +22,6 @@ from app.schemas.response import (
     DictResponseModel,
     ListResponseModel
 )
-from app.utils.time import local_to_utc
 
 router = APIRouter()
 logger = Logger("routes/meeting", log_file="meeting.log")
