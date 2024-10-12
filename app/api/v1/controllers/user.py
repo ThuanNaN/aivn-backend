@@ -29,6 +29,7 @@ def user_helper(user) -> dict:
         "avatar": user["avatar"],
         "fullname": user["fullname"],
         "bio": user["bio"] if "bio" in user else "",
+        "attend_id": user["attend_id"],
         "created_at": utc_to_local(user["created_at"]),
         "updated_at": utc_to_local(user["updated_at"])
     }
@@ -75,6 +76,9 @@ async def add_user(user_data: dict) -> dict:
     :return: dict
     """
     try:
+        all_user = await user_collection.find().to_list(length=None)
+        attend_id = str(len(all_user)).zfill(4)
+        user_data["attend_id"] = attend_id
         user = await user_collection.insert_one(user_data)
         new_user = await user_collection.find_one({"_id": user.inserted_id})
         return user_helper(new_user)

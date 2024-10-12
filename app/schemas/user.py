@@ -11,6 +11,7 @@ class UserSchema(BaseModel):
     avatar: str
     fullname: str | None = ""
     bio: str | None = ""
+    attend_id: str | None = ""
 
     model_config = {
         "json_schema_extra": {
