@@ -9,8 +9,9 @@ logger = Logger("controllers/meeting", log_file="meeting.log")
 try:
     meeting_collection = mongo_db["meetings"]
     document_collection = mongo_db["documents"]
+    attendee_collection = mongo_db["attendees"]
 except Exception as e:
-    logger.error(f"Error when connect to exam: {e}")
+    logger.error(f"Error when connect to collection: {e}")
     exit(1)
 
 
@@ -142,10 +143,15 @@ async def delete_meeting(id: str) -> bool:
                 del_meeting = await meeting_collection.delete_one(
                     {"_id": ObjectId(id)},
                     session=session)
-
+                logger.info(f"Delete meeting with ID: {id}")
                 del_documents = await document_collection.delete_many(
                     {"meeting_id": ObjectId(id)},
                     session=session)
+                logger.info(f"Delete documents: {del_documents.deleted_count}")
+                del_attendees = await attendee_collection.delete_many(
+                    {"meeting_id": ObjectId(id)},
+                    session=session)
+                logger.info(f"Delete attendees: {del_attendees.deleted_count}")
         except (ConnectionFailure, OperationFailure) as e:
             logger.error(f"{traceback.format_exc()}")
             return e
