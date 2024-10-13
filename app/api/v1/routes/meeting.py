@@ -26,10 +26,12 @@ from app.api.v1.controllers.document import (
     upsert_document_by_meeting_id,
 )
 from app.api.v1.controllers.attendee import (
+    attendee_helper,
     add_attendees,
     retrieve_attendees_by_meeting_id,
     delete_attendees_by_emails
 )
+from app.api.v1.controllers.user import retrieve_user
 from app.schemas.meeting import (
     MeetingSchema,
     MeetingSchemaDB,
@@ -105,8 +107,10 @@ async def add_attendees_to_meeting(id: str,
             description="Retrieve all meetings")
 async def get_meetings(
     time_from: str = Query(None, description="Meeting time from"),
-    time_to: str = Query(None, description="Meeting time to")
+    time_to: str = Query(None, description="Meeting time to"),
+    clerk_user_id: str = Depends(is_authenticated)
 ):
+    current_user = await retrieve_user(clerk_user_id)
     if time_from is None or time_to is None:
         now_hcm = utc_to_local_default(datetime.now(UTC))
 
@@ -120,11 +124,19 @@ async def get_meetings(
 
     pipeline = [
         {
-            "$lookup": {
-                "from": "documents",
-                "localField": "_id",
-                "foreignField": "meeting_id",
-                "as": "documents"
+            '$lookup': {
+                'from': 'documents', 
+                'localField': '_id', 
+                'foreignField': 'meeting_id', 
+                'as': 'documents'
+            }
+        }, 
+        {
+            '$lookup': {
+                'from': 'attendees', 
+                'localField': '_id', 
+                'foreignField': 'meeting_id', 
+                'as': 'attendees'
             }
         },
         {
@@ -132,10 +144,9 @@ async def get_meetings(
                 "date": {
                     "$gte": time_from,
                     "$lte": time_to
-                }
+                },
             }
         }
-
     ]
     pipeline_results = await retrieve_meeting_by_pipeline(pipeline)
     if isinstance(pipeline_results, Exception):
@@ -148,9 +159,17 @@ async def get_meetings(
     for result in pipeline_results:
         documents = [document_helper(document)
                      for document in result["documents"]]
+        
+        return_attendee = None
+        for attendee in result["attendees"]:
+            if attendee["attend_id"] == current_user["attend_id"]:
+                return_attendee = attendee_helper(attendee)
+                break
+
         return_data.append({
             **meeting_helper(result),
             "documents": documents,
+            "attendee": return_attendee
         })
 
     return ListResponseModel(
