@@ -5,6 +5,7 @@ from app.utils.time import utc_to_local, is_past
 from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
+from app.api.v1.controllers.document import document_helper
 
 logger = Logger("controllers/meeting", log_file="meeting.log")
 try:
@@ -171,13 +172,24 @@ async def retrieve_upcoming_meeting() -> dict:
     try:
         current_utc_time = datetime.now(UTC)
         pipeline = [
+            {
+                '$lookup': {
+                    'from': 'documents', 
+                    'localField': '_id', 
+                    'foreignField': 'meeting_id', 
+                    'as': 'documents'
+                }
+            }, 
             {"$match": {"date": {"$gte": current_utc_time}}},
             {"$sort": {"date": 1}},
             {"$limit": 1}
         ]
         upcoming_meeting = await meeting_collection.aggregate(pipeline).to_list(length=None)
         if upcoming_meeting:
-            return meeting_helper(upcoming_meeting[0])
+            return {
+                **meeting_helper(upcoming_meeting[0]),
+                "documents": [document_helper(document) for document in upcoming_meeting[0]["documents"]]
+            }
         raise Exception("Upcoming meeting not found")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
