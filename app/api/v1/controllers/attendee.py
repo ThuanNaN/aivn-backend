@@ -40,6 +40,7 @@ async def add_attendees(meeting_id, attendee_ids, attendee_emails) -> list[str]:
     try:
         if attendee_ids is None:
             attendee_ids = []
+        attendee_ids = [attendee_id.zfill(4) for attendee_id in attendee_ids] 
         if attendee_emails is not None:
             user_info = await user_collection.find(
                 {"email": {"$in": attendee_emails}},
@@ -82,25 +83,25 @@ async def retrieve_attendees_by_meeting_id(meeting_id: str) -> list[dict]:
     try:
         pipeline = [
             {
-            "$match": {
-                "meeting_id": ObjectId(meeting_id)
-            }
+                "$match": {
+                    "meeting_id": ObjectId(meeting_id)
+                }
             },
             {
-            "$lookup": {
-                "from": "users",
-                "localField": "attend_id",
-                "foreignField": "attend_id",
-                "as": "user_info"
-            }
+                "$lookup": {
+                    "from": "users",
+                    "localField": "attend_id",
+                    "foreignField": "attend_id",
+                    "as": "user_info"
+                }
             },
             {
-            "$unwind": "$user_info"
+                "$unwind": "$user_info"
             },
             {
-            "$replaceRoot": {
-                "newRoot": "$user_info"
-            }
+                "$replaceRoot": {
+                    "newRoot": "$user_info"
+                }
             }
         ]
         attendees = await attendee_collection.aggregate(pipeline).to_list(length=None)
