@@ -1,7 +1,7 @@
 from app.core.database import mongo_db
 import asyncio
 from tqdm.asyncio import tqdm
-from pymongo import UpdateOne, DeleteOne, InsertOne
+from pymongo import UpdateOne
 
 try:
     user_collection = mongo_db["users"]
