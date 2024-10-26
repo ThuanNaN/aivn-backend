@@ -38,12 +38,9 @@ gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker -
 
 #### 1. Tools (Depends on respective roles)
 
-- OrbStack: run Docker locally
-  - Download: https://orbstack.dev/download
-- MongoDB Compass: GUI for MongoDB
-  - Download: https://www.mongodb.com/try/download/compass
-- MongoDB CLI Database Tools: dump and restore data
-  - Download: https://www.mongodb.com/try/download/database-tools
+- OrbStack: run Docker locally. [Download](https://orbstack.dev/download)
+- MongoDB Compass: GUI for MongoDB. [Download](https://www.mongodb.com/try/download/compass)
+- MongoDB CLI Database Tools: dump and restore data. [Download](https://www.mongodb.com/try/download/database-tools)
 
 #### 2. Setup key
 
@@ -56,7 +53,7 @@ chmod 600 ./mongodb-keyfile
 #### 3. Start Docker & MongoDB Replica Set setup
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ```bash
@@ -81,5 +78,5 @@ mongodump --uri=$DB_URL --out="aivietnam-$(date +%Y-%m-%d)"
 - Restore
 
 ```bash
-mongorestore --uri="mongodb://localhost:27017" -d aivietnam aivietnam-$(date +%Y-%m-%d)/aivietnam/
+mongorestore --uri=mongodb://duongthuan1445:<passwd>@localhost:27017/ -d aivietnam <database>
 ```
