@@ -1,11 +1,14 @@
 services:
-  mongodb:
-    image: mongo:7.0
-    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
-    container_name: aivietnam-mongodb
-    ports:
-      - 27017:27017
-    extra_hosts:
-      - "localhost:0.0.0.0"
-    volumes:
-      - ./data/db:/data/db
+    mongodb:
+        image: mongo:7.0
+        container_name: aivietnam-mongodb
+        env_file:
+          - .env
+        command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/data/configdb/mongodb-keyfile"]
+        ports:
+            - 27017:27017
+        extra_hosts:
+            - "localhost:0.0.0.0"
+        volumes:
+            - ./database/mongodb:/data/db
+            - ./mongodb-keyfile:/data/configdb/mongodb-keyfile

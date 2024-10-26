@@ -164,4 +164,5 @@ cython_debug/
 
 *.ipynb
 *.csv
-data/
+database/
+mongodb-keyfile

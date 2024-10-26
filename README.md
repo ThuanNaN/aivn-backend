@@ -36,7 +36,7 @@ gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker -
 
 ### Local MongoDB Replica Set
 
-1. Tools (Depends on respective roles)
+#### 1. Tools (Depends on respective roles)
 
 - OrbStack: run Docker locally
   - Download: https://orbstack.dev/download
@@ -45,14 +45,22 @@ gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker -
 - MongoDB CLI Database Tools: dump and restore data
   - Download: https://www.mongodb.com/try/download/database-tools
 
-2. Start Docker & MongoDB Replica Set setup
+#### 2. Setup key
+
+```bash
+openssl rand -base64 756 > mongodb-keyfile
+chmod 600 ./mongodb-keyfile
+
+```
+
+#### 3. Start Docker & MongoDB Replica Set setup
 
 ```bash
 docker-compose up -d
 ```
 
 ```bash
-docker exec -it aivietnam-mongodb mongosh
+docker exec -it aivietnam-mongodb mongosh -u duongthuan1445 -p <passwd> --authenticationDatabase admin
 ```
 
 ```js
@@ -61,17 +69,17 @@ rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
 
 - Connect to local MongoDB at: mongodb://localhost:27017 via MongoDB Compass to make sure it works as expected
 
-3. Dump data from the respective environment and restore it to local MongoDB
+#### 4. Dump data from the respective environment and restore it to local MongoDB
 
 - Dump data
 
-```
+```bash
 export DB_URL="..."
 mongodump --uri=$DB_URL --out="aivietnam-$(date +%Y-%m-%d)"
 ```
 
 - Restore
 
-```
+```bash
 mongorestore --uri="mongodb://localhost:27017" -d aivietnam aivietnam-$(date +%Y-%m-%d)/aivietnam/
 ```
