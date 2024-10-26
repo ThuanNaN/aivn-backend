@@ -1,0 +1,11 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    container_name: aivietnam-mongodb
+    ports:
+      - 27017:27017
+    extra_hosts:
+      - "localhost:0.0.0.0"
+    volumes:
+      - ./data/db:/data/db
