@@ -8,6 +8,7 @@ class MeetingSchema(BaseModel):
     date: str  # isoformat
     start_time: str # isoformat
     end_time: str # isoformat
+    document_data: list[dict] | None = None
     
     model_config = {
         "json_schema_extra": {
@@ -18,7 +19,14 @@ class MeetingSchema(BaseModel):
                     "lecturer": "Dr.Dinh Vinh",
                     "date": "2024-10-08T01:45:21.527550",
                     "start_time": "2024-10-08T01:47:24.432219",
-                    "end_time": "2024-10-08T01:47:34.334284"
+                    "end_time": "2024-10-08T01:47:34.334284",
+                    "document_data": [
+                        {
+                            "file_name": "test_image.jpg",
+                            "mask_url": "https://www.google.com/test_image.jpg",
+                            "meeting_id": "6698921e0ab511463f14d0a9"
+                        }
+                    ]
                 }
             ]
         }

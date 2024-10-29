@@ -74,9 +74,44 @@ async def create_meeting(meeting_data: MeetingSchema,
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Add meeting failed"
         )
+    
+    # Upsert documents
+    upsert_document_db = [
+        DocumentSchemaDB(
+            file_name=document["file_name"],
+            meeting_id=document["meeting_id"],
+            mask_url=document["mask_url"],
+            creator_id=creator_id,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
+        ).model_dump()
+        for document in meeting_data.document_data
+    ]
+    upserted_documents = await upsert_document_by_meeting_id(
+        new_meeting["id"],
+        upsert_document_db,
+    )
+    if isinstance(upserted_documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(upserted_documents)
+        )
+
+    new_documents = await retrieve_document_by_meeting_id(new_meeting["id"])
+    if isinstance(new_documents, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retrieve documents failed"
+        )
+
+    return_data = {
+        **new_meeting,
+        "documents": new_documents
+    }
+
     return DictResponseModel(
-        data=new_meeting,
-        message="Meeting added successfully",
+        data=return_data,
+        message="Meeting and documents added successfully",
         code=status.HTTP_201_CREATED
     )
 
