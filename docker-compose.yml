@@ -10,5 +10,8 @@ services:
         extra_hosts:
             - "localhost:0.0.0.0"
         volumes:
-            - ./database/mongodb:/data/db
+            - mongo_db:/data/db
             - ./mongodb-keyfile:/data/configdb/mongodb-keyfile
+
+volumes:
+    mongo_db:
