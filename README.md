@@ -78,5 +78,5 @@ mongodump --uri=$DB_URL --out="aivietnam-$(date +%Y-%m-%d)"
 - Restore
 
 ```bash
-mongorestore --uri=mongodb://duongthuan1445:<passwd>@localhost:27017/ -d aivietnam <database>
+mongorestore --uri=mongodb://duongthuan1445:<passwd>@localhost:27017/ --authenticationDatabase admin --drop --nsInclude=aivietnam <database>
 ```
