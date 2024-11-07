@@ -8,16 +8,18 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from app.api.v1.controllers.user import retrieve_user
 
+
 PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvZrZXYBd+sjK1wQ3t2yH
-QdhRL8gOGJrgkuNqW30dRmWShRQ6/UCybp1ojgJKW3P31o8fLhuOCnKCjAjDPI0X
-QbtjajAKcoCUEcx38VHLv2gT5STIhgvSC9IrDEOflmFz6+5KbQQcQBvyV51V9eb7
-FaeGRe9CIRlMiO+tKXqmx3Lt0Vnw+5GuvLV5/nWQspElpn1pYRMYmI0lh6/KFLQ0
-PaYSLZenUk1UfGiLbgVcuv9Aht1n7wdb2SmGgIcTVqhYnUGNzsXKCglRZ7A6bH1n
-pklFqYoNwF4Mps7hKQ1D/ddxAGEaASNwMam5pMt2ZeOohOmX5BNQ7YuGzyjf+KZD
-ywIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZ/vvCETUyrlqfnKpCfN
+fZhOrColBWz3rpjBSf3zDuZm5APCVUdI19ETgPPxKJBRaa8s9ij0BrIIFDU3ARnd
+fonsWZpxbdFG3wfWOPj+rRMDVcxpcWnhkdIHUKO/AiJqb9+nsCDa29njW3Co+O4u
+pK2bN5grHSziLUbCIjLf7jmtVdbmXqyd3Y+OdSj1dwjzrb54AIe/4xNUHS6KSU9x
+Du0rTgnA0me4MUuL72aHx0OxSDfxGnWqFe+HETQnDuCLCY2R5kd99H9tKfbKWsK6
+E40n+U5RdI14aGIkhfcKE7qeY7Je+t0L6z/ghNtVsEI/C0vwNGTYp04JVcu+JV14
+pQIDAQAB
 -----END PUBLIC KEY-----
 """
+
 
 ALGORITHM = "RS256"
 oauth2_scheme = HTTPBearer()
