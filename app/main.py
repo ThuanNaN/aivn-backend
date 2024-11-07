@@ -7,9 +7,8 @@ from app.api.v1 import router as v1_router
 
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
-                #   openapi_url="/api/v1/openapi.json",
-                #   docs_url="/api/v1/docs"
-                  )
+                  openapi_url="/v1/openapi.json",
+                  docs_url="/v1/docs")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.FRONTEND_URL,
@@ -18,8 +17,7 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(LogProcessAndTime)
-    app.include_router(v1_router, prefix="/api/v1")
+    app.include_router(v1_router, prefix="/v1")
     return app
-
 
 app = create_application()
