@@ -4,11 +4,10 @@ from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
 
-
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
-                  openapi_url="/v1/openapi.json",
-                  docs_url="/v1/docs")
+                  openapi_url=settings.OPENAPI_URL,
+                  docs_url=settings.DOCS_URL)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.FRONTEND_URL,
