@@ -47,17 +47,20 @@ gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker -
 ```bash
 openssl rand -base64 756 > mongodb-keyfile
 chmod 600 ./mongodb-keyfile
-
 ```
 
 #### 3. Start Docker & MongoDB Replica Set setup
 
 ```bash
 docker compose up -d
+
+# Add key to the container
+docker exec -it aivietnam-mongodb /bin/bash
+chown mongodb:mongodb /data/configdb/mongodb-keyfile
 ```
 
 ```bash
-docker exec -it aivietnam-mongodb mongosh -u duongthuan1445 -p <passwd> --authenticationDatabase admin
+docker exec -it aivietnam-mongodb mongosh --authenticationDatabase admin -u duongthuan1445 -p <passwd>
 ```
 
 ```js
