@@ -2,6 +2,7 @@ from app.core.config import settings
 from fastapi import APIRouter, Depends
 from app.api.v1.routes.visualize import router as visualize_router
 from app.api.v1.routes.user import router as user_router
+from app.api.v1.routes.whitelist import router as whitelist_router
 from app.api.v1.routes.meeting import router as meeting_router
 from app.api.v1.routes.document import router as document_router
 from app.api.v1.routes.contest import router as contest_router
@@ -96,3 +97,8 @@ router.include_router(document_router,
                       dependencies=AIO_DEPENDENCIES,
                       prefix="/document",
                       tags=["Document"])
+
+router.include_router(whitelist_router,
+                        dependencies=AIO_DEPENDENCIES,
+                        prefix="/whitelist",
+                        tags=["Whitelist"])

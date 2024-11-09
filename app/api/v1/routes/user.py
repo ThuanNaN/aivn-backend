@@ -21,15 +21,16 @@ from app.api.v1.controllers.user import (
     retrieve_admin_users,
     retrieve_user_clerk,
     update_user,
-    add_whitelist,
-    add_whitelist_via_file,
-    retrieve_whitelists,
-    check_whitelist_via_email,
-    check_whitelist_via_id,
-    upsert_whitelist,
     upsert_admin_list,
-    delete_whitelist_by_email,
     delete_user_by_clerk_user_id
+)
+from app.api.v1.controllers.whitelist import (
+    add_whitelist,
+    retrieve_whitelist_by_email,
+    delete_whitelist_by_email,
+)
+from app.schemas.whitelist import (
+    WhiteListSchemaDB,
 )
 from app.schemas.user import (
     UserSchemaDB,
@@ -37,7 +38,6 @@ from app.schemas.user import (
     UpdateUserRole,
     UpdateUserInfoDB,
     UpdateUserRoleDB,
-    WhiteListSchema,
 )
 from app.schemas.response import (
     ListResponseModel,
@@ -59,12 +59,8 @@ async def read_csv(file: UploadFile):
             tags=["Admin"],
             description="Retrieve all users with matching search and filter")
 async def get_users(
-    search: Optional[str] = Query(
-        None,
-        description="Search by problem title or description"),
-    role: Optional[str] = Query(
-        None,
-        description="Filter by role"),
+    search: Optional[str] = Query(None, description="Search by problem title or description"),
+    role: Optional[str] = Query(None, description="Filter by role"),
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100)
 ):
@@ -120,27 +116,6 @@ async def get_me(clerk_user_id: str = Depends(is_authenticated)):
         )
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
-                             code=status.HTTP_200_OK)
-
-
-@router.get("/whitelists",
-            dependencies=[Depends(is_admin)],
-            tags=["Admin"],
-            description="Retrieve whitelist users")
-async def get_whitelists():
-    whitelists = await retrieve_whitelists()
-    if isinstance(whitelists, Exception):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Get whitelists failed."
-        )
-    if not whitelists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Whitelists not found."
-        )
-    return ListResponseModel(data=whitelists,
-                             message="Whitelists retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 
@@ -237,7 +212,8 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
     new_role = data_dict.get("role", None)
     if new_role is not None:
         user_data = await retrieve_user(clerk_user_id)
-        is_whitelist = await check_whitelist_via_email(user_data["email"])
+        whitelist_info = await retrieve_whitelist_by_email(user_data["email"])
+        is_whitelist = True if whitelist_info else False
         if isinstance(is_whitelist, Exception):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -245,9 +221,11 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
             )
 
         if new_role == "aio" and not is_whitelist:
-            whitelist_data = WhiteListSchema(
+            whitelist_data = WhiteListSchemaDB(
                 email=user_data["email"],
-                nickname=user_data["username"]
+                nickname=user_data["username"],
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC)
             ).model_dump()
             new_whitelist = await add_whitelist(whitelist_data)
             if isinstance(new_whitelist, Exception):
@@ -283,55 +261,6 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
     return ListResponseModel(data=[],
                              message="User updated successfully.",
                              code=200)
-
-
-@router.post("/whitelist",
-             dependencies=[Depends(is_admin)],
-             tags=["Admin"],
-             description="Add an email to whitelist")
-async def add_email_to_whitelist(whitelist_csv: UploadFile = File(...)):
-    csv_reader = await read_csv(whitelist_csv)
-    csv_whitelist_data = []
-    for row in csv_reader:
-        if len(row) >= 2:
-            csv_whitelist_data.append(WhiteListSchema(email=row[0].lower(), nickname=row[1]))
-    whitelist_data = [data.model_dump() for data in csv_whitelist_data]
-
-    whitelist = await add_whitelist_via_file(whitelist_data)
-    if isinstance(whitelist, Exception):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
-        )
-    return DictResponseModel(data=whitelist,
-                             message="Email added to whitelist successfully.",
-                             code=status.HTTP_200_OK)
-
-
-@router.post("/whitelist/upsert",
-                dependencies=[Depends(is_admin)],
-                tags=["Admin"],
-                description="This API will upsert the whitelist data, \
-                            if the email is already in the whitelist FILE, it will be UPDATED. \
-                            Otherwise, if the email is not EXIST, it will be ADDED. \
-                            In case of the email is EXIST in database, but not in the whitelist FILE, It will be DELETED.")
-async def upsert_whitelist_data(whitelist_csv: UploadFile = File(...)):
-    csv_reader = await read_csv(whitelist_csv)
-    csv_whitelist_data = []
-    for row in csv_reader:
-        if len(row) >= 2:
-            csv_whitelist_data.append(WhiteListSchema(email=row[0].lower(), nickname=row[1]))
-    whitelist_data = [data.model_dump() for data in csv_whitelist_data]
-
-    updated_whitelist = await upsert_whitelist(whitelist_data)
-    if isinstance(updated_whitelist, Exception):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
-        )
-    return ListResponseModel(data=[],
-                             message="Email added to whitelist successfully.",
-                             code=status.HTTP_200_OK)
 
 
 
@@ -379,8 +308,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             return ListResponseModel(data=[],
                                      message="Current user is an admin.",
                                      code=status.HTTP_200_OK)
-
-        is_whitelist = await check_whitelist_via_id(clerk_user_id)
+        whitelist_info = await retrieve_whitelist_by_email(is_exist_user["email"])
+        is_whitelist = True if whitelist_info else False
         if isinstance(is_whitelist, Exception):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -417,7 +346,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Retrieving user data failed."
             )
-        is_whitelist = await check_whitelist_via_email(clerk_user_data["email"])
+        whitelist_info = await retrieve_whitelist_by_email(clerk_user_data["email"])
+        is_whitelist = True if whitelist_info else False
         if isinstance(is_whitelist, Exception):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

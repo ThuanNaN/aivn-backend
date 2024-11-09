@@ -5,13 +5,12 @@ from app.utils.time import utc_to_local
 from requests.exceptions import HTTPError, Timeout
 from app.core.database import mongo_db
 from app.utils.logger import Logger
-from pymongo import UpdateOne, DeleteOne, InsertOne
+from pymongo import UpdateOne
 
 logger = Logger("controllers/user", log_file="user.log")
 
 try:
     user_collection = mongo_db["users"]
-    whitelist_collection = mongo_db["whitelists"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -148,8 +147,8 @@ async def retrieve_admin_users() -> list[dict]:
 
 
 async def retrieve_user_by_pipeline(pipeline: list,
-                                            page: int,
-                                            per_page: int) -> dict:
+                                    page: int,
+                                    per_page: int) -> dict:
     """
     Retrieve users with search filter and pagination
     :param pipeline: list
@@ -240,131 +239,6 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
         return e
 
 
-
-async def add_whitelist(whitelist_data: dict) -> dict:
-    """
-    Create a new whitelist
-    :param whitelist_data: dict
-    :return: dict
-    """
-    try:
-        whitelist = await whitelist_collection.insert_one(whitelist_data)
-        new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
-        return whitelist_helper(new_whitelist)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-
-async def add_whitelist_via_file(whitelist_data: list[dict]) -> dict:
-    """
-    Create a new whitelist
-    :param whitelist_data: list
-    :return: dict
-    """
-    try:
-        operations = [InsertOne(data) for data in whitelist_data]
-        result = await whitelist_collection.bulk_write(operations)
-        inserted_count = result.inserted_count
-        logger.info(f"Number of documents inserted: {inserted_count}")
-        return {"inserted_count": inserted_count}
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def retrieve_whitelists() -> list[dict]:
-    """
-    Retrieve all whitelists in database.
-    :return: list
-    """
-    try:
-        whitelists = []
-        async for whitelist in whitelist_collection.find():
-            whitelists.append(whitelist_helper(whitelist))
-        return whitelists
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def check_whitelist_via_email(email: str) -> bool:
-    """
-    Check an email is in whitelist by email.
-    :param email: str
-    :return: bool
-    """
-    try:
-        whitelist = await whitelist_collection.find_one({"email": email})
-        if whitelist:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def check_whitelist_via_id(clerk_user_id: str) -> bool:
-    """
-    Check an email is in whitelist by clerk_user_id
-    Only use for user who has been logged in before -> exist in users collection
-    :param clerk_user_id: str
-    :return: bool
-    """
-    try:
-        user_data = await user_collection.find_one({"clerk_user_id": clerk_user_id})
-        if user_data:
-            email = user_data["email"]
-            whitelist = await whitelist_collection.find_one({"email": email})
-            if whitelist:
-                return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def upsert_whitelist(new_whitelists: list[dict]) -> bool:
-    """
-    Upsert new whitelist to database
-    :param new_whitelists: list
-    :return: bool
-    """
-    try:
-        # Get the emails of the new whitelist
-        new_emails = {whitelist["email"] for whitelist in new_whitelists}
-
-        # Retrieve current whitelist emails from the database
-        current_whitelists = await whitelist_collection.find({}, {"email": 1}).to_list(length=None)
-        current_emails = {whitelist["email"]
-                          for whitelist in current_whitelists}
-
-        # Determine which emails to delete
-        emails_to_delete = current_emails - new_emails
-
-        # Prepare bulk operations
-        operations = [
-            UpdateOne(
-                {"email": whitelist["email"]},
-                {"$set": whitelist},
-                upsert=True
-            ) for whitelist in new_whitelists
-        ]
-
-        # Add delete operations for emails no longer in the new whitelist
-        operations.extend(DeleteOne({"email": email})
-                          for email in emails_to_delete)
-
-        if operations:
-            result = await whitelist_collection.bulk_write(operations)
-            logger.info(f"Bulk write result: {result.bulk_api_result}")
-        return True
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
 async def upsert_admin_list(new_admins: list[dict]) -> bool:
     """
     Upsert new admin list to users collection via matching email.
@@ -414,22 +288,6 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
             result = await user_collection.bulk_write(operations)
             logger.info(f"Bulk write result: {result.bulk_api_result}")
         return True
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def delete_whitelist_by_email(email: str) -> bool:
-    """
-    Delete a whitelist with a matching email
-    :param email: str
-    :return: bool
-    """
-    try:
-        deleted = await whitelist_collection.delete_one({"email": email})
-        if deleted.deleted_count > 0:
-            return True
-        return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e

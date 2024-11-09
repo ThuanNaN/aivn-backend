@@ -47,8 +47,3 @@ class UpdateUserRoleDB(UpdateUserRole):
 
 class UpdateUserInfoDB(UpdateUserInfo):
     updated_at : datetime
-
-
-class WhiteListSchema(BaseModel):
-    email: str
-    nickname: str
