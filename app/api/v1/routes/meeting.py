@@ -65,6 +65,7 @@ async def create_meeting(meeting_data: MeetingSchema,
         start_time=datetime.fromisoformat(meeting_data.start_time),
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
+        record=meeting_data.record,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     )
@@ -289,6 +290,7 @@ async def update_meeting_data(id: str,
         start_time=datetime.fromisoformat(meeting_data.start_time),
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
+        record=meeting_data.record,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     )
