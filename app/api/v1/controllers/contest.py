@@ -1,6 +1,7 @@
 import traceback
 from app.utils.time import utc_to_local
-from app.core.database import mongo_db
+from app.core.database import mongo_client, mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam import (
@@ -18,6 +19,7 @@ logger = Logger("controllers/contest", log_file="contest.log")
 
 try:
     contest_collection = mongo_db["contests"]
+    exam_collection = mongo_db["exams"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -201,7 +203,6 @@ async def update_contest(id: str, data: dict) -> bool:
         return e
 
 
-# TODO: Add transaction
 async def delete_contest(id: str) -> bool:
     """
     Delete a contest with a matching ID
@@ -212,19 +213,19 @@ async def delete_contest(id: str) -> bool:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
             raise Exception("Contest not found")
+        
+        all_exam = await exam_collection.find({"contest_id": ObjectId(id)}).to_list(length=None)
+        if len(all_exam) > 0:
+            deleted_all_exams = await delete_all_by_contest_id(id)
+            if isinstance(deleted_all_exams, Exception):
+                raise deleted_all_exams
+            logger.info(f"Deleted all exams")
 
-        # Delete all exam 
-        deleted_exams = await delete_all_by_contest_id(id)
-        if isinstance(deleted_exams, Exception):
-            raise deleted_exams
-        if not deleted_exams:
-            raise Exception("Delete exam failed")
-
-        # Delete contest
         deleted_contest = await contest_collection.delete_one({"_id": ObjectId(id)})
+        if isinstance(deleted_contest, Exception):
+            raise deleted_contest
         if deleted_contest.deleted_count == 1:
             return True
-        return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e

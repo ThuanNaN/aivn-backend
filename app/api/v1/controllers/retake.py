@@ -178,28 +178,6 @@ async def delete_retake_by_id(id: str) -> bool:
         logger.error(f"Error when delete retake: {e}")
         return e
 
-
-async def delete_retakes_by_exam_id(exam_id: str) -> bool:
-    """
-    Delete retakes with a matching exam ID
-    :param exam_id: str
-    :return: bool
-    """
-    try:
-        retakes = await retrieve_retake_by_exam_id(exam_id)
-        if isinstance(retakes, Exception):
-            raise retakes
-        if retakes:
-            deleted_retakes = await retake_collection.delete_many({"exam_id": ObjectId(exam_id)})
-            if deleted_retakes.deleted_count > 0:
-                return True
-            return False
-        else:
-            return True # No retake to delete
-    except Exception as e:
-        logger.error(f"Error when delete retakes: {e}")
-        return e
-
     
 async def delete_retake_by_ids(ids: list) -> bool:
     """

@@ -1,26 +1,26 @@
 import traceback
 from app.utils.time import utc_to_local
-from app.core.database import mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
+from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id,
-    delete_all_by_exam_id
 )
 from app.api.v1.controllers.problem import (
     retrieve_problems_by_ids
 )
-from app.api.v1.controllers.submission import (
-    delete_submissions_by_exam_id
-)
-from app.api.v1.controllers.retake import (
-    delete_retakes_by_exam_id
-)
+
 
 logger = Logger("controllers/exam", log_file="exam.log")
 
 try:
     exam_collection = mongo_db["exams"]
+    exam_problem_collection = mongo_db["exam_problem"]
+    submission_collection = mongo_db["submissions"]
+    retake_collection = mongo_db["retake"]
+    timer_collection = mongo_db["timer"]
+    certificate_collection = mongo_db["certificate"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -192,36 +192,43 @@ async def delete_exam(id: str) -> bool:
         if not exam:
             raise Exception("Exam not found")
         
-        # Delete all exam_problem in exam_problem collection
-        deleted_exam_problems = await delete_all_by_exam_id(id)
-        if isinstance(deleted_exam_problems, Exception):
-            raise deleted_exam_problems
-        if not deleted_exam_problems:
-            raise Exception("Delete exam_problem failed.")
-        
-        # Del submissions (del timer, retake)
-        deleted_submissions = await delete_submissions_by_exam_id(id)
-        if isinstance(deleted_submissions, Exception):
-            raise deleted_submissions
-        if not deleted_submissions:
-            raise Exception("Delete submission failed.")
-        
-        # Del retakes dont have submission
-        deleted_retakes = await delete_retakes_by_exam_id(id)
-        if isinstance(deleted_retakes, Exception):
-            raise deleted_retakes
-        if not deleted_retakes:
-            raise Exception("Delete retake failed.")
-
-        # Delete exam in exam collection
-        deleted_exam = await exam_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_exam.deleted_count == 1:
-            return True
-        return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                # Delete all exam_problem in exam_problem collection
+                await exam_problem_collection.delete_many({"exam_id": ObjectId(id)}, session=session)
+                logger.info(f"Deleted all exam_problems")
+
+                # Del all retakes by exam_id
+                await retake_collection.delete_many({"exam_id": ObjectId(id)}, session=session)
+                logger.info(f"Deleted all retakes")
+
+                # Del all timer by exam_id
+                await timer_collection.delete_many({"exam_id": ObjectId(id)}, session=session)
+
+                # Del all certificates by 
+                submission_ids = []
+                async for submission in submission_collection.find({"exam_id": ObjectId(id)}):
+                    submission_ids.append(submission["_id"])
+                await certificate_collection.delete_many({"submission_id": {"$in": submission_ids}}, session=session)
+
+                # Del submissions by exam_id
+                await submission_collection.delete_many({"exam_id": ObjectId(id)}, session=session)
+                logger.info(f"Deleted all submissions")
+
+                # Delete exam in exam collection
+                await exam_collection.delete_one({"_id": ObjectId(id)}, session=session) 
+                logger.info(f"Deleted exam with ID: {id}")
+        
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            return True
 
 
 async def delete_all_by_contest_id(contest_id: str) -> bool:
@@ -233,14 +240,13 @@ async def delete_all_by_contest_id(contest_id: str) -> bool:
     try:
         exams = await retrieve_exams_by_contest(contest_id)
         if isinstance(exams, Exception):
-            raise exams
+            raise Exception(f"Retrieve all exams by contest ID: {contest_id} failed")
         for exam in exams:
-            delete_exam_result = await delete_exam(exam["id"])
-            if isinstance(delete_exam_result, Exception):
-                raise delete_exam_result
-            if not delete_exam_result:
-                raise Exception("Delete exam failed")
+            deleted_exam = await delete_exam(exam["id"])
+            if isinstance(deleted_exam, Exception):
+                raise Exception(f"Delete exam with ID: {exam['id']} failed")
         return True
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+

@@ -278,22 +278,3 @@ async def delete_submission(id: str) -> bool:
         logger.error(f"{traceback.format_exc()}")
         return e
 
-
-async def delete_submissions_by_exam_id(exam_id: str) -> bool:
-    """
-    Delete all submissions with a matching exam ID
-    :param exam_id: str
-    :return: bool
-    """
-    try:
-        async for submission in submission_collection.find({"exam_id": ObjectId(exam_id)}):
-            deleted_submission = await delete_submission(str(submission["_id"]))
-            if isinstance(deleted_submission, Exception):
-                raise deleted_submission
-            if not deleted_submission:
-                raise Exception("Delete submission failed")
-        return True
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-    
