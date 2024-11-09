@@ -143,19 +143,3 @@ async def delete_certificate(id: str) -> dict:
         logger.error(f"{traceback.format_exc()}")
         return e
 
-
-async def delete_certificate_by_submission_id(submission_id: str) -> dict:
-    """
-    Delete a certificate with a matching submission_id
-    :param submission_id: str
-    :return: dict
-    """
-    try:
-        certificate = await certificate_collection.find_one({"submission_id": submission_id})
-        if certificate:
-            await certificate_collection.delete_one({"submission_id": submission_id})
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
