@@ -1,6 +1,7 @@
 import traceback
 from app.utils.time import utc_to_local
-from app.core.database import mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
+from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from pymongo import UpdateOne, DeleteOne
@@ -9,6 +10,7 @@ logger = Logger("controllers/user", log_file="user.log")
 
 try:
     whitelist_collection = mongo_db["whitelists"]
+    user_collection = mongo_db["users"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -70,10 +72,20 @@ async def upsert_whitelist(new_whitelists: list[dict], remove_not_exist: bool) -
             # Add delete operations for emails no longer in the new whitelist
             operations.extend(DeleteOne({"email": email})
                             for email in emails_to_delete)
+            
+            # Downgrade to user role from "aio" to "user"
+            downgrade_operations = [UpdateOne(
+                {"email": email},
+                {"$set": {"role": "user"}}
+            ) for email in emails_to_delete]
+            
+            if downgrade_operations:
+                downgrade_result = await user_collection.bulk_write(downgrade_operations)
+                logger.info(f"Bulk write downgrade result: {downgrade_result.bulk_api_result}")
 
         if operations:
             result = await whitelist_collection.bulk_write(operations)
-            logger.info(f"Bulk write result: {result.bulk_api_result}")
+            logger.info(f"Bulk write upgrade result: {result.bulk_api_result}")
         return True
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
@@ -197,11 +209,31 @@ async def delete_whitelist_by_id(id: str) -> bool:
     :return: bool
     """
     try:
-        deleted = await whitelist_collection.delete_one({"_id": ObjectId(id)})
-        if deleted.deleted_count > 0:
-            return True
-        return False
+        whitelist_info = await whitelist_collection.find_one({"_id": ObjectId(id)})
+        if not whitelist_info:
+            raise Exception("Whitelist not found")
+        
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                deleted_whitelist = await whitelist_collection.delete_one(
+                    {"_id": ObjectId(id)}, session=session)
+                
+                await user_collection.update_one(
+                    {"email": whitelist_info["email"]},
+                    {"$set": {"role": "user"}},
+                    session=session
+                )
+        
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            if deleted_whitelist.deleted_count == 1:
+                return True
+            raise Exception("Delete whitelist failed")
+        
