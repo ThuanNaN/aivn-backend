@@ -1,7 +1,11 @@
 from typing import Optional, List
 from datetime import datetime, UTC
 from app.utils.logger import Logger
-from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi import (
+    APIRouter, 
+    Body, Depends, Query, 
+    HTTPException, status,
+)
 from bson.objectid import ObjectId
 from app.api.v1.controllers.problem import (
     add_problem,
@@ -14,9 +18,7 @@ from app.api.v1.controllers.user import retrieve_user
 from app.api.v1.controllers.problem_category import (
     add_problem_category,
     add_more_problem_category,
-    retrieve_by_problem_category_id,
     retrieve_by_categories,
-    delete_problem_category,
     upsert_problem_category
 )
 from app.schemas.problem import (
@@ -255,8 +257,7 @@ async def update_problem_data(id: str,
                               created_at=datetime.now(UTC),
                               updated_at=datetime.now(UTC)
                               ).model_dump()
-            for category_id in category_ids
-        ]
+            for category_id in category_ids]
 
     upsert_problem_category_result = await upsert_problem_category(id, new_problem_categories)
     if isinstance(upsert_problem_category_result, Exception):
@@ -281,30 +282,6 @@ async def update_problem_data(id: str,
                              code=status.HTTP_200_OK)
 
 
-@router.delete("/{id}/categories/{category_id}",
-               dependencies=[Depends(is_admin)],
-               tags=["Admin"],
-               description="Remove a problem-category")
-async def delete_problem_category_data(id: str, category_id: str):
-    problem_category = await retrieve_by_problem_category_id(id, category_id)
-    if isinstance(problem_category, Exception):
-        return ErrorResponseModel(error=str(problem_category),
-                                  message="An error occurred while retrieving problem-category.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    deleted_problem_category = await delete_problem_category(problem_category["id"])
-    if isinstance(deleted_problem_category, Exception):
-        return ErrorResponseModel(error=str(deleted_problem_category),
-                                  message="An error occurred while deleting problem-category.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not delete_problem_category:
-        return ErrorResponseModel(error="No problem-category deleted.",
-                                  message="An error occurred while deleting problem-category.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    return ListResponseModel(data=[],
-                             message="Problem-Category deleted successfully.",
-                             code=status.HTTP_200_OK)
-
-
 @router.delete("/{id}",
                dependencies=[Depends(is_admin)],
                tags=["Admin"],
@@ -312,13 +289,8 @@ async def delete_problem_category_data(id: str, category_id: str):
 async def delete_problem_data(id: str):
     deleted = await delete_problem(id)
     if isinstance(deleted, Exception):
-        return ErrorResponseModel(error=str(deleted),
-                                  message="An error occurred while deleting problem.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not deleted:
-        return ErrorResponseModel(error="An error occurred while deleting problem.",
-                                  message="No problem was deleted.",
-                                  code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=str(deleted))
     return ListResponseModel(data=[],
                              message="Problem deleted successfully.",
                              code=status.HTTP_200_OK)

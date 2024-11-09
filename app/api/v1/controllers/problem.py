@@ -1,19 +1,19 @@
 import traceback
 from app.utils.time import utc_to_local
-from app.core.database import mongo_db
+from app.core.database import mongo_client, mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.category import (
     category_helper
-)
-from app.api.v1.controllers.problem_category import (
-    delete_all_by_problem_id
 )
 
 logger = Logger("controllers/problem", log_file="problem.log")
 
 try:
     problem_collection = mongo_db["problems"]
+    exam_problem_collection = mongo_db["exam_problem"]
+    problem_category_collection = mongo_db["problem_category"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -224,18 +224,34 @@ async def delete_problem(id: str) -> bool:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if not problem:
             raise Exception("Problem not found")
-
-        # Delete in problem_category collection
-        deleted_problem_category = await delete_all_by_problem_id(id)
-        if isinstance(deleted_problem_category, Exception):
-            raise deleted_problem_category
-        if not deleted_problem_category:
-            logger.info("No problem_category found")
         
-        deleted_problem = await problem_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_problem.deleted_count == 1:
-            return True
-        return False
+        exam_problem_data = await exam_problem_collection.find(
+            {"problem_id": ObjectId(id)}).to_list(length=None)
+        if len(exam_problem_data) > 0:
+            raise Exception("Problem is used in exam")
+        
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                # Delete all problem_category
+                deleted_problem_category = await problem_category_collection.delete_many(
+                    {"problem_id": ObjectId(id)}, session=session)
+                logger.info(f"Delete problem_category: {deleted_problem_category.deleted_count}")
+
+                # Delete problem
+                deleted_problem = await problem_collection.delete_one(
+                    {"_id": ObjectId(id)}, session=session)
+                logger.info(f"Delete problem with ID: {id}")
+
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            if deleted_problem.deleted_count == 1:
+                return True
+            raise Exception("Delete meeting failed")
+

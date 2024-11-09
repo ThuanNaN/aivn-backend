@@ -157,44 +157,6 @@ async def retrieve_by_problem_id(problem_id: str) -> list:
         return e
 
 
-async def delete_problem_category(id: str) -> bool:
-    """
-    Delete a problem_category with a matching ID
-    :param id: str
-    """
-    try:
-        problem_category = await problem_category_collection.find_one(
-            {"_id": ObjectId(id)})
-        if not problem_category:
-            raise Exception("Problem_category not found")
-
-        deleted_problem_category = await problem_category_collection.delete_one(
-            {"_id": ObjectId(id)}
-        )
-        if deleted_problem_category.deleted_count == 1:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
-
-async def delete_all_by_problem_id(problem_id: str) -> bool:
-    """
-    Delete all problem_category with a matching problem_id
-    :param problem_id: str
-    """
-    try:
-        deleted_problem_category = await problem_category_collection.delete_many(
-            {"problem_id": ObjectId(problem_id)}
-        )
-        if deleted_problem_category.deleted_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
 
 async def upsert_problem_category(problem_id: str, new_problem_categories: list) -> dict:
     """
