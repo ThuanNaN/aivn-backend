@@ -154,30 +154,3 @@ async def delete_exam_problem(id: str) -> bool:
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
-
-
-async def delete_all_by_exam_id(exam_id: str) -> bool:
-    """"
-    Delete all exam_problems with a matching exam_id
-    :param exam_id: str
-    :return: bool
-    """
-    try:
-        exam_problems = await retrieve_by_exam_id(exam_id)
-        if isinstance(exam_problems, Exception):
-            return exam_problems
-        if exam_problems:
-            exam_problems_id = [ObjectId(exam_problem["exam_id"]) for exam_problem in exam_problems]
-            delete_result = await exam_problem_collection.delete_many(
-                {"exam_id": {"$in": exam_problems_id}}
-            )
-            if delete_result.deleted_count > 0:
-                return True
-            return False
-        # No exam_problem found
-        else: 
-            return True
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
