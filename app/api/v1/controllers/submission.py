@@ -1,23 +1,20 @@
 import traceback
 from app.utils.time import utc_to_local
-from app.core.database import mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
+from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.retake import (
     retrieve_retakes_by_user_exam_id,
-    delete_retake_by_ids
-)
-from app.api.v1.controllers.timer import (
-    delete_timer_by_exam_retake_user_id
-)
-from app.api.v1.controllers.certificate import (
-    delete_certificate_by_submission_id
 )
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
 try:
     submission_collection = mongo_db["submissions"]
+    retake_collection = mongo_db["retake"]
+    timer_collection = mongo_db["timer"]
+    certificate_collection = mongo_db["certificate"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -218,7 +215,6 @@ async def update_submission(id: str, submission_data: dict) -> dict:
         return e
 
 
-# TODO: Add transaction
 async def delete_submission(id: str) -> bool:
     """
     Delete a submission and retake (if exists) with a matching ID
@@ -233,48 +229,33 @@ async def delete_submission(id: str) -> bool:
         submission_info = await retrieve_submission_by_id(id)
         if isinstance(submission_info, Exception):
             raise submission_info
+        
+        retake_id = ObjectId(submission_info["retake_id"]) if submission_info["retake_id"] else None
 
-        clerk_user_id = submission_info["clerk_user_id"]
-
-        # Delete retake if exists
-        retakes = await retrieve_retakes_by_user_exam_id(clerk_user_id=clerk_user_id, 
-                                                        exam_id=submission_info["exam_id"])        
-        if isinstance(retakes, Exception):
-            raise retakes
-        if retakes:
-            retake_ids = [ObjectId(retake["id"]) for retake in retakes]
-            deleted_retakes = await delete_retake_by_ids(retake_ids)
-            if isinstance(deleted_retakes, Exception):
-                raise deleted_retakes
-            if not deleted_retakes:
-                raise Exception("Delete retake failed.")
-
-
-        # Delete timer
-        deleted_timer = await delete_timer_by_exam_retake_user_id(exam_id=submission_info["exam_id"],
-                                                                clerk_user_id=clerk_user_id,
-                                                                retake_id=submission_info["retake_id"])
-        if isinstance(deleted_timer, Exception):
-            raise deleted_timer
-        if not deleted_timer:
-            raise Exception("Delete timer failed.")
-
-
-        # Delete certificate if exists
-        deleted_certificate = await delete_certificate_by_submission_id(id)
-        if isinstance(deleted_certificate, Exception):
-            raise deleted_certificate
-
-
-        # Delete submission
-        submission = await submission_collection.find_one({"_id": ObjectId(id)})
-        if not submission:
-            raise Exception("Submission not found")
-        deleted_submission = await submission_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_submission.deleted_count == 1:
-            return True
-        return False
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
 
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                if retake_id:
+                    await retake_collection.delete_one({"_id": retake_id}, session=session)
+
+                # Delete timer
+                await timer_collection.delete_one(
+                    {"exam_id": ObjectId(submission_info["exam_id"]),
+                    "retake_id": retake_id,
+                    "clerk_user_id": submission_info["clerk_user_id"]}, session=session)
+
+                # Delete certificate
+                await certificate_collection.delete_one({"submission_id": ObjectId(submission_info["id"])}, session=session)
+
+                # Delete submission
+                await submission_collection.delete_one({"_id": ObjectId(id)}, session=session)
+
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            return True
