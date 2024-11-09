@@ -185,15 +185,12 @@ async def export_whitelist_csv():
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Whitelists not found."
         )
-    for data in whitelist_data:
-        data["created_at"] = data["created_at"].isoformat()
-        data["updated_at"] = data["updated_at"].isoformat()
     
     df = pd.DataFrame(whitelist_data)
     df = df.loc[:, ["id", "email", "nickname", "created_at", "updated_at"]]
 
     output = StringIO()
-    df.to_csv(output, index=False)
+    df.to_csv(output, index=False, encoding='ascii', errors='replace')
     output.seek(0)
     return StreamingResponse(output,
                              media_type="text/csv",
