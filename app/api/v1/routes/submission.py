@@ -84,7 +84,10 @@ async def get_submissions(
             }
         },
         {
-            "$unwind": "$user_info"
+            "$unwind": {
+                "path": "$user_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -95,7 +98,10 @@ async def get_submissions(
             }
         },
         {
-            "$unwind": "$exam_info"
+            "$unwind": {
+                "path": "$exam_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -106,7 +112,10 @@ async def get_submissions(
             }
         },
         {
-            "$unwind": "$contest_info"
+            "$unwind": {
+                "path": "$contest_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         match_stage,
         {
@@ -213,7 +222,10 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
             }
         },
         {
-            "$unwind": "$exam_info"
+            "$unwind": {
+                "path": "$exam_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -224,8 +236,11 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
             }
         },
         {
-            "$unwind": "$contest_info"
-        }
+            "$unwind": {
+                "path": "$contest_info",
+                "preserveNullAndEmptyArrays": False
+            }
+        },
     ]
 
     pipeline_results = await retrieve_submission_by_pipeline(pipeline)
@@ -322,7 +337,10 @@ async def get_submission(id: str):
             }
         },
         {
-            "$unwind": "$user_info"
+            "$unwind": {
+                "path": "$user_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -333,7 +351,10 @@ async def get_submission(id: str):
             }
         },
         {
-            "$unwind": "$exam_info"
+            "$unwind": {
+                "path": "$exam_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -344,7 +365,10 @@ async def get_submission(id: str):
             }
         },
         {
-            "$unwind": "$exam_info.contest_info"
+            "$unwind": {
+                "path": "$exam_info.contest_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$match": {
@@ -439,7 +463,10 @@ async def export_submissions(
             }
         },
         {
-            "$unwind": "$user_info"
+            "$unwind": {
+                "path": "$user_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -450,7 +477,10 @@ async def export_submissions(
             }
         },
         {
-            "$unwind": "$exam_info"
+            "$unwind": {
+                "path": "$exam_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         {
             "$lookup": {
@@ -461,7 +491,10 @@ async def export_submissions(
             }
         },
         {
-            "$unwind": "$contest_info"
+            "$unwind": {
+                "path": "$contest_info",
+                "preserveNullAndEmptyArrays": False
+            }
         },
         match_stage,
         {
