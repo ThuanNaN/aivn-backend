@@ -1,6 +1,6 @@
 import traceback
 from app.utils.logger import Logger
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 from app.api.v1.controllers.submission import (
     retrieve_submissions
 )
@@ -15,14 +15,12 @@ from app.schemas.response import (
     ListResponseModel,
     ErrorResponseModel
 )
-from app.core.security import is_admin, is_authenticated
 
 router = APIRouter()
 logger = Logger("routes/retake", log_file="retake.log")
 
 
 @router.get("/{unsubmit}",
-            dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Retrieve all retakes that have not been submitted")
 async def get_retakes_unsubmit(unsubmit: bool = True):

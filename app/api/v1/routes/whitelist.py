@@ -8,11 +8,8 @@ from fastapi.responses import StreamingResponse
 from fastapi import (
     APIRouter,
     UploadFile,
-    Query, Depends,
+    Query,
     HTTPException, status
-)
-from app.core.security import (
-    is_admin
 )
 from app.api.v1.controllers.whitelist import (
     retrieve_all_whitelists,
@@ -45,7 +42,6 @@ async def read_csv(file: UploadFile):
 
 
 @router.get("/whitelists",
-            dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Retrieve all whitelists with matching search and filter")
 async def get_whitelists(
@@ -93,15 +89,14 @@ async def get_whitelists(
 
 
 @router.post("",
-             dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Add a new whitelist.")
-async def add_whitelist(whitelist: WhiteListSchema):
+async def add_whitelist_data(whitelist: WhiteListSchema):
     whitelist_data = WhiteListSchemaDB(
         **whitelist.model_dump(),
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
-    )
+    ).model_dump()
     new_whitelist = await add_whitelist(whitelist_data)
     if isinstance(new_whitelist, Exception):
         raise HTTPException(
@@ -115,8 +110,7 @@ async def add_whitelist(whitelist: WhiteListSchema):
     )
 
 
-@router.post("/import/whitelist",
-            dependencies=[Depends(is_admin)],
+@router.post("/import",
             tags=["Admin"],
             description="Import a whitelist via csv file")
 async def import_whitelist_csv(whitelists: List[WhiteListSchema],
@@ -138,7 +132,6 @@ async def import_whitelist_csv(whitelists: List[WhiteListSchema],
 
 
 @router.patch("/{id}",
-              dependencies=[Depends(is_admin)],
               tags=["Admin"],
               description="Update a whitelist.")
 async def update_whitelist_data(
@@ -163,7 +156,6 @@ async def update_whitelist_data(
 
 
 @router.delete("/{id}",
-               dependencies=[Depends(is_admin)],
                tags=["Admin"],
                description="Delete a whitelist with a matching id")
 async def delete_whitelist(id: str):
@@ -183,8 +175,7 @@ async def delete_whitelist(id: str):
                              code=status.HTTP_200_OK)
 
 
-@router.get("/export/whitelist",
-            dependencies=[Depends(is_admin)],
+@router.get("/export",
             tags=["Admin"],
             description="Export a whitelist via csv file")
 async def export_whitelist_csv():

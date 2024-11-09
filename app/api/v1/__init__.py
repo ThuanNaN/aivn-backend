@@ -13,7 +13,6 @@ from app.api.v1.routes.code import router as code_router
 from app.api.v1.routes.submission import router as submission_router
 from app.api.v1.routes.retake import router as retake_router
 from app.api.v1.routes.verify import router as verify_router
-from app.api.v1.routes.sleep import router as sleep_router
 from app.core.security import (
     is_authenticated,
     is_aio,
@@ -42,10 +41,6 @@ router.include_router(retake_router,
                       prefix="/retake",
                       tags=["Retake"])
 
-router.include_router(sleep_router,
-                      dependencies=[Depends(is_admin)],
-                      prefix="/sleep",
-                      tags=["Sleep"])
 
 # Dev (admin only) Routes
 if settings.ENV_TYPE == "development":
