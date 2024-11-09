@@ -141,7 +141,7 @@ async def update_whitelist_data(
     whitelist_data = UpdateWhiteListDB(
         **data.model_dump(),
         updated_at=datetime.now(UTC)
-    )
+    ).model_dump()
     updated_whitelist = await update_whitelist_by_id(id, whitelist_data)
     if isinstance(updated_whitelist, Exception):
         raise HTTPException(
