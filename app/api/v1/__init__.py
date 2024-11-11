@@ -20,6 +20,11 @@ from app.core.security import (
 )
 router = APIRouter()
 
+# Health Check
+@router.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 # Public User Routes
 router.include_router(visualize_router,
                       dependencies=[Depends(is_authenticated)],
