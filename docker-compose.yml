@@ -13,19 +13,21 @@ services:
             - mongo_db:/data/db
             - ./mongodb-keyfile:/data/configdb/mongodb-keyfile
 
-    # backend:
-    #     build:
-    #         context: .
-    #     image: aivietnam-backend:latest
-    #     container_name: aivietnam-backend
-    #     env_file:
-    #       - .env
-    #     ports:
-    #         - 8000:8000
-    #     depends_on:
-    #         - mongodb
-    #     volumes:
-    #         - ./app/logs/:/src/app/logs/
+    backend:
+        build:
+            context: .
+        image: aivietnam-backend:latest
+        container_name: aivietnam-backend
+        env_file:
+          - .env
+        ports:
+            - 8000:8000
+        extra_hosts:
+            - "localhost:0.0.0.0"
+        depends_on:
+            - mongodb
+        volumes:
+            - ./app/logs/:/src/app/logs/
     
 volumes:
     mongo_db:
