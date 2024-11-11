@@ -3,7 +3,8 @@ import os
 import requests
 from app.utils.time import utc_to_local
 from requests.exceptions import HTTPError, Timeout
-from app.core.database import mongo_db
+from pymongo.errors import ConnectionFailure, OperationFailure
+from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from pymongo import UpdateOne
 
@@ -294,7 +295,6 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
         return e
 
 
-# TODO: check if user is in other collections
 async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
     """
     Delete a user with a matching clerk_user_id
@@ -302,10 +302,67 @@ async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
     :return: bool
     """
     try:
-        deleted = await user_collection.delete_one({"clerk_user_id": clerk_user_id})
-        if deleted.deleted_count > 0:
-            return True
-        return False
+        user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        if not user_info:
+            raise Exception("User not found")
+        
+        # Check if user is in other collections
+        # 1. Problem: creator_id
+        problems = await mongo_db["problems"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if problems:
+            raise Exception("User is a creator of some problems")
+        
+        # 2. Exam: creator_id
+        exams = await mongo_db["exams"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if exams:
+            raise Exception("User is a creator of some exams")
+        
+        # 3. Problem-Exam: creator_id
+        problem_exams = await mongo_db["problem_exams"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if problem_exams:
+            raise Exception("User is a creator of some problem-exams")
+        
+        # 4. Contest: creator_id
+        contests = await mongo_db["contests"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if contests:
+            raise Exception("User is a creator of some contests")
+
+        # 5. Meeting: creator_id
+        meetings = await mongo_db["meetings"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if meetings:
+            raise Exception("User is a creator of some meetings")
+        
+        # 6. Document: creator_id
+        documents = await mongo_db["documents"].find({"creator_id": clerk_user_id}).to_list(length=None)
+        if documents:
+            raise Exception("User is a creator of some documents")
+        
+        # 7. Submission: clerk_user_id
+        submissions = await mongo_db["submissions"].find({"clerk_user_id": clerk_user_id}).to_list(length=None)
+        if submissions:
+            raise Exception("User is a creator of some submissions")
+        
+
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    
+    async with await mongo_client.start_session() as session:
+        try:
+            async with session.start_transaction():
+                # Del attendees
+                await mongo_db["attendees"].delete_many(
+                    {"attend_id": user_info["attend_id"]}, session=session)
+
+                # Delete user
+                deleted_user = await user_collection.delete_one(
+                    {"clerk_user_id": clerk_user_id}, session=session)
+                
+        except (ConnectionFailure, OperationFailure) as e:
+            logger.error(f"{traceback.format_exc()}")
+            return e
+        else:
+            if deleted_user.deleted_count == 1:
+                return True
+            raise Exception("Delete user failed")
+        

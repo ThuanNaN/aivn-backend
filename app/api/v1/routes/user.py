@@ -384,13 +384,8 @@ async def delete_user(clerk_user_id: str):
     deleted = await delete_user_by_clerk_user_id(clerk_user_id)
     if isinstance(deleted, Exception):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
-        )
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User was not deleted."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(deleted)
         )
     return ListResponseModel(data=[],
                              message="User deleted successfully.",
