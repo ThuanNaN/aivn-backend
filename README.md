@@ -64,10 +64,7 @@ docker exec -it aivietnam-mongodb mongosh --authenticationDatabase admin -u duon
 ```
 
 ```js
-rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
-
-// or with docker container
-rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "aivietnam-mongodb:27017" }] });
+rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }]});
 ```
 
 - Connect to local MongoDB at: mongodb://localhost:27017 via MongoDB Compass to make sure it works as expected
@@ -85,4 +82,14 @@ mongodump --uri=$DB_URL --out="aivietnam-$(date +%Y-%m-%d)"
 
 ```bash
 mongorestore --uri=mongodb://duongthuan1445:<passwd>@localhost:27017/ --authenticationDatabase admin --drop --nsInclude="aivietnam.*" <database>
+```
+
+- If backend is running in Docker, you can use the following command to restore data
+
+```js
+rs.reconfig({ _id: "rs0", members: [{ _id: 0, host: "aivietnam-mongodb:27017" }] });
+```
+
+```bash
+docker compose restart
 ```
