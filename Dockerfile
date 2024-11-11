@@ -1,5 +1,10 @@
 FROM python:3.11.9-slim
 
+# Install curl
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+    
 WORKDIR /src
 
 COPY requirements.txt .

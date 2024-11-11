@@ -2,8 +2,15 @@ services:
     mongodb:
         image: mongo:7.0
         container_name: aivietnam-mongodb
+        restart: on-failure
         env_file:
           - .env
+        healthcheck:
+            test: ["CMD", "mongosh", "--username=${MONGO_INITDB_ROOT_USERNAME}", "--password=${MONGO_INITDB_ROOT_PASSWORD}", "--eval", "db.adminCommand('ping')"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
         command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/data/configdb/mongodb-keyfile"]
         ports:
             - 27017:27017
@@ -18,12 +25,20 @@ services:
     backend:
         build:
             context: .
-        image: aivietnam-backend:latest
+            network: host
+        image: aivietnam-backend:latest 
         container_name: aivietnam-backend
+        restart: on-failure
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"] 
+            interval: 30s          
+            timeout: 10s           
+            retries: 3         
+            start_period: 10s 
         env_file:
           - .env
         ports:
-            - 8000:8000
+            - 8001:8000
         extra_hosts:
             - "localhost:0.0.0.0"
         depends_on:
