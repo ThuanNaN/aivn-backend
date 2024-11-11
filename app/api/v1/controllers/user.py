@@ -111,6 +111,7 @@ async def retrieve_user(clerk_user_id: str) -> dict:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if user:
             return user_helper(user)
+        raise Exception("User not found")
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
         return e
@@ -293,6 +294,7 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
         return e
 
 
+# TODO: check if user is in other collections
 async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
     """
     Delete a user with a matching clerk_user_id
