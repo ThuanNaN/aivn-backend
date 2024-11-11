@@ -12,6 +12,8 @@ services:
         volumes:
             - mongo_db:/data/db
             - ./mongodb-keyfile:/data/configdb/mongodb-keyfile
+        networks:
+            - aivietnam-network
 
     backend:
         build:
@@ -28,6 +30,12 @@ services:
             - mongodb
         volumes:
             - ./app/logs/:/src/app/logs/
-    
+        networks:
+            - aivietnam-network
+
 volumes:
     mongo_db:
+
+networks:
+    aivietnam-network:
+        driver: bridge
