@@ -1,7 +1,7 @@
 import traceback
 from datetime import datetime, UTC
 from pymongo.errors import ConnectionFailure, OperationFailure
-from app.utils.time import utc_to_local, is_past
+from app.utils import utc_to_local, is_past, MessageException
 from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -28,6 +28,8 @@ def meeting_helper(meeting: dict) -> dict:
         "start_time": utc_to_local(meeting["start_time"]),
         "end_time": utc_to_local(meeting["end_time"]),
         "creator_id": str(meeting["creator_id"]),
+        "join_link": meeting["join_link"],
+        "join_code": meeting["join_code"],  
         "record": meeting["record"],
         "created_at": utc_to_local(meeting["created_at"]),
         "updated_at": utc_to_local(meeting["updated_at"])
@@ -44,9 +46,12 @@ async def add_meeting(meeting_data: dict) -> dict:
         meeting = await meeting_collection.insert_one(meeting_data)
         new_meeting = await meeting_collection.find_one({"_id": meeting.inserted_id})
         return meeting_helper(new_meeting)
-    except Exception as e:
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("Add meeting failed")
     
 
 async def retrieve_meetings() -> list:
@@ -73,9 +78,9 @@ async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
     try:
         pipeline_results = await meeting_collection.aggregate(pipeline).to_list(length=None)
         return pipeline_results
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return Exception("An error occurred when retrieve meeting by pipeline")
 
 
 async def retrieve_meeting_by_id(id: str) -> dict:
@@ -88,10 +93,13 @@ async def retrieve_meeting_by_id(id: str) -> dict:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if meeting:
             return meeting_helper(meeting)
-        raise Exception("Meeting not found")
-    except Exception as e:
+        raise MessageException("Meeting not found")
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("An error occurred when retrieve meeting")
 
 
 async def update_meeting(id: str, meeting_data: dict) -> dict:
@@ -132,13 +140,16 @@ async def delete_meeting(id: str) -> bool:
     try:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
-            raise Exception("Meeting not found")
+            raise MessageException("Meeting not found")
         
-        if is_past(meeting["date"]):
-            raise Exception("Cannot delete meeting in the past")
-    except Exception as e:
+        if is_past(meeting["date"], "utc"):
+            raise MessageException("Cannot delete meeting in the past")
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("An error occurred when delete meeting")
     
     # Transaction to delete meeting and documents
     async with await mongo_client.start_session() as session:
@@ -192,7 +203,11 @@ async def retrieve_upcoming_meeting() -> dict:
                 **meeting_helper(upcoming_meeting[0]),
                 "documents": [document_helper(document) for document in upcoming_meeting[0]["documents"]]
             }
-        raise Exception("Upcoming meeting not found")
-    except Exception as e:
+        raise MessageException("Upcoming meeting not found")
+    
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("An error occurred when retrieve upcoming meeting")

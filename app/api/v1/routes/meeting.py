@@ -5,10 +5,10 @@ from fastapi import (
     APIRouter, Depends, Query,
     status, HTTPException
 )
-from app.utils.time import (
+from app.utils import (
+    hcm_timezone,
     local_to_utc,
-    utc_to_local_default,
-    local_to_utc_default
+    utc_to_local
 )
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.meeting import (
@@ -65,7 +65,8 @@ async def create_meeting(meeting_data: MeetingSchema,
         start_time=datetime.fromisoformat(meeting_data.start_time),
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
-        record=meeting_data.record,
+        join_link=meeting_data.join_link,
+        join_code=meeting_data.join_code,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     )
@@ -73,7 +74,7 @@ async def create_meeting(meeting_data: MeetingSchema,
     if isinstance(new_meeting, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Add meeting failed"
+            detail=str(new_meeting)
         )
     
     # Upsert documents
@@ -102,7 +103,7 @@ async def create_meeting(meeting_data: MeetingSchema,
     if isinstance(new_documents, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Retrieve documents failed"
+            detail=str(new_documents)
         )
 
     return_data = {
@@ -129,7 +130,7 @@ async def add_attendees_to_meeting(id: str,
     if isinstance(new_attendees, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Add attendees failed"
+            detail=str(new_attendees)
         )
     return ListResponseModel(
         data=new_attendees,
@@ -146,17 +147,13 @@ async def get_meetings(
     time_to: str = Query(None, description="Meeting time to"),
     clerk_user_id: str = Depends(is_authenticated)
 ):
-    current_user = await retrieve_user(clerk_user_id)
     if time_from is None or time_to is None:
-        now_hcm = utc_to_local_default(datetime.now(UTC))
-
-        time_from = local_to_utc_default(
-            now_hcm.replace(hour=0, minute=0, second=0, microsecond=0))
-        time_to = local_to_utc_default(
-            now_hcm.replace(hour=23, minute=59, second=59, microsecond=999999))
+        now_hcm = datetime.now(hcm_timezone)
+        time_from = now_hcm.replace(hour=0, minute=0, second=0, microsecond=0)
+        time_to = now_hcm.replace(hour=23, minute=59, second=59, microsecond=99)
     else:
-        time_from = local_to_utc(time_from)
-        time_to = local_to_utc(time_to)
+        time_from = local_to_utc(time_from, return_isoformat=False)
+        time_to = local_to_utc(time_to, return_isoformat=False)
 
     pipeline = [
         {
@@ -188,9 +185,15 @@ async def get_meetings(
     if isinstance(pipeline_results, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Retrieve meetings failed"
+            detail=str(pipeline_results)        
         )
 
+    current_user = await retrieve_user(clerk_user_id)
+    if isinstance(current_user, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(current_user)
+        )
     return_data = []
     for result in pipeline_results:
         documents = [document_helper(document)
@@ -223,7 +226,7 @@ async def get_upcoming_meetings():
     if isinstance(upcoming, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Retrieve upcoming meetings failed"
+            detail=str(upcoming)
         )
     return DictResponseModel(
         data=upcoming,
@@ -261,14 +264,14 @@ async def get_meeting_by_id(id: str):
             dependencies=[Depends(is_admin)],
             description="Retrieve attendees by meeting id")
 async def get_attendees_by_meeting_id(id: str):
-    users = await retrieve_attendees_by_meeting_id(id)
-    if isinstance(users, Exception):
+    attendees = await retrieve_attendees_by_meeting_id(id)
+    if isinstance(attendees, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Retrieve attendees failed"
+            detail=str(attendees)
         )
     return ListResponseModel(
-        data=users,
+        data=attendees,
         message="Attendees retrieved successfully",
         code=status.HTTP_200_OK
     )
@@ -281,6 +284,22 @@ async def get_attendees_by_meeting_id(id: str):
 async def update_meeting_data(id: str,
                               meeting_data: UpdateMeetingSchema,
                               creator_id: str = Depends(is_authenticated)):
+    if meeting_data.record is not None:
+        # Check meeting is ended or not
+        meeting_info = await retrieve_meeting_by_id(id)
+        if isinstance(meeting_info, Exception):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(meeting_info)
+            )
+
+        meeting_end_time = utc_to_local(meeting_info["end_time"], return_isoformat=False)
+        if meeting_end_time > datetime.now(hcm_timezone):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Meeting is not ended yet. Cannot update record"
+            )
+
     # Update meeting
     meeting_db = UpdateMeetingSchemaDB(
         title=meeting_data.title,
@@ -290,6 +309,8 @@ async def update_meeting_data(id: str,
         start_time=datetime.fromisoformat(meeting_data.start_time),
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
+        join_link=meeting_data.join_link,
+        join_code=meeting_data.join_code,
         record=meeting_data.record,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
