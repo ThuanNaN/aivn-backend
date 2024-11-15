@@ -130,9 +130,9 @@ async def retrieve_document_by_meeting_id(meeting_id: str) -> list[dict]:
         async for document in document_collection.find({"meeting_id": ObjectId(meeting_id)}):
             documents.append(document_helper(document))
         return documents
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return Exception("Retrieve documents failed")
 
 
 async def update_document(id: str, data: dict) -> dict:

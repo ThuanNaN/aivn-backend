@@ -67,9 +67,9 @@ async def add_attendees(meeting_id, attendee_ids, attendee_emails) -> list[str]:
             return []
         new_attendees = await attendee_collection.insert_many(attendee_data)
         return [str(attendee) for attendee in new_attendees.inserted_ids]
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return Exception("Add attendees failed")
 
 
 async def retrieve_attendees_by_meeting_id(meeting_id: str) -> list[dict]:
@@ -108,7 +108,7 @@ async def retrieve_attendees_by_meeting_id(meeting_id: str) -> list[dict]:
         return [user_helper(attendee) for attendee in attendees]
     except Exception as e:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return Exception("Retrieve attendees failed")
 
 
 async def delete_attendees_by_emails(meeting_id: str, emails: list[str]) -> bool:
