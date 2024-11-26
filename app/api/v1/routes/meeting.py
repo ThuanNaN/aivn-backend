@@ -148,6 +148,13 @@ async def get_meetings(
     time_to: str = Query(None, description="Meeting time to"),
     clerk_user_id: str = Depends(is_authenticated)
 ):
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(user_info)
+        )
+    
     if time_from is None or time_to is None:
         now_hcm = datetime.now(hcm_timezone)
         time_from = now_hcm.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -179,6 +186,10 @@ async def get_meetings(
                     "$gte": time_from,
                     "$lte": time_to
                 },
+                "$or": [
+                    { "cohorts": { "$exists": False } },
+                    { "cohorts": { "$lte": user_info["cohort"] } }
+                ]
             }
         }
     ]
@@ -189,12 +200,6 @@ async def get_meetings(
             detail=str(pipeline_results)        
         )
 
-    current_user = await retrieve_user(clerk_user_id)
-    if isinstance(current_user, Exception):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(current_user)
-        )
     return_data = []
     for result in pipeline_results:
         documents = [document_helper(document)
@@ -202,7 +207,7 @@ async def get_meetings(
         
         return_attendee = None
         for attendee in result["attendees"]:
-            if attendee["attend_id"] == current_user["attend_id"]:
+            if attendee["attend_id"] == user_info["attend_id"]:
                 return_attendee = attendee_helper(attendee)
                 break
 
