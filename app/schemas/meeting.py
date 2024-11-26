@@ -11,7 +11,6 @@ class MeetingSchema(BaseModel):
     end_time: str # isoformat
     document_data: list[dict] | None = None
     join_link: str | None = None
-    join_code: str | None = None
     cohorts: List[str] | None = None
     
     model_config = {
@@ -33,7 +32,6 @@ class MeetingSchema(BaseModel):
                         }
                     ],
                     "join_link": "https://meet.google.com/aivn123",
-                    "join_code": "aivn123",
                     "record": "https://www.youtube.com/watch?v=w1NlIsgClLo&t=4971s"
                 }
             ]
@@ -50,7 +48,6 @@ class MeetingSchemaDB(BaseModel):
     end_time: datetime
     creator_id: str
     join_link: str | None = None
-    join_code: str | None = None
     record: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -66,7 +63,6 @@ class UpdateMeetingSchema(BaseModel):
     end_time: str | None = None
     document_data: list[dict] | None = None
     join_link: str | None = None
-    join_code: str | None = None
     record: str | None = None
 
     model_config = {
@@ -103,7 +99,6 @@ class UpdateMeetingSchemaDB(BaseModel):
     end_time: datetime | None = None
     creator_id: str
     join_link: str | None = None
-    join_code: str | None = None
     record: str | None = None
     created_at: datetime
     updated_at: datetime

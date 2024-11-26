@@ -29,7 +29,6 @@ def meeting_helper(meeting: dict) -> dict:
         "end_time": utc_to_local(meeting["end_time"]),
         "creator_id": str(meeting["creator_id"]),
         "join_link": meeting["join_link"],
-        "join_code": meeting["join_code"],  
         "record": meeting["record"],
         "created_at": utc_to_local(meeting["created_at"]),
         "updated_at": utc_to_local(meeting["updated_at"])
