@@ -7,7 +7,8 @@ class UserSchema(BaseModel):
     clerk_user_id: str 
     email: str 
     username: str 
-    role: str 
+    role: str
+    cohort: int
     avatar: str
     fullname: str | None = ""
     bio: str | None = ""
@@ -20,6 +21,7 @@ class UserSchema(BaseModel):
                 "email": "example@gmail.com",
                 "username": "example",
                 "role": "user",
+                "cohort": 2024,
                 "avatar": "example.jpg",
             }
         }
@@ -30,20 +32,20 @@ class UserSchemaDB(UserSchema):
     created_at : datetime
     updated_at : datetime
 
-    
+
 class UpdateUserRole(BaseModel):
     role: Literal["user", "aio", "admin"] | None = None
+    cohort: int | None = None
+
+
+class UpdateUserRoleDB(UpdateUserRole):
+    updated_at : datetime
 
 
 class UpdateUserInfo(BaseModel):
     avatar: str | None = ""
     fullname: str | None = ""
     bio: str | None = "" 
-
-
-class UpdateUserRoleDB(UpdateUserRole):
-    updated_at : datetime
-
 
 class UpdateUserInfoDB(UpdateUserInfo):
     updated_at : datetime

@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime, UTC
-from app.utils.logger import Logger
+from app.utils import Logger, get_local_year
 import csv
 from io import StringIO
 from fastapi import (
@@ -191,12 +191,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated),
     if isinstance(updated, Exception):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
-        )
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User was not updated."
+            detail=str(updated)
         )
     return ListResponseModel(data=[],
                              message="User updated successfully.",
@@ -210,19 +205,34 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated),
 async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...)):
     data_dict = data.model_dump()
     new_role = data_dict.get("role", None)
+
+    user_data = await retrieve_user(clerk_user_id)
+    if isinstance(user_data, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Retrieving user data failed."
+        )
+    current_role = user_data["role"]
+    current_cohort = user_data["cohort"]
+    if current_role == new_role:
+        return ListResponseModel(data=[],
+                                 message="User updated successfully.",
+                                 code=200)
+    
     if new_role is not None:
-        user_data = await retrieve_user(clerk_user_id)
         whitelist_info = await retrieve_whitelist_by_email(user_data["email"])
         is_whitelist = True if whitelist_info else False
         if isinstance(is_whitelist, Exception):
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Checking whitelist failed."
             )
 
         if new_role == "aio" and not is_whitelist:
+            current_cohort = get_local_year()
             whitelist_data = WhiteListSchemaDB(
                 email=user_data["email"],
+                cohort=current_cohort,
                 nickname=user_data["username"],
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC)
@@ -230,33 +240,29 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
             new_whitelist = await add_whitelist(whitelist_data)
             if isinstance(new_whitelist, Exception):
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Add whitelist failed."
                 )
 
         if new_role == "user" and is_whitelist:
+            current_cohort = None
             deleted_whitelist = await delete_whitelist_by_email(user_data["email"])
             if isinstance(deleted_whitelist, Exception):
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="An error occurred."
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(deleted_whitelist)
                 )
-            if not deleted_whitelist:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Deleting email from whitelist failed."
-                )
-    new_user_data = UpdateUserRoleDB(updated_at=datetime.now(UTC), **data_dict)
-    updated = await update_user(clerk_user_id, new_user_data.model_dump())
+            
+    update_user_data = UpdateUserRoleDB(
+        role=new_role,
+        cohort=current_cohort,
+        updated_at=datetime.now(UTC)
+    ).model_dump()
+    updated = await update_user(clerk_user_id, update_user_data)
     if isinstance(updated, Exception):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
-        )
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User was not updated."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(updated)
         )
     return ListResponseModel(data=[],
                              message="User updated successfully.",
@@ -294,49 +300,58 @@ async def update_user_role_to_admin(admin_csv: UploadFile = File(...)):
                              code=status.HTTP_200_OK)
 
 
-
 @router.post("/upsert", description="Update a user with Clerk data")
 async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     ROLE = "user"  # default role
 
     # check if user exist in DB
     is_exist_user = await retrieve_user(clerk_user_id)  # -> user_data
+    if isinstance(is_exist_user, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(is_exist_user)
+        )
 
-    if is_exist_user:  # logged in before
+    # logged in before -> update role
+    if is_exist_user:  
         CURRENT_ROLE = is_exist_user["role"]
+
         if CURRENT_ROLE == "admin":
             return ListResponseModel(data=[],
-                                     message="Current user is an admin.",
+                                     message="Upsert user successfully.",
                                      code=status.HTTP_200_OK)
+        
         whitelist_info = await retrieve_whitelist_by_email(is_exist_user["email"])
-        is_whitelist = True if whitelist_info else False
-        if isinstance(is_whitelist, Exception):
+        if isinstance(whitelist_info, Exception):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Checking whitelist failed."
             )
-        if is_whitelist and CURRENT_ROLE != "aio":
-            NEW_ROLE = "aio"
-            update_role_data = UpdateUserRoleDB(role=NEW_ROLE, 
-                                                updated_at=datetime.now(UTC))
+        if whitelist_info:
+            CURRENT_COHORT = whitelist_info["cohort"]
+            if CURRENT_ROLE == "aio" and CURRENT_COHORT == is_exist_user["cohort"]:
+                return ListResponseModel(data=[],
+                                     message="Upsert user successfully.",
+                                     code=status.HTTP_200_OK)
+            
+            update_role_data = UpdateUserRoleDB(
+                role="aio",
+                cohort=whitelist_info["cohort"],
+                updated_at=datetime.now(UTC)
+            )
             updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
             if isinstance(updated_role, Exception):
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="An error occurred."
-                )
-            if not updated_role:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Updating user role failed."
+                    detail=str(updated_role)
                 )
             return ListResponseModel(data=[],
                                      message="User updated successfully.",
                                      code=status.HTTP_200_OK)
         else:
             return ListResponseModel(data=[],
-                                    message="Upsert user successfully.",
-                                    code=status.HTTP_200_OK)
+                                     message="Upsert user successfully.",
+                                     code=status.HTTP_200_OK)
 
     # first time -> create new user in DB
     else:
@@ -347,20 +362,22 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 detail="Retrieving user data failed."
             )
         whitelist_info = await retrieve_whitelist_by_email(clerk_user_data["email"])
-        is_whitelist = True if whitelist_info else False
-        if isinstance(is_whitelist, Exception):
+        if isinstance(whitelist_info, Exception):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Checking whitelist failed."
             )
-        if is_whitelist:
+        in_whitelist = True if whitelist_info else False
+        if in_whitelist:
             ROLE = "aio"
+            COHORT = whitelist_info["cohort"]
         # Create a new user
         new_user_data = UserSchemaDB(
             clerk_user_id=clerk_user_id,
             email=clerk_user_data["email"],
             username=clerk_user_data["username"],
             role=ROLE,
+            cohort=COHORT,
             avatar=clerk_user_data["avatar"],
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)

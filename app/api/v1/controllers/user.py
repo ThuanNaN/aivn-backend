@@ -1,7 +1,7 @@
 import traceback
 import os
 import requests
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException
 from requests.exceptions import HTTPError, Timeout
 from pymongo.errors import ConnectionFailure, OperationFailure
 from app.core.database import mongo_client, mongo_db
@@ -26,6 +26,7 @@ def user_helper(user) -> dict:
         "email": user["email"],
         "username": user["username"],
         "role": user["role"],
+        "cohort": user["cohort"],
         "avatar": user["avatar"],
         "fullname": user["fullname"],
         "bio": user["bio"] if "bio" in user else "",
@@ -112,10 +113,14 @@ async def retrieve_user(clerk_user_id: str) -> dict:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if user:
             return user_helper(user)
-        raise Exception("User not found")
-    except Exception as e:
+        raise MessageException("User not found")
+    
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("Error when retrieve user")
 
 
 async def retrieve_user_by_email(email: str) -> dict:
@@ -197,20 +202,22 @@ async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update")
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user:
-            raise Exception("User not found")
+            raise MessageException("User not found")
     
         updated_user = await user_collection.update_one(
             {"clerk_user_id": clerk_user_id}, {"$set": data}
         )
-        if updated_user.modified_count > 0:
-            return True
-        return False
-    except Exception as e:
+        if updated_user.modified_count == 0:
+            raise MessageException("Update user failed")
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("Error when update user")
 
 
 async def retrieve_user_clerk(clerk_user_id: str) -> dict:

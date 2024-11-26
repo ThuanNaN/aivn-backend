@@ -1,5 +1,5 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException
 from pymongo.errors import ConnectionFailure, OperationFailure
 from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
@@ -20,6 +20,7 @@ def whitelist_helper(user) -> dict:
     return {
         "id": str(user["_id"]),
         "email": user["email"],
+        "cohort": user["cohort"],
         "nickname": user["nickname"],
         "created_at": utc_to_local(user["created_at"]),
         "updated_at": utc_to_local(user["updated_at"])
@@ -193,13 +194,19 @@ async def delete_whitelist_by_email(email: str) -> bool:
     :return: bool
     """
     try:
+        whitelist_info = await whitelist_collection.find_one({"email": email})
+        if not whitelist_info:
+            raise MessageException("Whitelist not found")
         deleted = await whitelist_collection.delete_one({"email": email})
-        if deleted.deleted_count > 0:
-            return True
-        return False
-    except Exception as e:
+        if deleted.deleted_count == 0:
+            raise MessageException("Delete whitelist failed")
+    
+    except MessageException as e:
         logger.error(f"{traceback.format_exc()}")
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return Exception("Delete whitelist failed")
 
 
 async def delete_whitelist_by_id(id: str) -> bool:

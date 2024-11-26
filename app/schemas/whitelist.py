@@ -3,8 +3,9 @@ from pydantic import BaseModel, field_validator
 
 
 class WhiteListSchema(BaseModel):
-    email: str
     nickname: str
+    email: str
+    cohort: int | None = None
 
     @field_validator('email')
     def email_must_be_lower(cls, v):
@@ -15,8 +16,9 @@ class WhiteListSchema(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "email": "abc123@gmail.com",
                 "nickname": "abc123",
+                "email": "abc123@gmail.com",
+                "cohort": "2024",
             }
         }
     }
@@ -28,11 +30,13 @@ class WhiteListSchemaDB(WhiteListSchema):
 
 class UpdateWhiteList(BaseModel):
     nickname: str | None = None
+    cohort: int | None = None
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "nickname": "Abc123",
+                "cohort": "2025",
             }
         }
     }
