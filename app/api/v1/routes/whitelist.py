@@ -115,6 +115,13 @@ async def add_whitelist_data(whitelist: WhiteListSchema):
             description="Import a whitelist via csv file")
 async def import_whitelist_csv(whitelists: List[WhiteListSchema],
                                remove_not_exist: Optional[bool] = Query(False)):
+    for whitelist_data in whitelists:
+        if whitelist_data.cohort is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cohort is required."
+            )
+    
     whitelists_data = [WhiteListSchemaDB(
         **data.model_dump(),
         created_at=datetime.now(UTC),
@@ -187,7 +194,7 @@ async def export_whitelist_csv():
         )
     
     df = pd.DataFrame(whitelist_data)
-    df = df.loc[:, ["id", "email", "nickname", "created_at", "updated_at"]]
+    df = df.loc[:, ["id", "email", "cohort", "nickname", "created_at", "updated_at"]]
 
     output = StringIO()
     df.to_csv(output, index=False, encoding='ascii', errors='replace')
