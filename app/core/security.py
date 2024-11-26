@@ -68,29 +68,29 @@ async def is_authenticated(oauth2_scheme: HTTPBearer = Depends(oauth2_scheme)):
         )
 
 async def is_admin(clerk_user_id: str = Depends(is_authenticated)):
-    user = await retrieve_user(clerk_user_id)
-    if isinstance(user, Exception):
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, Exception):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=str(user_info)
         )
-    if user["role"] != "admin":
+    if user_info["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have enough permissions",
+            detail="Permission denied",
         )
-    return user
+    return user_info
 
 async def is_aio(clerk_user_id: str = Depends(is_authenticated)):
-    user = await retrieve_user(clerk_user_id)
-    if isinstance(user, Exception):
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, Exception):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=str(user_info)
         )
-    if user["role"] not in ["admin", "aio"]:
+    if user_info["role"] not in ["admin", "aio"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have enough permissions",
+            detail="Permission denied",
         )
-    return user
+    return user_info
