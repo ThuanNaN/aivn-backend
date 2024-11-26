@@ -16,7 +16,7 @@ from app.api.v1.controllers.meeting import (
     add_meeting,
     retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
-    retrieve_upcoming_meeting,
+    retrieve_upcoming_meeting_by_pipeline,
     update_meeting,
     delete_meeting
 )
@@ -164,6 +164,18 @@ async def get_meetings(
 
     pipeline = [
         {
+            "$match": {
+                "date": {
+                    "$gte": time_from,
+                    "$lte": time_to
+                },
+                "$or": [
+                    { "cohorts": { "$exists": False } },
+                    { "cohorts": { "$lte": user_info["cohort"] } }
+                ]
+            }
+        },
+        {
             '$lookup': {
                 'from': 'documents', 
                 'localField': '_id', 
@@ -177,18 +189,6 @@ async def get_meetings(
                 'localField': '_id', 
                 'foreignField': 'meeting_id', 
                 'as': 'attendees'
-            }
-        },
-        {
-            "$match": {
-                "date": {
-                    "$gte": time_from,
-                    "$lte": time_to
-                },
-                "$or": [
-                    { "cohorts": { "$exists": False } },
-                    { "cohorts": { "$lte": user_info["cohort"] } }
-                ]
             }
         }
     ]
@@ -226,8 +226,38 @@ async def get_meetings(
 @router.get("/upcoming",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve upcoming meetings")
-async def get_upcoming_meetings():
-    upcoming = await retrieve_upcoming_meeting()
+async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(user_info)
+        )
+
+    current_utc_time = datetime.now(UTC)
+    pipeline = [
+        {
+            "$match": {
+                "date": {"$gte": current_utc_time},
+                "$or": [
+                    { "cohorts": { "$exists": False } },
+                    { "cohorts": { "$lte": user_info["cohort"] } }
+                ]
+            }
+        },
+        {
+            '$lookup': {
+                'from': 'documents', 
+                'localField': '_id', 
+                'foreignField': 'meeting_id', 
+                'as': 'documents'
+            }
+        }, 
+        {"$sort": {"date": 1}},
+        {"$limit": 1}
+    ]
+
+    upcoming = await retrieve_upcoming_meeting_by_pipeline(pipeline)
     if isinstance(upcoming, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

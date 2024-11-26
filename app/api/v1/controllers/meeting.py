@@ -175,38 +175,22 @@ async def delete_meeting(id: str) -> bool:
             raise Exception("Delete meeting failed")
         
 
-async def retrieve_upcoming_meeting() -> dict:
+async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict:
     """
     Get all an upcoming meeting
-
+    :param pipeline: list
     :return: dict
     """
     try:
-        current_utc_time = datetime.now(UTC)
-        pipeline = [
-            {
-                '$lookup': {
-                    'from': 'documents', 
-                    'localField': '_id', 
-                    'foreignField': 'meeting_id', 
-                    'as': 'documents'
-                }
-            }, 
-            {"$match": {"date": {"$gte": current_utc_time}}},
-            {"$sort": {"date": 1}},
-            {"$limit": 1}
-        ]
         upcoming_meeting = await meeting_collection.aggregate(pipeline).to_list(length=None)
         if upcoming_meeting:
             return {
                 **meeting_helper(upcoming_meeting[0]),
                 "documents": [document_helper(document) for document in upcoming_meeting[0]["documents"]]
             }
-        raise MessageException("Upcoming meeting not found")
-    
-    except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return Exception("An error occurred when retrieve upcoming meeting")
+    else:
+        return {}
+    
