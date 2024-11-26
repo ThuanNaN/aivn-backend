@@ -118,14 +118,7 @@ async def add_whitelist_data(whitelist: WhiteListSchema):
             tags=["Admin"],
             description="Import a whitelist via csv file")
 async def import_whitelist_csv(whitelists: List[WhiteListSchema],
-                               remove_not_exist: Optional[bool] = Query(False)):
-    for whitelist_data in whitelists:
-        if whitelist_data.cohort is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cohort is required."
-            )
-    
+                               remove_not_exist: Optional[bool] = Query(False)):    
     whitelists_data = [WhiteListSchemaDB(
         **data.model_dump(),
         created_at=datetime.now(UTC),
