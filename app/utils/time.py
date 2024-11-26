@@ -60,6 +60,10 @@ def local_to_utc(local_dt: str | datetime,
     return utc_dt
 
 
+def get_local_year() -> int:
+    return datetime.now(hcm_timezone).year
+
+
 def is_past(datetime_input: str | datetime, tz: str = "utc") -> bool:
     """
     Check if datetime_input is in the past. Using UTC time
