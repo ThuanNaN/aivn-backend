@@ -45,7 +45,8 @@ async def read_csv(file: UploadFile):
             tags=["Admin"],
             description="Retrieve all whitelists with matching search and filter")
 async def get_whitelists(
-    search: Optional[str] = Query(None, description="Search by problem title or description"),
+    search: str | None = Query(None, description="Search by problem title or description"),
+    cohort: int | None = Query(None, description="Filter by cohort"),
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100)
 ):
@@ -55,6 +56,9 @@ async def get_whitelists(
             {"email": {"$regex": search, "$options": "i"}},
             {"nickname": {"$regex": search, "$options": "i"}},
         ]
+    if cohort is not None:
+        match_stage["$match"]["cohort"] = cohort
+
     pipeline = [
         match_stage,
         {
