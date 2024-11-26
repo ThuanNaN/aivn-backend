@@ -47,7 +47,7 @@ async def add_cohort_field():
                 operators.append(UpdateOne(
                     {"_id": user["_id"]},
                     {"$set": {
-                        "cohort": None
+                        "cohort": 0
                     }}
                 ))
             pbar.update(1)

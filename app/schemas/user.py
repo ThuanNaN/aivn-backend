@@ -35,7 +35,7 @@ class UserSchemaDB(UserSchema):
 
 class UpdateUserRole(BaseModel):
     role: Literal["user", "aio", "admin"] | None = None
-    cohort: int | None = None
+    cohort: int | None = 0
 
 
 class UpdateUserRoleDB(UpdateUserRole):
