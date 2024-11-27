@@ -32,6 +32,7 @@ def contest_helper(contest) -> dict:
         "description": contest["description"],
         "instruction": contest["instruction"],
         "is_active": contest["is_active"],
+        "cohorts": contest["cohorts"],
         "certificate_template": contest["certificate_template"],
         "creator_id": contest["creator_id"],
         "slug": contest["slug"],

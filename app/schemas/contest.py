@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 from .enum_category import CertificateEnum
@@ -7,6 +8,7 @@ class ContestSchema(BaseModel):
     description: str = "Description of the contest."
     instruction: str = "Details and instruction for the contest."
     is_active: bool = False
+    cohorts: List[int] | None = None
     certificate_template: str | None = None
     
     model_config = {
@@ -17,6 +19,7 @@ class ContestSchema(BaseModel):
                     "description": "Python contest for beginners.",
                     "instruction": "Details and instruction for the contest.",
                     "is_active": True,
+                    "cohorts": [2024],
                     "certificate_template": CertificateEnum.FOUNDATION.value
                 }
             ]
@@ -35,6 +38,7 @@ class UpdateContestSchema(BaseModel):
     instruction: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    cohorts: List[int] | None = None
     certificate_template: str | None = None
 
     model_config = {
@@ -45,6 +49,7 @@ class UpdateContestSchema(BaseModel):
                     "description": "Python contest for beginners.",
                     "instruction": "Details and instruction for the contest.",
                     "is_active": True,
+                    "cohorts": [2024, 2025],
                     "certificate_template": CertificateEnum.FOUNDATION.value
                 }
             ]
