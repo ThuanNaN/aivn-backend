@@ -4,7 +4,6 @@ import requests
 from fastapi import status
 from app.utils import utc_to_local, MessageException, Logger
 from requests.exceptions import HTTPError, Timeout
-from pymongo.errors import ConnectionFailure, OperationFailure
 from app.core.database import mongo_client, mongo_db
 from pymongo import UpdateOne
 

@@ -1,6 +1,6 @@
 from typing import List
 from datetime import datetime, UTC
-from app.utils.logger import Logger
+from app.utils import Logger, MessageException
 from slugify import slugify
 from fastapi import (
     APIRouter, Depends, 
@@ -241,16 +241,9 @@ async def create_submission(exam_id: str,
 
     updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
     if isinstance(updated_submission, Exception):
-        logger.error(f"An error occurred while update submission: {updated_submission}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred when submit problems."
-        )
-    if not updated_submission:
-        logger.error(f"Update submission failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred when submit problems."
+            status_code=updated_submission.status_code,
+            detail=updated_submission.message
         )
 
     return DictResponseModel(
@@ -283,10 +276,10 @@ async def get_contests():
             description="Retrieve a contest instruction with a matching slug")
 async def get_contest_instruction(slug: str):
     contest = await retrieve_contest_by_slug(slug)
-    if isinstance(contest, Exception):
+    if isinstance(contest, MessageException):
         return HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="An error occurred."
+            status_code=contest.status_code,
+            detail=contest.message
         )
     return_data = {
         "title": contest["title"],
