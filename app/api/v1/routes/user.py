@@ -46,7 +46,7 @@ from app.schemas.response import (
 
 router = APIRouter()
 logger = Logger("routes/user", log_file="user.log")
-
+ADMIN_COHORT = 2100
 
 async def read_csv(file: UploadFile):
     content = await file.read()
@@ -302,7 +302,7 @@ async def update_user_role_to_admin(admin_csv: UploadFile = File(...)):
 
 @router.post("/upsert", description="Update a user with Clerk data")
 async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
-    ROLE = "user"  # default role
+    role = "user"  # default role
 
     # check if user exist in DB
     is_exist_user = await retrieve_user(clerk_user_id)  # -> user_data
@@ -314,9 +314,20 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
 
     # logged in before -> update role
     if is_exist_user:  
-        CURRENT_ROLE = is_exist_user["role"]
-
-        if CURRENT_ROLE == "admin":
+        cur_role = is_exist_user["role"]
+        if cur_role == "admin":
+            if is_exist_user["cohort"] != ADMIN_COHORT:
+                update_cohort_data = UpdateUserRoleDB(
+                    role=cur_role,
+                    cohort=ADMIN_COHORT,
+                    updated_at=datetime.now(UTC)
+                ).model_dump()
+                updated_cohort = await update_user(clerk_user_id, update_cohort_data)
+                if isinstance(updated_cohort, Exception):
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=str(updated_cohort)
+                    )
             return ListResponseModel(data=[],
                                      message="Upsert user successfully.",
                                      code=status.HTTP_200_OK)
@@ -328,8 +339,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 detail="Checking whitelist failed."
             )
         if whitelist_info:
-            CURRENT_COHORT = whitelist_info["cohort"]
-            if CURRENT_ROLE == "aio" and CURRENT_COHORT == is_exist_user["cohort"]:
+            cur_cohort = whitelist_info["cohort"]
+            if cur_role == "aio" and cur_cohort == is_exist_user["cohort"]:
                 return ListResponseModel(data=[],
                                      message="Upsert user successfully.",
                                      code=status.HTTP_200_OK)
@@ -369,15 +380,15 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             )
         in_whitelist = True if whitelist_info else False
         if in_whitelist:
-            ROLE = "aio"
-            COHORT = whitelist_info["cohort"]
+            role = "aio"
+            cohort = whitelist_info["cohort"]
         # Create a new user
         new_user_data = UserSchemaDB(
             clerk_user_id=clerk_user_id,
             email=clerk_user_data["email"],
             username=clerk_user_data["username"],
-            role=ROLE,
-            cohort=COHORT,
+            role=role,
+            cohort=cohort,
             avatar=clerk_user_data["avatar"],
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)
