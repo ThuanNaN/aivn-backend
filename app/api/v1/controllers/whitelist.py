@@ -26,7 +26,7 @@ def whitelist_helper(user) -> dict:
     }
 
 
-async def add_whitelist(whitelist_data: dict) -> dict:
+async def add_whitelist(whitelist_data: dict) -> dict | MessageException:
     """
     Create a new whitelist
     :param whitelist_data: dict
@@ -42,7 +42,9 @@ async def add_whitelist(whitelist_data: dict) -> dict:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def upsert_whitelist(new_whitelists: list[dict], remove_not_exist: bool) -> bool:
+async def upsert_whitelist(new_whitelists: list[dict], 
+                           remove_not_exist: bool
+                           ) -> bool | MessageException:
     """
     Upsert new whitelist to database
     :param new_whitelists: list
@@ -95,7 +97,7 @@ async def upsert_whitelist(new_whitelists: list[dict], remove_not_exist: bool) -
 
 
 
-async def retrieve_all_whitelists() -> list[dict]:
+async def retrieve_all_whitelists() -> list[dict] | MessageException:
     """
     Retrieve all whitelists in database.
     :return: list
@@ -113,7 +115,8 @@ async def retrieve_all_whitelists() -> list[dict]:
 
 async def retrieve_whitelist_by_pipeline(pipeline: list,
                                          page: int,
-                                         per_page: int) -> list:
+                                         per_page: int
+                                         ) -> list | MessageException:
     """
     Retrieve all whitelists with matching search and filter
     :param pipeline: list
@@ -152,7 +155,7 @@ async def retrieve_whitelist_by_pipeline(pipeline: list,
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_whitelist_by_email(email: str) -> dict:
+async def retrieve_whitelist_by_email(email: str) -> dict | MessageException:
     """
     Retrieve a whitelist with a matching email    
     :param email: str
@@ -172,7 +175,7 @@ async def retrieve_whitelist_by_email(email: str) -> dict:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def update_whitelist_by_id(id: str, data: dict) -> dict:
+async def update_whitelist_by_id(id: str, data: dict) -> dict | MessageException:
     """
     Update a whitelist with a matching id
     :param id: str
@@ -204,7 +207,7 @@ async def update_whitelist_by_id(id: str, data: dict) -> dict:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def delete_whitelist_by_email(email: str) -> bool:
+async def delete_whitelist_by_email(email: str) -> bool | MessageException:
     """
     Delete a whitelist with a matching email
     :param email: str
@@ -219,6 +222,7 @@ async def delete_whitelist_by_email(email: str) -> bool:
         if deleted.deleted_count == 0:
             raise MessageException("Delete whitelist failed",
                                    status.HTTP_400_BAD_REQUEST)
+        return True
     
     except MessageException as e:
         return e
@@ -228,7 +232,7 @@ async def delete_whitelist_by_email(email: str) -> bool:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def delete_whitelist_by_id(id: str) -> bool:
+async def delete_whitelist_by_id(id: str) -> bool | MessageException:
     """
     Delete a whitelist with a matching id
     :param email: str

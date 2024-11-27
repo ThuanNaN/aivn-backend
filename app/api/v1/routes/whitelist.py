@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime, UTC
-from app.utils.logger import Logger
+from app.utils import Logger, MessageException
 import pandas as pd
 import csv
 from io import StringIO
@@ -80,10 +80,10 @@ async def get_whitelists(
         },
     ]
     whitelists = await retrieve_whitelist_by_pipeline(pipeline, page, per_page)
-    if isinstance(whitelists, Exception):
+    if isinstance(whitelists, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Whitelists not found."
+            status_code=whitelists.status_code,
+            detail=whitelists.message
         )
     return DictResponseModel(
         data=whitelists,
@@ -101,11 +101,12 @@ async def add_whitelist_data(whitelist: WhiteListSchema):
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     ).model_dump()
+
     new_whitelist = await add_whitelist(whitelist_data)
-    if isinstance(new_whitelist, Exception):
+    if isinstance(new_whitelist, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Whitelist not added."
+            status_code=new_whitelist.status_code,
+            detail=new_whitelist.message
         )
     return DictResponseModel(
         data=new_whitelist,
@@ -124,11 +125,11 @@ async def import_whitelist_csv(whitelists: List[WhiteListSchema],
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     ).model_dump() for data in whitelists]
-    whitelist = await upsert_whitelist(whitelists_data, remove_not_exist)
-    if isinstance(whitelist, Exception):
+    upsert_result = await upsert_whitelist(whitelists_data, remove_not_exist)
+    if isinstance(upsert_result, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
+            status_code=upsert_result.status_code,
+            detail=upsert_result.message
         )
     return ListResponseModel(data=[],
                              message="Email added to whitelist successfully.",
@@ -147,10 +148,10 @@ async def update_whitelist_data(
         updated_at=datetime.now(UTC)
     ).model_dump()
     updated_whitelist = await update_whitelist_by_id(id, whitelist_data)
-    if isinstance(updated_whitelist, Exception):
+    if isinstance(updated_whitelist, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Whitelist not updated."
+            status_code=updated_whitelist.status_code,
+            detail=updated_whitelist.message
         )
     return DictResponseModel(
         data=updated_whitelist,
@@ -164,10 +165,10 @@ async def update_whitelist_data(
                description="Delete a whitelist with a matching id")
 async def delete_whitelist(id: str):
     deleted = await delete_whitelist_by_id(id)
-    if isinstance(deleted, Exception):
+    if isinstance(deleted, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred."
+            status_code=deleted.status_code,
+            detail=deleted.message
         )
     if not deleted:
         raise HTTPException(
@@ -184,10 +185,10 @@ async def delete_whitelist(id: str):
             description="Export a whitelist via csv file")
 async def export_whitelist_csv():
     whitelist_data = await retrieve_all_whitelists()
-    if isinstance(whitelist_data, Exception):
+    if isinstance(whitelist_data, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Whitelists not found."
+            status_code=whitelist_data.status_code,
+            detail=whitelist_data.message
         )
     
     df = pd.DataFrame(whitelist_data)
