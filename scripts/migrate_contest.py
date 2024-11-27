@@ -1,35 +1,34 @@
+from app.core.database import mongo_db
 import asyncio
-from slugify import slugify
-from app.api.v1.controllers.contest import contest_collection
+from tqdm.asyncio import tqdm
+from pymongo import UpdateOne
 
-async def main():
-    result = await contest_collection.update_many(
-        {},
-        {"$set": {
-            "instruction": "Details and instruction for the contest.", 
-            "certificate_template": None,
-            }
-        }
-    )
-    print(f"Modified {result.modified_count} documents")
+try:
+    contest_collection = mongo_db["contests"]
+except Exception as e:
+    exit(1)
 
 
-async def upsert_slug():
-    contest_info = []
-    async for contest in contest_collection.find():
-        contest["slug"] = slugify(contest["title"])
-        contest_info.append(contest)
+async def add_cohort_field():
+    add_data = []
+    async for contest_data in contest_collection.find():
+        add_data.append(contest_data)
+    
+    operators = []
+    with tqdm(total=len(add_data)) as pbar:
+        for index, contest_data in enumerate(add_data):
+            operators.append(UpdateOne(
+                {"_id": contest_data["_id"]},
+                {"$set": {
+                    "cohort": [2024],
+                }}
+            ))
+            pbar.update(1)
+    if operators:
+        results = await contest_collection.bulk_write(operators)
+        print(f"Modified {results.modified_count} documents")
 
-    for contest in contest_info:
-        await contest_collection.update_one(
-            {"_id": contest["_id"]},
-            {"$set": {
-                "slug": contest["slug"]
-            }}
-        )
-    print("Slug updated")
-
+    print("Done")
 
 if __name__ == "__main__":
-    asyncio.run(main())
-    asyncio.run(upsert_slug())
+    asyncio.run(add_cohort_field())
