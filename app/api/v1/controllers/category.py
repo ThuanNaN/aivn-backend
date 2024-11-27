@@ -1,8 +1,8 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from bson.objectid import ObjectId
 from app.core.database import mongo_db
-from app.utils.logger import Logger
 
 logger = Logger("controllers/category", log_file="category.log")
 
@@ -33,9 +33,10 @@ async def add_category(category_data: dict) -> dict:
             {"_id": category.inserted_id}
         )
         return category_helper(new_category)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_categories() -> list:
@@ -48,9 +49,10 @@ async def retrieve_categories() -> list:
         async for category in category_collection.find():
             categories.append(category_helper(category))
         return categories
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve categories",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_category(id: str) -> dict:
@@ -63,9 +65,10 @@ async def retrieve_category(id: str) -> dict:
         category = await category_collection.find_one({"_id": ObjectId(id)})
         if category:
             return category_helper(category)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 async def update_category(id: str, data: dict) -> bool:
@@ -77,13 +80,18 @@ async def update_category(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data provided to update.")
+            raise MessageException("No data provided to update.", 
+                                   status.HTTP_400_BAD_REQUEST)
         update_result = await category_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if update_result.modified_count == 1:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if update_result.modified_count == 0:
+            raise MessageException("Update category failed",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)

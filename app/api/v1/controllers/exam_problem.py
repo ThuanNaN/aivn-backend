@@ -1,7 +1,7 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from app.core.database import mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 
 logger = Logger("controllers/exam_problem", log_file="exam_problem.log")
@@ -44,9 +44,10 @@ async def add_exam_problem(exam_problem_data: dict) -> dict:
             {"_id": exam_problem.inserted_id}
         )
         return exam_problem_helper(new_exam_problem)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add exam_problem", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -60,9 +61,10 @@ async def retrieve_exam_problems() -> list:
         async for exam_problem in exam_problem_collection.find():
             exam_problems.append(exam_problem_helper(exam_problem))
         return exam_problems
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_exam_problem(id: str) -> dict:
@@ -75,9 +77,10 @@ async def retrieve_exam_problem(id: str) -> dict:
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
         if exam_problem:
             return exam_problem_helper(exam_problem)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
@@ -93,9 +96,10 @@ async def retrieve_by_exam_problem_id(exam_id: str, problem_id: str) -> dict:
         )
         if exam_problem:
             return exam_problem_helper(exam_problem)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_exam_id(exam_id: str) -> list:
@@ -109,9 +113,10 @@ async def retrieve_by_exam_id(exam_id: str) -> list:
         async for exam_problem in exam_problem_collection.find({"exam_id": ObjectId(exam_id)}):
             exam_problems.append(exam_problem_helper(exam_problem))
         return exam_problems
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -123,19 +128,23 @@ async def update_exam_problem(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data provided to update")
+            raise MessageException("No data provided to update", 
+                                   status.HTTP_400_BAD_REQUEST)
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
         if not exam_problem:
-            raise Exception("Exam_problem not found")
+            raise MessageException("Exam_problem not found",
+                                   status.HTTP_404_NOT_FOUND)
         updated_exam_problem = await exam_problem_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_exam_problem.modified_count == 1:
-            return True
-        return False
-    except Exception as e:
+        if updated_exam_problem.modified_count == 0:
+            raise MessageException("Error when update exam_problem",
+                                   status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return True
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when update exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_exam_problem(id: str) -> bool:
@@ -146,11 +155,16 @@ async def delete_exam_problem(id: str) -> bool:
     try:
         exam_problem = await exam_problem_collection.find_one({"_id": ObjectId(id)})
         if not exam_problem:
-            raise Exception("Exam_problem not found")
+            raise MessageException("Exam_problem not found", 
+                                   status.HTTP_404_NOT_FOUND)
         deleted_exam_problem = await exam_problem_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_exam_problem.deleted_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if deleted_exam_problem.deleted_count == 0:
+            raise MessageException("Error when delete exam_problem",
+                                   status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when delete exam_problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)

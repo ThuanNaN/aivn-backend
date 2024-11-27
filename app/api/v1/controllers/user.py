@@ -1,11 +1,11 @@
 import traceback
 import os
 import requests
-from app.utils import utc_to_local, MessageException
+from fastapi import status
+from app.utils import utc_to_local, MessageException, Logger
 from requests.exceptions import HTTPError, Timeout
 from pymongo.errors import ConnectionFailure, OperationFailure
 from app.core.database import mongo_client, mongo_db
-from app.utils.logger import Logger
 from pymongo import UpdateOne
 
 logger = Logger("controllers/user", log_file="user.log")
@@ -83,9 +83,10 @@ async def add_user(user_data: dict) -> dict:
         user = await user_collection.insert_one(user_data)
         new_user = await user_collection.find_one({"_id": user.inserted_id})
         return user_helper(new_user)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_users() -> list[dict]:
@@ -98,9 +99,10 @@ async def retrieve_users() -> list[dict]:
         async for user in user_collection.find():
             users.append(user_helper(user))
         return users
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve users",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_user(clerk_user_id: str) -> dict:
@@ -111,16 +113,17 @@ async def retrieve_user(clerk_user_id: str) -> dict:
     """
     try:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
-        if user:
-            return user_helper(user)
-        raise MessageException("User not found")
+        if not user:
+            raise MessageException("User not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        return user_helper(user)
     
     except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Error when retrieve user")
+        return MessageException("Error when retrieve user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_user_by_email(email: str) -> dict:
@@ -131,11 +134,16 @@ async def retrieve_user_by_email(email: str) -> dict:
     """
     try:
         user = await user_collection.find_one({"email": email})
-        if user:
-            return user_helper(user)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if not user:
+            raise MessageException("User not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        return user_helper(user)
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_admin_users() -> list[dict]:
@@ -148,9 +156,10 @@ async def retrieve_admin_users() -> list[dict]:
         async for admin in user_collection.find({"role": "admin"}):
             admins.append(user_helper(admin))
         return admins
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve admin",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_user_by_pipeline(pipeline: list,
@@ -188,9 +197,10 @@ async def retrieve_user_by_pipeline(pipeline: list,
             "current_page": page,
             "per_page": per_page
         }
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_user(clerk_user_id: str, data: dict) -> bool:
@@ -202,22 +212,25 @@ async def update_user(clerk_user_id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise MessageException("No data to update")
+            raise MessageException("No data to update", 
+                                   status.HTTP_400_BAD_REQUEST)
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user:
-            raise MessageException("User not found")
+            raise MessageException("User not found",
+                                   status.HTTP_404_NOT_FOUND)
     
         updated_user = await user_collection.update_one(
             {"clerk_user_id": clerk_user_id}, {"$set": data}
         )
         if updated_user.modified_count == 0:
-            raise MessageException("Update user failed")
+            raise MessageException("Update user failed",
+                                   status.HTTP_400_BAD_REQUEST)
     except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Error when update user")
+        return MessageException("Error when update user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_user_clerk(clerk_user_id: str) -> dict:
@@ -241,11 +254,16 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
 
     except HTTPError as http_err:
         logger.error(f"HTTP error occurred: {http_err}")
+        return MessageException("HTTP error occurred",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Timeout as timeout_err:
         logger.error(f"Request timeout: {timeout_err}")
-    except Exception as e:
+        return MessageException("Request timeout",
+                                status.HTTP_408_REQUEST_TIMEOUT)
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def upsert_admin_list(new_admins: list[dict]) -> bool:
@@ -297,9 +315,10 @@ async def upsert_admin_list(new_admins: list[dict]) -> bool:
             result = await user_collection.bulk_write(operations)
             logger.info(f"Bulk write result: {result.bulk_api_result}")
         return True
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when upsert admin list",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
@@ -311,48 +330,51 @@ async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
     try:
         user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user_info:
-            raise Exception("User not found")
+            raise MessageException("User not found", status.HTTP_404_NOT_FOUND)
         
         # Check if user is in other collections
         # 1. Problem: creator_id
         problems = await mongo_db["problems"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if problems:
-            raise Exception("User is a creator of some problems")
+            raise MessageException("User is a creator of some problems", status.HTTP_400_BAD_REQUEST)
         
         # 2. Exam: creator_id
         exams = await mongo_db["exams"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if exams:
-            raise Exception("User is a creator of some exams")
+            raise MessageException("User is a creator of some exams", status.HTTP_400_BAD_REQUEST)
         
         # 3. Problem-Exam: creator_id
         problem_exams = await mongo_db["problem_exams"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if problem_exams:
-            raise Exception("User is a creator of some problem-exams")
+            raise MessageException("User is a creator of some problem-exams", status.HTTP_400_BAD_REQUEST)
         
         # 4. Contest: creator_id
         contests = await mongo_db["contests"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if contests:
-            raise Exception("User is a creator of some contests")
+            raise MessageException("User is a creator of some contests", status.HTTP_400_BAD_REQUEST)
 
         # 5. Meeting: creator_id
         meetings = await mongo_db["meetings"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if meetings:
-            raise Exception("User is a creator of some meetings")
+            raise MessageException("User is a creator of some meetings", status.HTTP_400_BAD_REQUEST)
         
         # 6. Document: creator_id
         documents = await mongo_db["documents"].find({"creator_id": clerk_user_id}).to_list(length=None)
         if documents:
-            raise Exception("User is a creator of some documents")
+            raise MessageException("User is a creator of some documents", status.HTTP_400_BAD_REQUEST)
         
         # 7. Submission: clerk_user_id
         submissions = await mongo_db["submissions"].find({"clerk_user_id": clerk_user_id}).to_list(length=None)
         if submissions:
-            raise Exception("User is a creator of some submissions")
+            raise MessageException("User is a creator of some submissions", status.HTTP_400_BAD_REQUEST)
         
-
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when delete user",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+                                
     
     async with await mongo_client.start_session() as session:
         try:
@@ -365,11 +387,13 @@ async def delete_user_by_clerk_user_id(clerk_user_id: str) -> bool:
                 deleted_user = await user_collection.delete_one(
                     {"clerk_user_id": clerk_user_id}, session=session)
                 
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("Error when delete user",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            if deleted_user.deleted_count == 1:
-                return True
-            raise Exception("Delete user failed")
+            if deleted_user.deleted_count == 0:
+                raise MessageException("Delete user failed",
+                                       status.HTTP_400_BAD_REQUEST)
+            return True
         

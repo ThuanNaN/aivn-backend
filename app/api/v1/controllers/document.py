@@ -1,7 +1,7 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from app.core.database import mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from pymongo import DeleteOne, InsertOne
 
@@ -39,9 +39,10 @@ async def add_document(document_data: dict) -> dict:
         document = await document_collection.insert_one(document_data)
         new_document = await document_collection.find_one({"_id": document.inserted_id})
         return document_helper(new_document)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add document",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def upsert_document_by_meeting_id(meeting_id: str, 
@@ -75,10 +76,14 @@ async def upsert_document_by_meeting_id(meeting_id: str,
             logger.info(f"Upsert documents result: {result}")
             if result.inserted_count == len(document_data) and result.deleted_count == len(current_documents):
                 return True
-            raise Exception("Upsert documents failed")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+            raise MessageException("Upsert documents failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when upsert documents",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         logger.info("No documents to upsert")
         return True
@@ -95,9 +100,10 @@ async def retrieve_documents() -> list[dict]:
         async for document in document_collection.find():
             documents.append(document_helper(document))
         return documents
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Retrieve documents failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_document_by_id(id: str) -> dict:
@@ -112,9 +118,10 @@ async def retrieve_document_by_id(id: str) -> dict:
         document = await document_collection.find_one({"_id": ObjectId(id)})
         if document:
             return document_helper(document)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Retrieve document failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 async def retrieve_document_by_meeting_id(meeting_id: str) -> list[dict]:
@@ -132,7 +139,8 @@ async def retrieve_document_by_meeting_id(meeting_id: str) -> list[dict]:
         return documents
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Retrieve documents failed")
+        return MessageException("Retrieve documents failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_document(id: str, data: dict) -> dict:
@@ -147,20 +155,27 @@ async def update_document(id: str, data: dict) -> dict:
     try:
         document = await document_collection.find_one({"_id": ObjectId(id)})
         if not document:
-            raise Exception("Document not found")
+            raise MessageException("Document not found", 
+                                   status.HTTP_404_NOT_FOUND)
         
         data["meeting_id"] = ObjectId(data["meeting_id"])
         updated_document = await document_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
 
-        if updated_document.modified_count == 1:
-            document = await document_collection.find_one({"_id": ObjectId(id)})
-            return document_helper(document)
-        raise Exception("Document could not be updated")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_document.modified_count == 0:
+            raise MessageException("Update document failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+
+        document = await document_collection.find_one({"_id": ObjectId(id)})
+        return document_helper(document)
+
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Update document failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_document_by_id(id: str) -> bool:
@@ -174,14 +189,19 @@ async def delete_document_by_id(id: str) -> bool:
     try:
         document = await document_collection.find_one({"_id": ObjectId(id)})
         if not document:
-            raise Exception("Document not found")
+            raise MessageException("Document not found", 
+                                   status.HTTP_404_NOT_FOUND)
         deleted_info = await document_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_info.deleted_count == 1:
-            return True
-        raise Exception("Document could not be deleted")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if deleted_info.deleted_count == 0:
+            raise MessageException("Delete document failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Delete document failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 async def delete_documents_by_meeting_id(meeting_id: str) -> bool:
     """
@@ -195,9 +215,13 @@ async def delete_documents_by_meeting_id(meeting_id: str) -> bool:
         deleted_info = await document_collection.delete_many(
             {"meeting_id": ObjectId(meeting_id)}
         )
-        if deleted_info.deleted_count > 0:
-            return True
-        raise Exception("Delete documents failed")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if deleted_info.deleted_count == 0:
+            raise MessageException("Delete documents failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Delete documents failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)

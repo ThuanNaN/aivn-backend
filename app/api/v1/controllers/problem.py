@@ -1,8 +1,7 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from app.core.database import mongo_client, mongo_db
-from pymongo.errors import ConnectionFailure, OperationFailure
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.category import (
     category_helper
@@ -78,9 +77,10 @@ async def add_problem(problem_data: dict) -> dict:
         problem = await problem_collection.insert_one(problem_data)
         new_problem = await problem_collection.find_one({"_id": problem.inserted_id})
         return problem_helper(new_problem)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_problems(full_return: bool = False) -> list:
@@ -98,9 +98,10 @@ async def retrieve_problems(full_return: bool = False) -> list:
                 problem_data = hide_problem_helper(problem)
             problems.append(problem_data)
         return problems
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all problems",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_problems_by_ids(ids: list, full_return: bool = False) -> list:
@@ -119,9 +120,10 @@ async def retrieve_problems_by_ids(ids: list, full_return: bool = False) -> list
                 problem_data = hide_problem_helper(problem)
             problems.append(problem_data)
         return problems
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problems",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_problem(id: str, full_return: bool = False) -> dict:
@@ -138,9 +140,10 @@ async def retrieve_problem(id: str, full_return: bool = False) -> dict:
                 return problem_helper(problem)
             else:
                 return hide_problem_helper(problem)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_problem_by_pipeline(pipeline: list,
@@ -185,9 +188,10 @@ async def retrieve_problem_by_pipeline(pipeline: list,
             "current_page": page,
             "per_page": per_page
         }
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problems",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_problem(id: str, data: dict) -> bool:
@@ -199,19 +203,25 @@ async def update_problem(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update",
+                                   status.HTTP_400_BAD_REQUEST)
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if not problem:
-            raise Exception("Problem not found")
+            raise MessageException("Problem not found", 
+                                   status.HTTP_404_NOT_FOUND)
         updated_problem = await problem_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_problem.modified_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_problem.modified_count == 0:
+            raise MessageException("Error when update problem",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_problem(id: str) -> bool:
@@ -223,16 +233,21 @@ async def delete_problem(id: str) -> bool:
     try:
         problem = await problem_collection.find_one({"_id": ObjectId(id)})
         if not problem:
-            raise Exception("Problem not found")
+            raise MessageException("Problem not found",
+                                   status.HTTP_404_NOT_FOUND)
         
         exam_problem_data = await exam_problem_collection.find(
             {"problem_id": ObjectId(id)}).to_list(length=None)
         if len(exam_problem_data) > 0:
-            raise Exception("Problem is used in exam")
+            raise MessageException("Problem is used in exam",
+                                   status.HTTP_400_BAD_REQUEST)
         
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when delete problem",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     async with await mongo_client.start_session() as session:
         try:
@@ -247,11 +262,14 @@ async def delete_problem(id: str) -> bool:
                     {"_id": ObjectId(id)}, session=session)
                 logger.info(f"Delete problem with ID: {id}")
 
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("Error when delete problem",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            if deleted_problem.deleted_count == 1:
-                return True
-            raise Exception("Delete meeting failed")
+            if deleted_problem.deleted_count == 0:
+                raise MessageException("Delete problem failed",
+                                        status.HTTP_400_BAD_REQUEST)
+            return True
+                                   
 

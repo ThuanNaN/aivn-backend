@@ -1,12 +1,9 @@
 import traceback
-from app.utils.time import utc_to_local
-from pymongo.errors import ConnectionFailure, OperationFailure
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from app.core.database import mongo_client, mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.retake import (
-    retrieve_retakes_by_user_exam_id,
-)
+
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
@@ -70,9 +67,10 @@ async def add_submission(submission_data: dict) -> dict:
             {"_id": submission.inserted_id}
         )
         return submission_helper(new_submission)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_submissions() -> list:
@@ -86,9 +84,10 @@ async def retrieve_submissions() -> list:
             return_data = submission_helper(submission)
             submissions.append(return_data)
         return submissions
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all submissions",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -100,9 +99,10 @@ async def retrieve_submission_by_pipeline(pipeline: list) -> list:
     try:
         pipeline_results = await submission_collection.aggregate(pipeline).to_list(length=None)
         return pipeline_results
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all submissions",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_submission_by_id(id: str) -> dict:
@@ -114,11 +114,15 @@ async def retrieve_submission_by_id(id: str) -> dict:
     try:
         submission = await submission_collection.find_one({"_id": ObjectId(id)})
         if not submission:
-            raise Exception("Submission not found")
+            raise MessageException("Submission not found",
+                                   status.HTTP_404_NOT_FOUND)
         return submission_helper(submission)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_submission_by_exam_id(exam_id: str) -> list:
@@ -133,9 +137,10 @@ async def retrieve_submission_by_exam_id(exam_id: str) -> list:
             return_data = submission_helper(submission)
             submissions.append(return_data)
         return submissions
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve submissions",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_submission_by_exam_user_id(exam_id: str,
@@ -154,9 +159,10 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
         if submission:
             return_data = submission_helper(submission)
             return return_data
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -187,9 +193,10 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
             if check_none and submission["submitted_problems"] is None:
                 return None
             return submission_helper(submission)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_submission(id: str, submission_data: dict) -> dict:
@@ -201,18 +208,23 @@ async def update_submission(id: str, submission_data: dict) -> dict:
     """
     try:
         if len(submission_data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update", 
+                                   status.HTTP_400_BAD_REQUEST)
 
         submission_data = update_helper(submission_data)
         updated_submission = await submission_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": submission_data}
         )
-        if updated_submission.modified_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_submission.modified_count == 0:
+            raise MessageException("Error when update submission",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_submission(id: str) -> bool:
@@ -221,24 +233,11 @@ async def delete_submission(id: str) -> bool:
     :param id: str
     :return: bool
     """
-    try:
-        submission = await submission_collection.find_one({"_id": ObjectId(id)})
-        if not submission:
-            raise Exception("Submission not found")
-        
-        submission_info = await retrieve_submission_by_id(id)
-        if isinstance(submission_info, Exception):
-            raise submission_info
-        
-        retake_id = ObjectId(submission_info["retake_id"]) if submission_info["retake_id"] else None
-
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
-
     async with await mongo_client.start_session() as session:
         try:
             async with session.start_transaction():
+                submission_info = await retrieve_submission_by_id(id)
+                retake_id = ObjectId(submission_info["retake_id"]) if submission_info["retake_id"] else None
                 if retake_id:
                     await retake_collection.delete_one({"_id": retake_id}, session=session)
 
@@ -254,8 +253,9 @@ async def delete_submission(id: str) -> bool:
                 # Delete submission
                 await submission_collection.delete_one({"_id": ObjectId(id)}, session=session)
 
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("Error when delete submission",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return True

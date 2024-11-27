@@ -1,8 +1,7 @@
 import traceback
-from app.utils import utc_to_local, MessageException
-from pymongo.errors import ConnectionFailure, OperationFailure
+from fastapi import status
+from app.utils import utc_to_local, MessageException,Logger
 from app.core.database import mongo_client, mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from pymongo import UpdateOne, DeleteOne
 
@@ -37,9 +36,10 @@ async def add_whitelist(whitelist_data: dict) -> dict:
         whitelist = await whitelist_collection.insert_one(whitelist_data)
         new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
         return whitelist_helper(new_whitelist)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def upsert_whitelist(new_whitelists: list[dict], remove_not_exist: bool) -> bool:
@@ -88,9 +88,10 @@ async def upsert_whitelist(new_whitelists: list[dict], remove_not_exist: bool) -
             result = await whitelist_collection.bulk_write(operations)
             logger.info(f"Bulk write upgrade result: {result.bulk_api_result}")
         return True
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when upsert whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -104,9 +105,10 @@ async def retrieve_all_whitelists() -> list[dict]:
         async for whitelist in whitelist_collection.find():
             whitelists.append(whitelist_helper(whitelist))
         return whitelists
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve whitelists",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_whitelist_by_pipeline(pipeline: list,
@@ -119,30 +121,35 @@ async def retrieve_whitelist_by_pipeline(pipeline: list,
     :param per_page: int
     :return: list
     """
-    pipeline_results = await whitelist_collection.aggregate(pipeline).to_list(length=None)
-    whitelists = pipeline_results[0]["whitelists"]
-    if len(whitelists) < 1:
+    try:
+        pipeline_results = await whitelist_collection.aggregate(pipeline).to_list(length=None)
+        whitelists = pipeline_results[0]["whitelists"]
+        if len(whitelists) < 1:
+            return {
+                "whitelists_data": [],
+                "total_whitelists": 0,
+                "total_pages": 0,
+                "current_page": page,
+                "per_page": per_page
+            }
+        total_whitelists = pipeline_results[0]["total"][0]["count"]
+        total_pages = (total_whitelists + per_page - 1) // per_page
+        result_data = []
+        for whitelist in whitelists:
+            whitelist_info = whitelist_helper(whitelist)
+            result_data.append(whitelist_info)
+
         return {
-            "whitelists_data": [],
-            "total_whitelists": 0,
-            "total_pages": 0,
+            "users_data": result_data,
+            "total_whitelists": total_whitelists,
+            "total_pages": total_pages,
             "current_page": page,
             "per_page": per_page
         }
-    total_whitelists = pipeline_results[0]["total"][0]["count"]
-    total_pages = (total_whitelists + per_page - 1) // per_page
-    result_data = []
-    for whitelist in whitelists:
-        whitelist_info = whitelist_helper(whitelist)
-        result_data.append(whitelist_info)
-
-    return {
-        "users_data": result_data,
-        "total_whitelists": total_whitelists,
-        "total_pages": total_pages,
-        "current_page": page,
-        "per_page": per_page
-    }
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve whitelists",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_whitelist_by_email(email: str) -> dict:
@@ -153,11 +160,16 @@ async def retrieve_whitelist_by_email(email: str) -> dict:
     """
     try:
         whitelist = await whitelist_collection.find_one({"email": email})
-        if whitelist:
-            return whitelist_helper(whitelist)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if not whitelist:
+            raise MessageException("Whitelist not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        return whitelist_helper(whitelist)
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_whitelist_by_id(id: str, data: dict) -> dict:
@@ -169,7 +181,8 @@ async def update_whitelist_by_id(id: str, data: dict) -> dict:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update", 
+                                   status.HTTP_400_BAD_REQUEST)
         current_whitelist = await whitelist_collection.find_one({"_id": ObjectId(id)})
         if not current_whitelist:
             raise Exception("Whitelist not found")
@@ -177,14 +190,18 @@ async def update_whitelist_by_id(id: str, data: dict) -> dict:
         updated = await whitelist_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated.modified_count > 0:
-            updated_whitelist = await whitelist_collection.find_one({"_id": ObjectId(id)})
-            return whitelist_helper(updated_whitelist)
-        
-        raise Exception("Whitelist not updated")
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated.modified_count == 0:
+            raise MessageException("Update whitelist failed",
+                                   status.HTTP_400_BAD_REQUEST)
+        updated_whitelist = await whitelist_collection.find_one({"_id": ObjectId(id)})
+        return whitelist_helper(updated_whitelist)
+    
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_whitelist_by_email(email: str) -> bool:
@@ -196,17 +213,19 @@ async def delete_whitelist_by_email(email: str) -> bool:
     try:
         whitelist_info = await whitelist_collection.find_one({"email": email})
         if not whitelist_info:
-            raise MessageException("Whitelist not found")
+            raise MessageException("Whitelist not found", 
+                                   status.HTTP_404_NOT_FOUND)
         deleted = await whitelist_collection.delete_one({"email": email})
         if deleted.deleted_count == 0:
-            raise MessageException("Delete whitelist failed")
+            raise MessageException("Delete whitelist failed",
+                                   status.HTTP_400_BAD_REQUEST)
     
     except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Delete whitelist failed")
+        return MessageException("Error when delete whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_whitelist_by_id(id: str) -> bool:
@@ -218,11 +237,14 @@ async def delete_whitelist_by_id(id: str) -> bool:
     try:
         whitelist_info = await whitelist_collection.find_one({"_id": ObjectId(id)})
         if not whitelist_info:
-            raise Exception("Whitelist not found")
-        
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+            raise MessageException("Whitelist not found", 
+                                   status.HTTP_404_NOT_FOUND)
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve whitelist",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     async with await mongo_client.start_session() as session:
         try:
@@ -236,11 +258,13 @@ async def delete_whitelist_by_id(id: str) -> bool:
                     session=session
                 )
         
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("Error when delete whitelist",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            if deleted_whitelist.deleted_count == 1:
-                return True
-            raise Exception("Delete whitelist failed")
+            if deleted_whitelist.deleted_count == 0:
+                raise MessageException("Delete whitelist failed",
+                                       status.HTTP_400_BAD_REQUEST)
+            return True
         

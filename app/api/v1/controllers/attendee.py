@@ -1,8 +1,8 @@
 import traceback
 from datetime import datetime, UTC
-from app.utils.time import utc_to_local
+from fastapi import status
+from app.utils import utc_to_local, MessageException, Logger
 from app.core.database import mongo_client, mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.schemas.attendee import AttendeeSchemaDB
 from app.api.v1.controllers.user import user_helper
@@ -69,7 +69,8 @@ async def add_attendees(meeting_id, attendee_ids, attendee_emails) -> list[str]:
         return [str(attendee) for attendee in new_attendees.inserted_ids]
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Add attendees failed")
+        return MessageException("Add attendees failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_attendees_by_meeting_id(meeting_id: str) -> list[dict]:
@@ -106,9 +107,10 @@ async def retrieve_attendees_by_meeting_id(meeting_id: str) -> list[dict]:
         ]
         attendees = await attendee_collection.aggregate(pipeline).to_list(length=None)
         return [user_helper(attendee) for attendee in attendees]
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Retrieve attendees failed")
+        return MessageException("Retrieve attendees failed",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_attendees_by_emails(meeting_id: str, emails: list[str]) -> bool:
@@ -131,7 +133,8 @@ async def delete_attendees_by_emails(meeting_id: str, emails: list[str]) -> bool
                 attendee_ids = [user["attend_id"] for user in user_info]
 
                 if len(emails) != len(attendee_ids):
-                    raise Exception("Some emails not found")
+                    raise MessageException("Some emails not found", 
+                                           status.HTTP_404_NOT_FOUND)
 
                 result = await attendee_collection.delete_many(
                     {
@@ -140,10 +143,14 @@ async def delete_attendees_by_emails(meeting_id: str, emails: list[str]) -> bool
                     }
                 )
                 if result.deleted_count != len(attendee_ids):
-                    raise Exception("Delete attendees failed")
-        except Exception as e:
-            logger.error(f"{traceback.format_exc()}")
+                    raise MessageException("Delete attendees failed",
+                                           status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except MessageException as e:
             return e
+        except:
+            logger.error(f"{traceback.format_exc()}")
+            return MessageException("Error when delete attendees", 
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else: 
             logger.info(f"Deleted attendees by emails: {emails}")
             return True

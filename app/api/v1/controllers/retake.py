@@ -1,8 +1,8 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from typing import List
 from app.core.database import mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 
 logger = Logger("controllers/retake", log_file="retake.log")
@@ -36,9 +36,10 @@ async def add_retake(retake_data: dict) -> dict:
         retake = await retake_collection.insert_one(retake_data)
         new_retake = await retake_collection.find_one({"_id": retake.inserted_id})
         return retake_helper(new_retake)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add retake",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retakes() -> list:
@@ -50,9 +51,10 @@ async def retrieve_retakes() -> list:
         async for retake in retake_collection.find():
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retake_by_id(id: str) -> list:
@@ -66,9 +68,11 @@ async def retrieve_retake_by_id(id: str) -> list:
         async for retake in retake_collection.find({"_id": ObjectId(id)}):
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retake",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+                                
     
 
 async def retrieve_retakes_by_ids(ids: list) -> list:
@@ -82,9 +86,10 @@ async def retrieve_retakes_by_ids(ids: list) -> list:
         async for retake in retake_collection.find({"_id": {"$in": ids}}):
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retake_by_clerk_user_id(clerk_user_id: str) -> list:
@@ -98,9 +103,10 @@ async def retrieve_retake_by_clerk_user_id(clerk_user_id: str) -> list:
         async for retake in retake_collection.find({"clerk_user_id": clerk_user_id}):
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retake_by_exam_id(exam_id: str) -> list:
@@ -114,9 +120,10 @@ async def retrieve_retake_by_exam_id(exam_id: str) -> list:
         async for retake in retake_collection.find({"exam_id": ObjectId(exam_id)}):
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retakes_by_user_exam_id(clerk_user_id: str, 
@@ -138,9 +145,10 @@ async def retrieve_retakes_by_user_exam_id(clerk_user_id: str,
         ):
             retakes.append(retake_helper(retake))
         return retakes
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_retakes_unsubmit(submission_retake_ids: List[str]) -> list:
@@ -154,9 +162,10 @@ async def retrieve_retakes_unsubmit(submission_retake_ids: List[str]) -> list:
         unsubmit_retake_ids = [retake_id for retake_id in retake_ids if retake_id not in submission_retake_ids]
         unsubmit_retakes = [retake for retake in retakes if retake["id"] in unsubmit_retake_ids]
         return unsubmit_retakes
-    except Exception as e:
+    except:
         logger.error(f"Error when retrieving retakes: {e}")
-        return None
+        return MessageException("Error when retrieve retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_retake_by_id(id: str) -> bool:
@@ -168,15 +177,20 @@ async def delete_retake_by_id(id: str) -> bool:
     try:
         retake = await retake_collection.find_one({"_id": ObjectId(id)})
         if not retake:
-            raise Exception("Retake not found")
+            raise MessageException("Retake not found", 
+                                   status.HTTP_404_NOT_FOUND)
         
         deleted_retake = await retake_collection.delete_one({"_id": ObjectId(id)})
-        if deleted_retake.deleted_count == 1:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error when delete retake: {e}")
+        if deleted_retake.deleted_count == 0:
+            raise MessageException("Error when delete retake",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"Error when delete retake: {e}")
+        return MessageException("Error when delete retake",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     
 async def delete_retake_by_ids(ids: list) -> bool:
@@ -187,9 +201,13 @@ async def delete_retake_by_ids(ids: list) -> bool:
     """
     try:
         deleted_retakes = await retake_collection.delete_many({"_id": {"$in": ids}})
-        if deleted_retakes.deleted_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error when delete retakes: {e}")
+        if deleted_retakes.deleted_count == 0:
+            raise MessageException("Error when delete retakes",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"Error when delete retakes: {e}")
+        return MessageException("Error when delete retakes",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)

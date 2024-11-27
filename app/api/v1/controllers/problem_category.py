@@ -1,8 +1,8 @@
 import traceback
-from app.utils.time import utc_to_local
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from typing import List
 from app.core.database import mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from pymongo import UpdateOne, DeleteOne
 
@@ -44,9 +44,10 @@ async def add_problem_category(problem_category_data: dict) -> dict:
             {"_id": problem_category.inserted_id}
         )
         return problem_category_helper(new_problem_category)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def add_more_problem_category(problem_category_data: List[dict]) -> list:
@@ -65,9 +66,10 @@ async def add_more_problem_category(problem_category_data: List[dict]) -> list:
         ):
             new_problem_categories.append(problem_category_helper(problem_category))
         return new_problem_categories
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_problem_categories() -> list:
@@ -80,9 +82,10 @@ async def retrieve_problem_categories() -> list:
         async for problem_category in problem_category_collection.find():
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all problem_categories",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_id(id: str) -> dict:
@@ -97,9 +100,10 @@ async def retrieve_by_id(id: str) -> dict:
         )
         if problem_category:
             return problem_category_helper(problem_category)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> dict:
@@ -115,9 +119,10 @@ async def retrieve_by_problem_category_id(problem_id: str, category_id: str) -> 
         )
         if problem_category:
             return problem_category_helper(problem_category)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_categories(category_ids: List[str]) -> list:
@@ -134,9 +139,10 @@ async def retrieve_by_categories(category_ids: List[str]) -> list:
         ):
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_by_problem_id(problem_id: str) -> list:
@@ -152,9 +158,10 @@ async def retrieve_by_problem_id(problem_id: str) -> list:
         ):
             problem_categories.append(problem_category_helper(problem_category))
         return problem_categories
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -202,6 +209,7 @@ async def upsert_problem_category(problem_id: str, new_problem_categories: list)
             logger.info(f"Bulk write result: {result.bulk_api_result}")
         return True
 
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when upsert problem_category",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)

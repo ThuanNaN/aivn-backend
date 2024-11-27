@@ -1,7 +1,6 @@
 import traceback
-from datetime import datetime, UTC
-from pymongo.errors import ConnectionFailure, OperationFailure
 from app.utils import utc_to_local, is_past, MessageException
+from fastapi import status
 from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
@@ -45,12 +44,10 @@ async def add_meeting(meeting_data: dict) -> dict:
         meeting = await meeting_collection.insert_one(meeting_data)
         new_meeting = await meeting_collection.find_one({"_id": meeting.inserted_id})
         return meeting_helper(new_meeting)
-    except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
-        return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("Add meeting failed")
+        return MessageException("Error when add meeting", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 async def retrieve_meetings() -> list:
@@ -63,9 +60,10 @@ async def retrieve_meetings() -> list:
         async for meeting in meeting_collection.find():
             meetings.append(meeting_helper(meeting))
         return meetings
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("An error occurred when retrieve meetings",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
@@ -79,7 +77,8 @@ async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
         return pipeline_results
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("An error occurred when retrieve meeting by pipeline")
+        return MessageException("An error occurred when retrieve meetings",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_meeting_by_id(id: str) -> dict:
@@ -90,15 +89,16 @@ async def retrieve_meeting_by_id(id: str) -> dict:
     """
     try:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
-        if meeting:
-            return meeting_helper(meeting)
-        raise MessageException("Meeting not found")
+        if not meeting:
+            raise MessageException("Meeting not found", 
+                                status.HTTP_404_NOT_FOUND)
+        return meeting_helper(meeting)
     except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("An error occurred when retrieve meeting")
+        return MessageException("An error occurred when retrieve meeting", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_meeting(id: str, meeting_data: dict) -> dict:
@@ -111,19 +111,24 @@ async def update_meeting(id: str, meeting_data: dict) -> dict:
     try:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
-            raise Exception("Meeting not found")
+            raise MessageException("Meeting not found", 
+                                   status.HTTP_404_NOT_FOUND)
         
         updated_meeting = await meeting_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": meeting_data}
         )
-        if not updated_meeting:
-            raise Exception("Update meeting failed")
-        if updated_meeting.modified_count > 0:
-            updated_meeting_data = await meeting_collection.find_one({"_id": ObjectId(id)})
-            return meeting_helper(updated_meeting_data)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_meeting.modified_count == 0:
+            raise MessageException("Update meeting failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+        updated_meeting_data = await meeting_collection.find_one({"_id": ObjectId(id)})
+        return meeting_helper(updated_meeting_data)
+
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("An error occurred when update meeting",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_meeting(id: str) -> bool:
@@ -139,16 +144,18 @@ async def delete_meeting(id: str) -> bool:
     try:
         meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
         if not meeting:
-            raise MessageException("Meeting not found")
+            raise MessageException("Meeting not found",
+                                   status.HTTP_404_NOT_FOUND)
         
         if is_past(meeting["date"], "utc"):
-            raise MessageException("Cannot delete meeting in the past")
+            raise MessageException("Cannot delete meeting in the past",
+                                   status.HTTP_400_BAD_REQUEST)
     except MessageException as e:
-        logger.error(f"{traceback.format_exc()}")
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("An error occurred when delete meeting")
+        return MessageException("An error occurred when delete meeting",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # Transaction to delete meeting and documents
     async with await mongo_client.start_session() as session:
@@ -166,13 +173,16 @@ async def delete_meeting(id: str) -> bool:
                     {"meeting_id": ObjectId(id)},
                     session=session)
                 logger.info(f"Delete attendees: {del_attendees.deleted_count}")
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("An error occurred when delete meeting",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            if del_meeting.deleted_count == 1:
-                return True
-            raise Exception("Delete meeting failed")
+            if del_meeting.deleted_count == 0:
+                raise MessageException("Delete meeting failed",
+                                        status.HTTP_400_BAD_REQUEST)
+            return True
+        
         
 
 async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict:
@@ -190,7 +200,8 @@ async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict:
             }
     except:
         logger.error(f"{traceback.format_exc()}")
-        return Exception("An error occurred when retrieve upcoming meeting")
+        return MessageException("An error occurred when retrieve upcoming meeting",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return {}
     

@@ -1,8 +1,7 @@
 import traceback
-from app.utils.time import utc_to_local
-from pymongo.errors import ConnectionFailure, OperationFailure
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
 from app.core.database import mongo_client, mongo_db
-from app.utils.logger import Logger
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam_problem import (
     retrieve_by_exam_id,
@@ -57,9 +56,10 @@ async def add_exam(exam_data: dict) -> dict:
         exam = await exam_collection.insert_one(exam_data)
         new_exam = await exam_collection.find_one({"_id": exam.inserted_id})
         return exam_helper(new_exam)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add exam", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_exams() -> list:
@@ -72,9 +72,10 @@ async def retrieve_exams() -> list:
         async for exam in exam_collection.find():
             exams.append(exam_helper(exam))
         return exams
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all exams",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_exam(id: str) -> dict:
@@ -85,11 +86,14 @@ async def retrieve_exam(id: str) -> dict:
     """
     try:
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
-        if exam:
-            return exam_helper(exam)
-    except Exception as e:
+        if not exam:
+            raise MessageException("Exam not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        return exam_helper(exam)
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve exam",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_exam_detail(id: str) -> dict:
@@ -100,17 +104,9 @@ async def retrieve_exam_detail(id: str) -> dict:
     """
     try:
         exam = await retrieve_exam(id)
-        if isinstance(exam, Exception):
-            raise exam
         exam_problems = await retrieve_by_exam_id(exam["id"])
-        if isinstance(exam_problems, Exception):
-            raise exam_problems
         problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
-        
         enriched_problems = await retrieve_problems_by_ids(problem_ids, full_return=True)
-        if isinstance(enriched_problems, Exception):
-            raise enriched_problems
-        
         for exam_problem in exam_problems:
             problem = next((problem for problem in enriched_problems if problem["id"] == exam_problem["problem_id"]), None)
             exam_problem["problem"] = problem if problem else None
@@ -119,9 +115,10 @@ async def retrieve_exam_detail(id: str) -> dict:
         exam["problems"] = exam_problems_temp
         return exam
 
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve exam detail",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_exams_by_contest(contest_id: str) -> list:
@@ -135,9 +132,10 @@ async def retrieve_exams_by_contest(contest_id: str) -> list:
         async for exam in exam_collection.find({"contest_id": ObjectId(contest_id)}):
             exams.append(exam_helper(exam))
         return exams
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all exams",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 async def retrieve_active_exams_by_contest(contest_id: str) -> list:
@@ -151,9 +149,10 @@ async def retrieve_active_exams_by_contest(contest_id: str) -> list:
         async for exam in exam_collection.find({"contest_id": ObjectId(contest_id), "is_active": True}):
             exams.append(exam_helper(exam))
         return exams
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve all exams",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_exam(id: str, data: dict) -> bool:
@@ -165,20 +164,26 @@ async def update_exam(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update", 
+                                   status.HTTP_400_BAD_REQUEST)
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
         if not exam:
-            raise Exception("Exam not found")
+            raise MessageException("Exam not found",
+                                   status.HTTP_404_NOT_FOUND)
         update_data = update_helper(data)
         updated_exam = await exam_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": update_data}
         )
-        if updated_exam.modified_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_exam.modified_count == 0:
+            raise MessageException("Error when update exam",
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update exam",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_exam(id: str) -> bool:
@@ -190,11 +195,12 @@ async def delete_exam(id: str) -> bool:
     try:
         exam = await exam_collection.find_one({"_id": ObjectId(id)})
         if not exam:
-            raise Exception("Exam not found")
-        
-    except Exception as e:
+            raise MessageException("Exam not found",
+                                   status.HTTP_404_NOT_FOUND)
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when delete exam",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     async with await mongo_client.start_session() as session:
         try:
@@ -224,9 +230,10 @@ async def delete_exam(id: str) -> bool:
                 await exam_collection.delete_one({"_id": ObjectId(id)}, session=session) 
                 logger.info(f"Deleted exam with ID: {id}")
         
-        except (ConnectionFailure, OperationFailure) as e:
+        except:
             logger.error(f"{traceback.format_exc()}")
-            return e
+            return MessageException("Error when delete exam",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return True
 
@@ -239,14 +246,11 @@ async def delete_all_by_contest_id(contest_id: str) -> bool:
     """
     try:
         exams = await retrieve_exams_by_contest(contest_id)
-        if isinstance(exams, Exception):
-            raise Exception(f"Retrieve all exams by contest ID: {contest_id} failed")
         for exam in exams:
-            deleted_exam = await delete_exam(exam["id"])
-            if isinstance(deleted_exam, Exception):
-                raise Exception(f"Delete exam with ID: {exam['id']} failed")
+            await delete_exam(exam["id"])
         return True
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when delete all exams",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 

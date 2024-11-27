@@ -1,8 +1,7 @@
 import traceback
-from app.utils.time import utc_to_local
-from app.core.database import mongo_client, mongo_db
-from pymongo.errors import ConnectionFailure, OperationFailure
-from app.utils.logger import Logger
+from app.utils import utc_to_local, MessageException, Logger
+from fastapi import status
+from app.core.database import mongo_db
 from bson.objectid import ObjectId
 from app.api.v1.controllers.exam import (
     retrieve_exams_by_contest,
@@ -51,9 +50,10 @@ async def add_contest(contest_data: dict) -> dict:
         contest = await contest_collection.insert_one(contest_data)
         new_contest = await contest_collection.find_one({"_id": contest.inserted_id})
         return contest_helper(new_contest)
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when add contest",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -67,9 +67,10 @@ async def retrieve_contests() -> list[dict]:
         async for contest in contest_collection.find():
             contests.append(contest_helper(contest))
         return contests
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve contests",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -82,13 +83,12 @@ async def retrieve_available_contests(clerk_user_id: str) -> list:
         contests = []
         async for contest in contest_collection.find({"is_active": True}):
             contest_detail = await retrieve_contest_detail(contest["_id"], clerk_user_id)
-            if isinstance(contest_detail, Exception):
-                raise contest_detail
             contests.append(contest_detail)
         return contests
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve contests",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_contest(id: str) -> dict:
@@ -100,11 +100,15 @@ async def retrieve_contest(id: str) -> dict:
     try:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
-            raise Exception("Contest not found")
+            raise MessageException("Contest not found", 
+                                   status.HTTP_404_NOT_FOUND)
         return contest_helper(contest)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve contest",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_contest_by_slug(slug: str) -> dict:
@@ -116,11 +120,15 @@ async def retrieve_contest_by_slug(slug: str) -> dict:
     try:
         contest = await contest_collection.find_one({"slug": slug})
         if not contest:
-            raise Exception("Contest not found")
+             raise MessageException("Contest not found", 
+                                   status.HTTP_404_NOT_FOUND)
         return contest_helper(contest)
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when retrieve contest",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
@@ -132,12 +140,7 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     try:
         contest = await retrieve_contest(id)
-        if isinstance(contest, Exception):
-            raise contest
-        
         all_exam = await retrieve_exams_by_contest(contest["id"])
-        if isinstance(all_exam, Exception):
-            raise all_exam
         
         if not all_exam:
             contest["available_exam"] = None
@@ -151,14 +154,11 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
 
             exam_id = exam["id"]
             exam_problems = await retrieve_by_exam_id(exam_id)
-            if isinstance(exam_problems, Exception):
-                raise exam_problems
+
             exam["problems"] = exam_problems
             all_exam_detail.append(exam)
 
             retakes = await retrieve_retakes_by_user_exam_id(clerk_user_id, exam_id)
-            if isinstance(retakes, Exception):
-                raise retakes
             retake_info.extend(retakes)
 
         contest["exams"] = all_exam_detail
@@ -174,9 +174,10 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
             contest["available_exam"] = all_exam_detail[0]
 
         return contest
-    except Exception as e:
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return e
+        return MessageException("Error when retrieve contest detail",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_contest(id: str, data: dict) -> bool:
@@ -188,19 +189,25 @@ async def update_contest(id: str, data: dict) -> bool:
     """
     try:
         if len(data) < 1:
-            raise Exception("No data to update")
+            raise MessageException("No data to update", 
+                                   status.HTTP_400_BAD_REQUEST)
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
-            raise Exception("Contest not found")
+            raise MessageException("Contest not found", 
+                                   status.HTTP_404_NOT_FOUND)
         updated_contest = await contest_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": data}
         )
-        if updated_contest.modified_count > 0:
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if updated_contest.modified_count == 0:
+            raise MessageException("Update contest failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update contest",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_contest(id: str) -> bool:
@@ -212,20 +219,21 @@ async def delete_contest(id: str) -> bool:
     try:
         contest = await contest_collection.find_one({"_id": ObjectId(id)})
         if not contest:
-            raise Exception("Contest not found")
+            raise MessageException("Contest not found", 
+                                   status.HTTP_404_NOT_FOUND)
         
         all_exam = await exam_collection.find({"contest_id": ObjectId(id)}).to_list(length=None)
         if len(all_exam) > 0:
-            deleted_all_exams = await delete_all_by_contest_id(id)
-            if isinstance(deleted_all_exams, Exception):
-                raise deleted_all_exams
-            logger.info(f"Deleted all exams")
+            await delete_all_by_contest_id(id)
 
         deleted_contest = await contest_collection.delete_one({"_id": ObjectId(id)})
-        if isinstance(deleted_contest, Exception):
-            raise deleted_contest
-        if deleted_contest.deleted_count == 1:
-            return True
-    except Exception as e:
-        logger.error(f"{traceback.format_exc()}")
+        if deleted_contest.deleted_count == 0:
+            raise MessageException("Delete contest failed", 
+                                   status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
         return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when delete contest",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
