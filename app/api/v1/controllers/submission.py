@@ -170,7 +170,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                                                 retake_id: str | None,
                                                 clerk_user_id: str,
                                                 check_none: bool = True
-                                                ) -> dict:
+                                                ) -> bool | dict | MessageException:
     """
     Retrieve a submission by exam ID, retake ID and user ID
     :param exam_id: str
@@ -189,17 +189,23 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
                 "clerk_user_id": clerk_user_id
             }
         )
-        if submission:
-            if check_none and submission["submitted_problems"] is None:
-                return None
-            return submission_helper(submission)
+        if not submission:
+            raise MessageException("Submission not found",
+                                   status.HTTP_404_NOT_FOUND)
+        if check_none and submission["submitted_problems"] is None:
+            return False
+        return submission_helper(submission)
+    except MessageException as e:
+        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when retrieve submission",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def update_submission(id: str, submission_data: dict) -> dict:
+async def update_submission(id: str, 
+                            submission_data: dict
+                            ) -> dict | bool | MessageException:
     """
     Update a submission with a matching ID
     :param id: str

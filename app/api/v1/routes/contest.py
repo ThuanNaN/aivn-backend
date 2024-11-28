@@ -34,6 +34,7 @@ from app.api.v1.controllers.submission import (
     update_submission,
     retrieve_submission_by_id_user_retake
 )
+from app.api.v1.controllers.user import retrieve_user
 from app.schemas.submission import (
     SubmittedProblem,
     SubmissionSchema,
@@ -74,7 +75,7 @@ async def create_contest(contest: ContestSchema,
         updated_at=datetime.now(UTC)
     ).model_dump()
     new_contest = await add_contest(contest_dict)
-    if isinstance(new_contest, Exception):
+    if isinstance(new_contest, MessageException):
         return ErrorResponseModel(error=str(new_contest),
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -98,7 +99,7 @@ async def create_exam_problem(exam_id: str,
                                       created_at=datetime.now(UTC),
                                       updated_at=datetime.now(UTC))
     new_exam_problem = await add_exam_problem(exam_problem_dict.model_dump())
-    if isinstance(new_exam_problem, Exception):
+    if isinstance(new_exam_problem, MessageException):
         return ErrorResponseModel(error=str(new_exam_problem),
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -115,10 +116,10 @@ async def create_submission(exam_id: str,
                             clerk_user_id: str = Depends(is_authenticated)):
     # Check the exam still open (is active)
     exam_info = await retrieve_exam(exam_id)
-    if isinstance(exam_info, Exception):
+    if isinstance(exam_info, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="An error occurred while retrieve exam."
+            status_code=exam_info.status_code,
+            detail=exam_info.message
         )
     if exam_info["is_active"] is False:
         raise HTTPException(
@@ -127,17 +128,31 @@ async def create_submission(exam_id: str,
         )
     # Check the contest still open (is active)
     contest_info = await retrieve_contest(exam_info["contest_id"])
-    if isinstance(contest_info, Exception):
+    if isinstance(contest_info, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="An error occurred while retrieve contest."
+            status_code=contest_info.status_code,
+            detail=contest_info.message
         )
     if contest_info["is_active"] is False:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The contest is not active."
         )
-
+    
+    # Check the user is allowed to submit
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, MessageException):
+        raise HTTPException(
+            status_code=user_info.status_code,
+            detail=user_info.message
+        )
+    
+    if user_info["cohort"] not in contest_info["cohorts"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are not allowed to submit this contest."
+        )
+    
     submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
 
     if submitted_problems is None:
@@ -150,10 +165,11 @@ async def create_submission(exam_id: str,
         for submitted_problem in submitted_problems:
             problem_id = submitted_problem.problem_id
             problem_info = await retrieve_problem(problem_id, full_return=True)
-            if isinstance(problem_info, Exception):
-                return ErrorResponseModel(error=str(problem_info),
-                                        message="An error occurred while retrieve problem.",
-                                        code=status.HTTP_404_NOT_FOUND)
+            if isinstance(problem_info, MessageException):
+                return HTTPException(
+                    status_code=problem_info.status_code,
+                    detail=problem_info.message
+                )
             MAX_SCORE += problem_info["problem_score"]
             submitted_code = submitted_problem.submitted_code
             public_results, private_results = None, None
@@ -215,18 +231,10 @@ async def create_submission(exam_id: str,
                                                                     clerk_user_id=clerk_user_id,
                                                                     retake_id=submission_data.retake_id,
                                                                     check_none=False)
-    if isinstance(pseudo_submission, Exception):
-        logger.error(f"An error occurred while retrieve pseudo submission: {pseudo_submission}")
+    if isinstance(pseudo_submission, MessageException):
         return HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred when submit problems."
-        )
-    
-    if not pseudo_submission:
-        logger.error(f"No pseudo submission was found.")
-        return HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred when submit problems."
+            status_code=pseudo_submission.status_code,
+            detail=pseudo_submission.message
         )
 
     upsert_submission = UpdateSubmissionDB(
@@ -240,7 +248,7 @@ async def create_submission(exam_id: str,
     ).model_dump()
 
     updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
-    if isinstance(updated_submission, Exception):
+    if isinstance(updated_submission, MessageException):
         raise HTTPException(
             status_code=updated_submission.status_code,
             detail=updated_submission.message
@@ -262,7 +270,7 @@ async def create_submission(exam_id: str,
             description="Retrieve all contests")
 async def get_contests():
     contests = await retrieve_contests()
-    if isinstance(contests, Exception):
+    if isinstance(contests, MessageException):
         return ErrorResponseModel(error=str(contests),
                                   message="Error when retrieve contests.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -296,7 +304,7 @@ async def get_contest_instruction(slug: str):
             description="Retrieve all available contests")
 async def get_available_contests(clerk_user_id: str = Depends(is_authenticated)):
     contests = await retrieve_available_contests(clerk_user_id)
-    if isinstance(contests, Exception):
+    if isinstance(contests, MessageException):
         return ErrorResponseModel(error=str(contests),
                                   message="Error when retrieve contests.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -310,7 +318,7 @@ async def get_available_contests(clerk_user_id: str = Depends(is_authenticated))
             description="Retrieve a contest with a matching ID")
 async def get_contest(id: str):
     contest = await retrieve_contest(id)
-    if isinstance(contest, Exception):
+    if isinstance(contest, MessageException):
         return ErrorResponseModel(error=str(contest),
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -324,7 +332,7 @@ async def get_contest(id: str):
             description="Retrieve a contest with a matching ID and its details")
 async def get_contest_detail(id: str, clerk_user_id: str = Depends(is_authenticated)):
     contest_details = await retrieve_contest_detail(id, clerk_user_id)
-    if isinstance(contest_details, Exception):
+    if isinstance(contest_details, MessageException):
         return ErrorResponseModel(error=str(contest_details),
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -347,7 +355,7 @@ async def update_contest_data(id: str,
         updated_at = datetime.now(UTC)
     ).model_dump()
     updated_contest = await update_contest(id, contest_dict)
-    if isinstance(updated_contest, Exception):
+    if isinstance(updated_contest, MessageException):
         return ErrorResponseModel(error=str(updated_contest),
                                   message="An error occurred.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -366,12 +374,12 @@ async def update_contest_data(id: str,
                description="Remove exam-problem")
 async def delete_exam_problem_data(exam_id: str, problem_id: str):
     exam_problem = await retrieve_by_exam_problem_id(exam_id, problem_id)
-    if isinstance(exam_problem, Exception):
+    if isinstance(exam_problem, MessageException):
         return ErrorResponseModel(error=str(exam_problem),
                                   message="An error occurred while retrieve exam-problem.",
                                   code=status.HTTP_404_NOT_FOUND)
     deleted_exam_problem = await delete_exam_problem(exam_problem["id"])
-    if isinstance(deleted_exam_problem, Exception):
+    if isinstance(deleted_exam_problem, MessageException):
         return ErrorResponseModel(error=str(deleted_exam_problem),
                                   message="An error occurred while delete exam-problem.",
                                   code=status.HTTP_404_NOT_FOUND)
@@ -390,7 +398,7 @@ async def delete_exam_problem_data(exam_id: str, problem_id: str):
                description="Delete a contest with a matching ID")
 async def delete_contest_data(id: str):
     delete_result = await delete_contest(id)
-    if isinstance(delete_result, Exception):
+    if isinstance(delete_result, MessageException):
         return ErrorResponseModel(error=str(delete_result),
                                   message="An error occurred when delete contest.",
                                   code=status.HTTP_404_NOT_FOUND)

@@ -1,6 +1,6 @@
 from typing import List
 from datetime import datetime, UTC
-from app.utils.logger import Logger
+from app.utils import Logger, MessageException
 from fastapi import (
     APIRouter, Depends, 
     status, HTTPException
@@ -23,15 +23,12 @@ from app.schemas.retake import (
     RetakeSchema,
     RetakeSchemaDB
 )
-from app.schemas.submission import (
-    SubmissionDB
-)
 from app.schemas.response import (
     ListResponseModel,
-    DictResponseModel,
-    ErrorResponseModel
+    DictResponseModel
 )
 from app.core.security import is_admin, is_authenticated
+
 from app.api.v1.controllers.exam import (
     add_exam,
     retrieve_exams,
@@ -39,10 +36,6 @@ from app.api.v1.controllers.exam import (
     retrieve_exam_detail,
     update_exam,
     delete_exam
-)
-from app.api.v1.controllers.submission import (
-    add_submission,
-    retrieve_submission_by_id_user_retake
 )
 from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_retake_user_id,
@@ -76,69 +69,30 @@ async def create_exam(exam: ExamSchema,
         updated_at=datetime.now(UTC)
     ).model_dump()
     new_exam = await add_exam(exam_dict)
-    if isinstance(new_exam, Exception):
-        return ErrorResponseModel(error=str(new_exam),
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                  message="An error occurred while adding the exam.")
+    if isinstance(new_exam, MessageException):
+        return HTTPException(status_code=new_exam.status_code,
+                             detail=new_exam.message)
     return DictResponseModel(data=new_exam,
                              message="Exam added successfully.",
                              code=status.HTTP_200_OK)
 
 
 @router.post("/{exam_id}/timer",
+             dependencies=[Depends(is_authenticated)],
              description="Add a new timer")
 async def create_timer(exam_id: str,
                        timer_data: TimerSchema,
                        clerk_user_id: str = Depends(is_authenticated)): 
-    # Check if timer already exists
-    timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
-                                                        clerk_user_id, 
-                                                        timer_data.retake_id)
-    if isinstance(timer, Exception):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="An error occurred while retrieving timer.")
-    if timer:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Timer already exists.")
-    
-    # Check if submission already exists
-    pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
-                                                                    clerk_user_id=clerk_user_id,
-                                                                    retake_id=timer_data.retake_id,
-                                                                    check_none=False)
-    if isinstance(pseudo_submission, Exception):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="An error occurred while retrieving submission.")
-    if pseudo_submission:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Submission already exists.")
-    
-    # Add timer
     timer_dict = timer_data.model_dump()
     timer_data = TimerSchemaDB(
         **timer_dict,
         exam_id=exam_id,
         clerk_user_id=clerk_user_id
-    )
-    new_timer = await add_timer(timer_data.model_dump())
-    if isinstance(new_timer, Exception):
-        return ErrorResponseModel(error=str(new_timer),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while adding the timer.")
-    
-    # Add submission
-    submission_db = SubmissionDB(
-        exam_id=exam_id,
-        clerk_user_id=clerk_user_id,
-        retake_id=timer_dict["retake_id"],
-        submitted_problems=None,
-        created_at=datetime.now(UTC)
     ).model_dump()
-    pseudo_submission = await add_submission(submission_db)
-    if isinstance(pseudo_submission, Exception):
-        return ErrorResponseModel(error=str(pseudo_submission),
-                                message="An error occurred while create submission.",
-                                code=status.HTTP_404_NOT_FOUND)
+    new_timer = await add_timer(timer_data)
+    if isinstance(new_timer, MessageException):
+        return HTTPException(status_code=new_timer.status_code,
+                             detail=new_timer.message)
     
     return DictResponseModel(data=new_timer,
                              message="Timer added successfully.",
@@ -146,6 +100,8 @@ async def create_timer(exam_id: str,
 
 
 @router.post("/{exam_id}/retake",
+             dependencies=[Depends(is_admin)],
+             tags=["Admin"],
              description="Add a new retake")
 async def create_retake(exam_id: str,
                         retake_data: RetakeSchema,
@@ -157,10 +113,9 @@ async def create_retake(exam_id: str,
         created_at=datetime.now(UTC)
     ).model_dump()
     new_retake = await add_retake(retake_db)
-    if isinstance(new_retake, Exception):
-        return ErrorResponseModel(error=str(new_retake),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred.")
+    if isinstance(new_retake, MessageException):
+        return HTTPException(status_code=new_retake.status_code,
+                             detail=new_retake.message)
     return DictResponseModel(data=new_retake,
                              message="Retake added successfully.",
                              code=status.HTTP_200_OK)
@@ -171,10 +126,9 @@ async def create_retake(exam_id: str,
             description="Retrieve all exams")
 async def get_exams():
     exams = await retrieve_exams()
-    if isinstance(exams, Exception):
-        return ErrorResponseModel(error=str(exams),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while retrieving exams.")
+    if isinstance(exams, MessageException):
+        return HTTPException(status_code=exams.status_code,
+                             detail=exams.message)
     return ListResponseModel(data=exams,
                              message="Exams retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -185,10 +139,9 @@ async def get_exams():
             description="Retrieve a exam with a matching ID")
 async def get_exam_by_id(id: str):
     exam = await retrieve_exam(id)
-    if isinstance(exam, Exception):
-        return ErrorResponseModel(error=str(exam),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while retrieving exam.")
+    if isinstance(exam, MessageException):
+        return HTTPException(status_code=exam.status_code,
+                             detail=exam.message)
     return DictResponseModel(data=exam,
                              message="Exam retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -202,14 +155,10 @@ async def get_timer(exam_id: str,
     timer = await retrieve_timer_by_exam_retake_user_id(exam_id, 
                                                         clerk_user_id, 
                                                         retake_id)
-    if isinstance(timer, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Get timer failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    if not timer:
-        return ErrorResponseModel(error="No timer found.",
-                                  message="No timer found.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    if isinstance(timer, MessageException):
+        return HTTPException(status_code=timer.status_code,
+                             detail=timer.message)
+    
     return DictResponseModel(data=timer,
                              message="Timer retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -219,10 +168,9 @@ async def get_timer(exam_id: str,
             description="Retrieve a all retakes with a matching exam_id ID")
 async def get_retake(exam_id: str):
     retake = await retrieve_retake_by_exam_id(exam_id)
-    if isinstance(retake, Exception):
-        return ErrorResponseModel(error="An error occurred.",
-                                  message="Get retake failed.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    if isinstance(retake, MessageException):
+        return HTTPException(status_code=retake.status_code, 
+                             detail=retake.message)
     return ListResponseModel(data=retake,
                              message="Retake retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -231,12 +179,11 @@ async def get_retake(exam_id: str):
 @router.get("/{id}/detail",
             dependencies=[Depends(is_authenticated)],
             description="Retrieve a exam with a matching ID and its problems")
-async def get_exam_detail(id: str):
-    exam_detail = await retrieve_exam_detail(id)
-    if isinstance(exam_detail, Exception):
-        return ErrorResponseModel(error=str(exam_detail),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred.")
+async def get_exam_detail(id: str, clerk_user_id=Depends(is_authenticated)):
+    exam_detail = await retrieve_exam_detail(id, clerk_user_id)
+    if isinstance(exam_detail, MessageException):
+        return HTTPException(status_code=exam_detail.status_code,
+                             detail=exam_detail.message)
     return DictResponseModel(data=exam_detail,
                              message="Exam retrieved successfully.",
                              code=status.HTTP_200_OK)
@@ -255,14 +202,10 @@ async def update_exam_data(id: str,
         updated_at=datetime.now(UTC)
     ).model_dump()
     updated_exam = await update_exam(id, exam_dict)
-    if isinstance(updated_exam, Exception):
-        return ErrorResponseModel(error=str(updated_exam),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while updating exam.")
-    if not updated_exam:
-        return ErrorResponseModel(error="No exam updated.",
-                                  message="An error occurred while updating exam.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    if isinstance(updated_exam, MessageException):
+        return HTTPException(status_code=updated_exam.status_code,
+                             detail=updated_exam.message)
+
     return ListResponseModel(data=[],
                              message="Exam updated successfully.",
                              code=status.HTTP_200_OK)
@@ -274,49 +217,23 @@ async def update_exam_data(id: str,
                description="Delete a exam with a matching ID")
 async def delete_exam_data(id: str):
     deleted_exam = await delete_exam(id)
-    if isinstance(deleted_exam, Exception):
-        return ErrorResponseModel(error=str(deleted_exam),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while deleting exam.")
-    if not deleted_exam:
-        return ErrorResponseModel(error="No exam deleted.",
-                                  message="An error occurred while deleting exam.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    if isinstance(deleted_exam, MessageException):
+        return HTTPException(status_code=deleted_exam.status_code,
+                             detail=deleted_exam.message)
     return ListResponseModel(data=[],
                              message="Exam deleted successfully.",
                              code=status.HTTP_200_OK)
 
 
-@router.delete("/{exam_id}/timer",
-               description="Delete a timer with a matching user_id")
-async def delete_timer(exam_id: str,
-                       clerk_user_id: str = Depends(is_authenticated)):
-    deleted_timer = await delete_timer_by_exam_user_id(exam_id, clerk_user_id)
-    if isinstance(deleted_timer, Exception):
-        return ErrorResponseModel(error=str(deleted_timer),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred while deleting timer.")
-    if not deleted_timer:
-        return ErrorResponseModel(error="No timer deleted.",
-                                  message="An error occurred while deleting timer.",
-                                  code=status.HTTP_404_NOT_FOUND)
-    return DictResponseModel(data=[],
-                             message="Timer deleted successfully.",
-                             code=status.HTTP_200_OK)
-
-
 @router.delete("/{exam_id}/retake",
+               dependencies=[Depends(is_admin)],
+               tags=["Admin"],
                description="Delete a retake with a matching exam_id")
 async def delete_retake(retake_id: str):
     deleted_retake = await delete_retake_by_id(retake_id)
-    if isinstance(deleted_retake, Exception):
-        return ErrorResponseModel(error=str(deleted_retake),
-                                  code=status.HTTP_404_NOT_FOUND,
-                                  message="An error occurred.")
-    if not deleted_retake:
-        return ErrorResponseModel(error="No retake deleted.",
-                                  message="An error occurred while deleting retake.",
-                                  code=status.HTTP_404_NOT_FOUND)
+    if isinstance(deleted_retake, MessageException):
+        return HTTPException(status_code=deleted_retake.status_code,
+                             detail=deleted_retake.message)
     return ListResponseModel(data=[],
                              message="Retake deleted successfully.",
                              code=status.HTTP_200_OK)
@@ -332,10 +249,9 @@ async def order_problems_in_exam(id: str,
     for order in orders:
         exam_problem = await retrieve_by_exam_problem_id(exam_id=id,
                                                          problem_id=order.problem_id)
-        if isinstance(exam_problem, Exception):
-            return ErrorResponseModel(error=str(exam_problem),
-                                      code=status.HTTP_404_NOT_FOUND,
-                                      message="An error occurred while retrieving exam-problem.")
+        if isinstance(exam_problem, MessageException):
+            return HTTPException(status_code=exam_problem.status_code,
+                                 detail=exam_problem.message)
         new_exam_problem = UpdateExamProblemDB(
             index=order.index,
             creator_id=creator_id,
@@ -343,14 +259,9 @@ async def order_problems_in_exam(id: str,
         )
         updated_exam_problem = await update_exam_problem(exam_problem["id"],
                                                          new_exam_problem.model_dump())
-        if isinstance(updated_exam_problem, Exception):
-            return ErrorResponseModel(error=str(updated_exam_problem),
-                                      code=status.HTTP_404_NOT_FOUND,
-                                      message="An error occurred while updating exam-problem.")
-        if not updated_exam_problem:
-            return ErrorResponseModel(error="No exam-problem updated.",
-                                      message="An error occurred while updating exam-problem.",
-                                      code=status.HTTP_404_NOT_FOUND)
+        if isinstance(updated_exam_problem, MessageException):
+            return HTTPException(status_code=updated_exam_problem.status_code,
+                                 detail=updated_exam_problem.message)
     return ListResponseModel(data=[],
                              message="Problems ordered successfully.",
                              code=status.HTTP_200_OK)

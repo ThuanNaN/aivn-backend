@@ -120,7 +120,7 @@ async def retrieve_by_exam_id(exam_id: str) -> list:
 
 
 
-async def update_exam_problem(id: str, data: dict) -> bool:
+async def update_exam_problem(id: str, data: dict) -> bool | MessageException:
     """
     Update a exam_problem with a matching ID
     :param id: str

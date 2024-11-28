@@ -19,6 +19,7 @@ logger = Logger("controllers/contest", log_file="contest.log")
 try:
     contest_collection = mongo_db["contests"]
     exam_collection = mongo_db["exams"]
+    user_collection = mongo_db["users"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -74,15 +75,28 @@ async def retrieve_contests() -> list[dict]:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-async def retrieve_available_contests(clerk_user_id: str) -> list:
+async def retrieve_available_contests(clerk_user_id: str) -> list | MessageException:
     """
     Retrieve all available contests
     :return: list[dict]
     """
     try:
+        user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        pipeline = [
+            {
+                "$match": {
+                    "is_active": True,
+                    "$or": [
+                        { "cohorts": { "$exists": False } },
+                        { "cohorts": { "$lte": user_info["cohort"] } }
+                    ]
+                }
+            }
+        ]
+        result = await contest_collection.aggregate(pipeline).to_list(length=None)
+
         contests = []
-        async for contest in contest_collection.find({"is_active": True}):
+        for contest in result:
             contest_detail = await retrieve_contest_detail(contest["_id"], clerk_user_id)
             contests.append(contest_detail)
         return contests
@@ -141,7 +155,11 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     try:
         contest = await retrieve_contest(id)
+        if isinstance(contest, MessageException):
+            return contest
         all_exam = await retrieve_exams_by_contest(contest["id"])
+        if isinstance(all_exam, MessageException):
+            return all_exam
         
         if not all_exam:
             contest["available_exam"] = None

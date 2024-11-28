@@ -14,6 +14,8 @@ from app.api.v1.controllers.problem import (
 logger = Logger("controllers/exam", log_file="exam.log")
 
 try:
+    user_collection = mongo_db["users"]
+    contest_collection = mongo_db["contests"]
     exam_collection = mongo_db["exams"]
     exam_problem_collection = mongo_db["exam_problem"]
     submission_collection = mongo_db["submissions"]
@@ -96,7 +98,7 @@ async def retrieve_exam(id: str) -> dict:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_exam_detail(id: str) -> dict:
+async def retrieve_exam_detail(id: str, clerk_user_id: str) -> dict | MessageException:
     """
     Retrieve a exam with a matching ID
     :param id: str
@@ -104,7 +106,27 @@ async def retrieve_exam_detail(id: str) -> dict:
     """
     try:
         exam = await retrieve_exam(id)
+        if isinstance(exam, MessageException):
+            return exam
+        
+        contest_info = await contest_collection.find_one({"_id": ObjectId(exam["contest_id"])})
+        if not contest_info:
+            return MessageException("Contest not found", 
+                                    status.HTTP_404_NOT_FOUND)
+        
+        user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        if not user_info:
+            return MessageException("User not found", 
+                                    status.HTTP_404_NOT_FOUND)
+        
+        if user_info["cohort"] not in contest_info["cohorts"]:
+            return MessageException("You are not allowed to access this exam",
+                                    status.HTTP_400_BAD_REQUEST)
+
         exam_problems = await retrieve_by_exam_id(exam["id"])
+        if isinstance(exam_problems, MessageException):
+            return exam_problems
+        
         problem_ids = [ObjectId(problem["problem_id"]) for problem in exam_problems]
         enriched_problems = await retrieve_problems_by_ids(problem_ids, full_return=True)
         for exam_problem in exam_problems:
@@ -114,7 +136,9 @@ async def retrieve_exam_detail(id: str) -> dict:
         exam_problems_temp.sort(key=lambda x: x["index"])
         exam["problems"] = exam_problems_temp
         return exam
-
+    
+    except MessageException as e:
+        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when retrieve exam detail",
@@ -155,7 +179,7 @@ async def retrieve_active_exams_by_contest(contest_id: str) -> list:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def update_exam(id: str, data: dict) -> bool:
+async def update_exam(id: str, data: dict) -> bool | MessageException:
     """
     Update a exam with a matching ID
     :param id: str
@@ -186,7 +210,7 @@ async def update_exam(id: str, data: dict) -> bool:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def delete_exam(id: str) -> bool:
+async def delete_exam(id: str) -> bool | MessageException:
     """
     Delete a exam from database
     :param id: str
