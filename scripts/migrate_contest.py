@@ -20,7 +20,7 @@ async def add_cohort_field():
             operators.append(UpdateOne(
                 {"_id": contest_data["_id"]},
                 {"$set": {
-                    "cohort": [2024],
+                    "cohorts": [2024],
                 }}
             ))
             pbar.update(1)
