@@ -23,6 +23,7 @@ def meeting_helper(meeting: dict) -> dict:
         "title": meeting["title"],
         "description": meeting["description"],
         "lecturer": meeting["lecturer"],
+        "cohorts": meeting["cohorts"],  
         "date": utc_to_local(meeting["date"]),
         "start_time": utc_to_local(meeting["start_time"]),
         "end_time": utc_to_local(meeting["end_time"]),
