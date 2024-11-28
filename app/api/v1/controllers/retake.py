@@ -151,24 +151,57 @@ async def retrieve_retakes_by_user_exam_id(clerk_user_id: str,
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_retakes_unsubmit(submission_retake_ids: List[str]) -> list:
+async def retrieve_retakes_unsubmit(submission_retake_ids: List[ObjectId]) -> list | MessageException:
     """
     Retrieve retakes that have not been submitted
     :return list
     """
     try:
-        retakes = await retrieve_retakes()
-        retake_ids = [retake["id"] for retake in retakes]
-        unsubmit_retake_ids = [retake_id for retake_id in retake_ids if retake_id not in submission_retake_ids]
-        unsubmit_retakes = [retake for retake in retakes if retake["id"] in unsubmit_retake_ids]
-        return unsubmit_retakes
+        retake_pipeline = [
+            {"$match": {"_id": {"$nin": submission_retake_ids}}},
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "clerk_user_id",
+                    "foreignField": "clerk_user_id",
+                    "as": "user_info"
+                }
+            },
+            {
+                "$unwind": "$user_info"
+            },
+            {
+                "$lookup": {
+                    "from": "exams",
+                    "localField": "exam_id",
+                    "foreignField": "_id",
+                    "as": "exam_info"
+                }
+            },
+            {
+                "$unwind": "$exam_info"
+            },
+            {
+                "$lookup": {
+                    "from": "contests",
+                    "localField": "exam_info.contest_id",
+                    "foreignField": "_id",
+                    "as": "contest_info"
+                }
+            },
+            {
+                "$unwind": "$contest_info"
+            },
+        ]
+        retakes = await retake_collection.aggregate(retake_pipeline).to_list(length=None)
+        return retakes
     except:
         logger.error(f"Error when retrieving retakes: {e}")
         return MessageException("Error when retrieve retakes",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def delete_retake_by_id(id: str) -> bool:
+async def delete_retake_by_id(id: str) -> bool | MessageException:
     """
     Delete a retake with a matching ID
     :param id: str

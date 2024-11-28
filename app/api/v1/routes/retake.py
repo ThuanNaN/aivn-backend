@@ -1,26 +1,28 @@
 import traceback
-from app.utils.logger import Logger
-from fastapi import APIRouter, status
+from app.utils import (
+    Logger, 
+    MessageException, 
+    convert_objectid_to_str,
+    convert_id_to_id
+)
+from fastapi import APIRouter, status, Depends
 from app.api.v1.controllers.submission import (
-    retrieve_submissions
+    retrieve_submissions,
+    retrieve_submission_by_pipeline
 )
 from app.api.v1.controllers.retake import (
     retrieve_retakes,
     retrieve_retakes_unsubmit
 )
-from app.api.v1.controllers.user import retrieve_user
-from app.api.v1.controllers.exam import retrieve_exam
-from app.api.v1.controllers.contest import retrieve_contest
-from app.schemas.response import (
-    ListResponseModel,
-    ErrorResponseModel
-)
+from app.schemas.response import ListResponseModel
+from app.core.security import is_admin
+
 
 router = APIRouter()
 logger = Logger("routes/retake", log_file="retake.log")
 
-
 @router.get("/{unsubmit}",
+            dependencies=[Depends(is_admin)],
             tags=["Admin"],
             description="Retrieve all retakes that have not been submitted")
 async def get_retakes_unsubmit(unsubmit: bool = True):
@@ -28,33 +30,32 @@ async def get_retakes_unsubmit(unsubmit: bool = True):
         if not unsubmit:
             retakes_data = await retrieve_retakes()
         else:
-            submissions = await retrieve_submissions()
-            submission_retake_ids = [submission["retake_id"] for submission in submissions 
-                                     if submission["retake_id"]]
+            pipeline = [
+                {
+                    "$match": {
+                        "retake_id": {"$ne": None}
+                    }
+                },
+
+                {
+                    "$group": {
+                        "_id": "$retake_id",
+                    }
+                },
+            ]
+            submission_retake_ids = await retrieve_submission_by_pipeline(pipeline)
+            submission_retake_ids = [data["_id"] for data in submission_retake_ids]
+
             retakes_data = await retrieve_retakes_unsubmit(submission_retake_ids)
-
-        for retake in retakes_data:
-            user_info = await retrieve_user(retake["clerk_user_id"])
-            if isinstance(user_info, Exception):
-                raise user_info
-
-            exam_info = await retrieve_exam(retake["exam_id"])
-            if isinstance(exam_info, Exception):
-                raise exam_info
-
-            contest_info = await retrieve_contest(exam_info["contest_id"])
-            if isinstance(contest_info, Exception):
-                raise contest_info
-            
-            retake["user_info"] = user_info
-            retake["exam_info"] = exam_info
-            retake["contest_info"] = contest_info
-            
+            retakes_data = convert_objectid_to_str(retakes_data)
+            retakes_data = convert_id_to_id(retakes_data)
+        
         return ListResponseModel(data=retakes_data,
                                  message="Retakes unsubmit retrieved successfully",
                                  code=status.HTTP_200_OK)
-    except Exception as e:
+    except MessageException as e:
+        return e
+    except:
         logger.error(f"{traceback.format_exc()}")
-        return ErrorResponseModel(error="An error occurred",
-                                  message="Retrieving retakes unsubmit failed",
-                                  code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return MessageException("Error when retrieve retakes unsubmit",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
