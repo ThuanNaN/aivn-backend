@@ -171,6 +171,7 @@ async def get_meetings(
                 },
                 "$or": [
                     { "cohorts": { "$exists": False } },
+                    { "cohorts": None },
                     { "cohorts": { "$lte": user_info["cohort"] } }
                 ]
             }
@@ -241,6 +242,7 @@ async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
                 "date": {"$gte": current_utc_time},
                 "$or": [
                     { "cohorts": { "$exists": False } },
+                    { "cohorts": None },
                     { "cohorts": { "$lte": user_info["cohort"] } }
                 ]
             }

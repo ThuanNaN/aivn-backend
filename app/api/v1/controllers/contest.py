@@ -88,6 +88,7 @@ async def retrieve_available_contests(clerk_user_id: str) -> list | MessageExcep
                     "is_active": True,
                     "$or": [
                         { "cohorts": { "$exists": False } },
+                        { "cohorts": None },
                         { "cohorts": { "$lte": user_info["cohort"] } }
                     ]
                 }
