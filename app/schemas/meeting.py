@@ -11,7 +11,7 @@ class MeetingSchema(BaseModel):
     end_time: str # isoformat
     document_data: list[dict] | None = None
     join_link: str | None = None
-    cohorts: List[int] | None = None
+    cohorts: List[int] | None = [2020]
     
     model_config = {
         "json_schema_extra": {
@@ -42,7 +42,7 @@ class MeetingSchemaDB(BaseModel):
     title: str
     description: str
     lecturer: str
-    cohorts: List[int] | None = None
+    cohorts: List[int] = [2020]
     date: datetime
     start_time: datetime
     end_time: datetime

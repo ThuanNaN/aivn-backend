@@ -8,7 +8,7 @@ class ContestSchema(BaseModel):
     description: str = "Description of the contest."
     instruction: str = "Details and instruction for the contest."
     is_active: bool = False
-    cohorts: List[int] | None = None
+    cohorts: List[int] | None = [2020]
     certificate_template: str | None = None
     
     model_config = {
