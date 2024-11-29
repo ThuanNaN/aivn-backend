@@ -46,6 +46,11 @@ router.include_router(retake_router,
                       prefix="/retake",
                       tags=["Retake"])
 
+router.include_router(whitelist_router,
+                      dependencies=[Depends(is_admin)],
+                      prefix="/whitelist", 
+                      tags=["Whitelist"])
+
 
 # Dev (admin only) Routes
 if settings.ENV_TYPE == "development":
@@ -97,8 +102,3 @@ router.include_router(document_router,
                       dependencies=AIO_DEPENDENCIES,
                       prefix="/document",
                       tags=["Document"])
-
-router.include_router(whitelist_router,
-                        dependencies=AIO_DEPENDENCIES,
-                        prefix="/whitelist",
-                        tags=["Whitelist"])
