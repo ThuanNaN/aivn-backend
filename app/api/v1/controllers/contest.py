@@ -1,8 +1,14 @@
 import traceback
-from app.utils import utc_to_local, MessageException, Logger
+from app.utils import (
+    MessageException,
+    Logger,
+    utc_to_local,
+    cohort_permission
+)
 from fastapi import status
 from app.core.database import mongo_db
 from bson.objectid import ObjectId
+from app.api.v1.controllers.cohort_permission import is_contest_permission
 from app.api.v1.controllers.exam import (
     retrieve_exams_by_contest,
     delete_all_by_contest_id
@@ -106,18 +112,21 @@ async def retrieve_available_contests(clerk_user_id: str) -> list | MessageExcep
         return MessageException("Error when retrieve contests",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-async def retrieve_contest(id: str) -> dict:
+# TODO: fix
+async def retrieve_contest(id: str, clerk_user_id: str) -> dict:
     """
     Retrieve a contest with a matching ID
     :param contest_id: str
     :return: dict
     """
     try:
-        contest = await contest_collection.find_one({"_id": ObjectId(id)})
-        if not contest:
-            raise MessageException("Contest not found", 
-                                   status.HTTP_404_NOT_FOUND)
+        contest_permission = await is_contest_permission(id, clerk_user_id, return_item=True)
+        if isinstance(contest_permission, MessageException):
+            return contest_permission
+        contest, permission = contest_permission
+        if not permission:
+            raise MessageException("You are not allowed to access this contest",
+                                   status.HTTP_403_FORBIDDEN)
         return contest_helper(contest)
     except MessageException as e:
         return e
@@ -127,17 +136,26 @@ async def retrieve_contest(id: str) -> dict:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_contest_by_slug(slug: str) -> dict:
+async def retrieve_contest_by_slug(slug: str, 
+                                   clerk_user_id: str
+                                   ) -> dict | MessageException:
     """
     Retrieve a contest with a matching slug
     :param slug: str
     :return: dict
     """
     try:
+        user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        if not user_info:
+            raise MessageException("User not found", 
+                                   status.HTTP_404_NOT_FOUND)
         contest = await contest_collection.find_one({"slug": slug})
         if not contest:
              raise MessageException("Contest not found", 
                                    status.HTTP_404_NOT_FOUND)
+        if not cohort_permission(user_info["cohort"], contest["cohorts"]):
+            raise MessageException("You don't have permission to access this contest", 
+                                   status.HTTP_403_FORBIDDEN)
         return contest_helper(contest)
     except MessageException as e:
         return e
@@ -155,9 +173,10 @@ async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     :return: list
     """
     try:
-        contest = await retrieve_contest(id)
+        contest = await retrieve_contest(id, clerk_user_id)
         if isinstance(contest, MessageException):
             return contest
+        
         all_exam = await retrieve_exams_by_contest(contest["id"])
         if isinstance(all_exam, MessageException):
             return all_exam

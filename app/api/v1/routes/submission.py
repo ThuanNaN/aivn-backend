@@ -180,7 +180,8 @@ async def get_submissions(
                              code=status.HTTP_200_OK)
 
 
-@router.get("/exam/{exam_id}/my-submission", description="Retrieve a submission by user ID")
+@router.get("/exam/{exam_id}/my-submission", 
+            description="Retrieve a submission by user ID")
 async def get_submission_by_user(exam_id: str,
                                  retake_id: Optional[str] = None,
                                  clerk_user_id: str = Depends(is_authenticated)):
@@ -203,7 +204,6 @@ async def get_submission_by_user(exam_id: str,
 
 
 @router.get("/me/submissions", 
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve all submissions by user ID")
 async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)):
     user_info = await retrieve_user(clerk_user_id)
@@ -325,7 +325,8 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                              code=status.HTTP_200_OK)
 
 
-@router.get("/{id}", description="Retrieve a submission with a matching ID")
+@router.get("/{id}", 
+            description="Retrieve a submission with a matching ID")
 async def get_submission(id: str):
     pipeline = [
         {

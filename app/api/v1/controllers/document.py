@@ -4,10 +4,12 @@ from fastapi import status
 from app.core.database import mongo_db
 from bson.objectid import ObjectId
 from pymongo import DeleteOne, InsertOne
+from app.api.v1.controllers.cohort_permission import is_meeting_permission
 
 logger = Logger("controllers/document", log_file="document.log")
 try:
     document_collection = mongo_db["documents"]
+    meeting_collection = mongo_db["meetings"]
 except Exception as e:
     logger.error(f"Error when connect to collection: {e}")
     exit(1)
@@ -106,7 +108,7 @@ async def retrieve_documents() -> list[dict]:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_document_by_id(id: str) -> dict:
+async def retrieve_document_by_id(id: str, clerk_user_id: str) -> dict:
     """
     Retrieve a document with a matching ID
 
@@ -116,8 +118,13 @@ async def retrieve_document_by_id(id: str) -> dict:
     """
     try:
         document = await document_collection.find_one({"_id": ObjectId(id)})
-        if document:
-            return document_helper(document)
+        if not document:
+            raise MessageException("Document not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        if not is_meeting_permission(document["meeting_id"], clerk_user_id):
+            raise MessageException("You are not allowed to access this document",
+                                   status.HTTP_403_FORBIDDEN)
+        return document_helper(document)
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Retrieve document failed",

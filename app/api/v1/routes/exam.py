@@ -1,6 +1,9 @@
 from typing import List
 from datetime import datetime, UTC
-from app.utils import Logger, MessageException
+from app.utils import (
+    MessageException,
+    Logger,
+)
 from fastapi import (
     APIRouter, Depends, 
     status, HTTPException
@@ -40,7 +43,6 @@ from app.api.v1.controllers.exam import (
 from app.api.v1.controllers.timer import (
     retrieve_timer_by_exam_retake_user_id,
     add_timer,
-    delete_timer_by_exam_user_id
 )
 from app.api.v1.controllers.retake import (
     add_retake,
@@ -76,9 +78,7 @@ async def create_exam(exam: ExamSchema,
                              message="Exam added successfully.",
                              code=status.HTTP_200_OK)
 
-
 @router.post("/{exam_id}/timer",
-             dependencies=[Depends(is_authenticated)],
              description="Add a new timer")
 async def create_timer(exam_id: str,
                        timer_data: TimerSchema,
@@ -122,7 +122,8 @@ async def create_retake(exam_id: str,
 
 
 @router.get("/exams",
-            dependencies=[Depends(is_authenticated)],
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
             description="Retrieve all exams")
 async def get_exams():
     exams = await retrieve_exams()
@@ -133,12 +134,10 @@ async def get_exams():
                              message="Exams retrieved successfully.",
                              code=status.HTTP_200_OK)
 
-
 @router.get("/{id}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a exam with a matching ID")
-async def get_exam_by_id(id: str):
-    exam = await retrieve_exam(id)
+async def get_exam_by_id(id: str, clerk_user_id: str = Depends(is_authenticated)):
+    exam = await retrieve_exam(id, clerk_user_id)
     if isinstance(exam, MessageException):
         return HTTPException(status_code=exam.status_code,
                              detail=exam.message)
@@ -177,9 +176,9 @@ async def get_retake(exam_id: str):
 
 
 @router.get("/{id}/detail",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a exam with a matching ID and its problems")
-async def get_exam_detail(id: str, clerk_user_id=Depends(is_authenticated)):
+async def get_exam_detail(id: str, 
+                          clerk_user_id=Depends(is_authenticated)):
     exam_detail = await retrieve_exam_detail(id, clerk_user_id)
     if isinstance(exam_detail, MessageException):
         return HTTPException(status_code=exam_detail.status_code,

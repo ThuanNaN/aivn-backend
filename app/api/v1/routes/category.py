@@ -45,7 +45,6 @@ async def create_category(category: CategorySchema):
 
 
 @router.get("/categories",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve all categories")
 async def get_categories():
     categories = await retrieve_categories()
@@ -59,7 +58,6 @@ async def get_categories():
 
 
 @router.get("/{id}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a category with a matching ID")
 async def get_category(id: str):
     category = await retrieve_category(id)

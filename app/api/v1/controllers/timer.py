@@ -1,7 +1,11 @@
 import traceback
 from datetime import datetime, UTC
 from app.core.database import mongo_db
-from app.utils import Logger, MessageException
+from app.utils import (
+    MessageException,
+    Logger, 
+    cohort_permission
+)
 from fastapi import status
 from bson.objectid import ObjectId
 
@@ -91,8 +95,8 @@ async def add_timer(timer_data: dict) -> dict | MessageException:
         if not user_info:
             raise MessageException("User not found", status.HTTP_404_NOT_FOUND)
 
-        if user_info["cohort"] not in contest_info["cohorts"]:
-            raise MessageException("User's cohort does not have permission",
+        if not cohort_permission(user_info["cohort"], contest_info["cohorts"]):
+            raise MessageException("You are not allowed to access this exam",
                                    status.HTTP_403_FORBIDDEN)
 
 

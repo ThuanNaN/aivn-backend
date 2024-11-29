@@ -1,6 +1,9 @@
 from typing import List
 from datetime import datetime, UTC
-from app.utils.logger import Logger
+from app.utils import (
+    MessageException,
+    Logger
+)
 from fastapi import (
     APIRouter, Depends, Query,
     status, HTTPException
@@ -140,7 +143,6 @@ async def add_attendees_to_meeting(id: str,
 
 
 @router.get("/meetings",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve all meetings")
 async def get_meetings(
     time_from: str = Query(None, description="Meeting time from"),
@@ -225,7 +227,6 @@ async def get_meetings(
 
 
 @router.get("/upcoming",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve upcoming meetings")
 async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
     user_info = await retrieve_user(clerk_user_id)
@@ -259,31 +260,35 @@ async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
         {"$limit": 1}
     ]
 
-    upcoming = await retrieve_upcoming_meeting_by_pipeline(pipeline)
-    if isinstance(upcoming, Exception):
+    results = await retrieve_upcoming_meeting_by_pipeline(pipeline)
+    if isinstance(results, Exception):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(upcoming)
+            status_code=results.status_code,
+            detail=results.message
         )
+    upcoming_data = {
+        **meeting_helper(results[0]),
+        "documents": [document_helper(document) for document in results[0]["documents"]]
+
+    }
     return DictResponseModel(
-        data=upcoming,
+        data=upcoming_data,
         message="Upcoming meetings retrieved successfully",
         code=status.HTTP_200_OK
     )
 
 
 @router.get("/{id}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a meeting by meeting id")
-async def get_meeting_by_id(id: str):
-    meeting_data = await retrieve_meeting_by_id(id)
-    if isinstance(meeting_data, Exception):
+async def get_meeting_by_id(id: str, clerk_user_id: str = Depends(is_authenticated)):
+    meeting_data = await retrieve_meeting_by_id(id, clerk_user_id)
+    if isinstance(meeting_data, MessageException):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(meeting_data)
+            status_code=meeting_data.status_code,
+            detail=meeting_data.message
         )
     documents = await retrieve_document_by_meeting_id(id)
-    if isinstance(documents, Exception):
+    if isinstance(documents, MessageException):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(documents)
@@ -323,7 +328,7 @@ async def update_meeting_data(id: str,
                               creator_id: str = Depends(is_authenticated)):
     if meeting_data.record is not None:
         # Check meeting is ended or not
-        meeting_info = await retrieve_meeting_by_id(id)
+        meeting_info = await retrieve_meeting_by_id(id, creator_id)
         if isinstance(meeting_info, Exception):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

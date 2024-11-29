@@ -1,13 +1,19 @@
 import traceback
-from app.utils import utc_to_local, is_past, MessageException
+from app.utils import (
+    MessageException,
+    utc_to_local, 
+    is_past,
+    cohort_permission
+)
 from fastapi import status
-from app.core.database import mongo_client, mongo_db
 from app.utils.logger import Logger
 from bson.objectid import ObjectId
-from app.api.v1.controllers.document import document_helper
+from app.core.database import mongo_client, mongo_db
+from app.api.v1.controllers.cohort_permission import is_meeting_permission
 
 logger = Logger("controllers/meeting", log_file="meeting.log")
 try:
+    user_collection = mongo_db["users"]
     meeting_collection = mongo_db["meetings"]
     document_collection = mongo_db["documents"]
     attendee_collection = mongo_db["attendees"]
@@ -82,17 +88,21 @@ async def retrieve_meeting_by_pipeline(pipeline: list) -> list:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_meeting_by_id(id: str) -> dict:
+async def retrieve_meeting_by_id(id: str, clerk_user_id: str) -> dict | MessageException:
     """
     Retrieve a meeting by meeting id
     :param id: str
+    :param clerk_user_id: str
     :return: dict
     """
     try:
-        meeting = await meeting_collection.find_one({"_id": ObjectId(id)})
-        if not meeting:
-            raise MessageException("Meeting not found", 
-                                status.HTTP_404_NOT_FOUND)
+        meeting_permission = await is_meeting_permission(id, clerk_user_id, return_item=True)
+        if isinstance(meeting_permission, MessageException):
+            return meeting_permission
+        meeting, permission = meeting_permission
+        if not permission:
+            raise MessageException("You are not allowed to access this meeting", 
+                                   status.HTTP_403_FORBIDDEN)
         return meeting_helper(meeting)
     except MessageException as e:
         return e
@@ -185,8 +195,7 @@ async def delete_meeting(id: str) -> bool:
             return True
         
         
-
-async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict:
+async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict | MessageException:
     """
     Get all an upcoming meeting
     :param pipeline: list
@@ -194,15 +203,9 @@ async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict:
     """
     try:
         upcoming_meeting = await meeting_collection.aggregate(pipeline).to_list(length=None)
-        if upcoming_meeting:
-            return {
-                **meeting_helper(upcoming_meeting[0]),
-                "documents": [document_helper(document) for document in upcoming_meeting[0]["documents"]]
-            }
+        return upcoming_meeting if upcoming_meeting else {}
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("An error occurred when retrieve upcoming meeting",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        return {}
     

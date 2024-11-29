@@ -55,7 +55,7 @@ async def create_document(document_data: DocumentSchema,
     
 
 @router.get("",
-            dependencies=[Depends(is_authenticated)],
+            dependencies=[Depends(is_admin)],
             description="Retrieve all documents")
 async def get_documents():
     documents = await retrieve_documents()
@@ -72,10 +72,9 @@ async def get_documents():
 
 
 @router.get("/{id}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a document by id")
-async def get_document_by_id(id: str):
-    document = await retrieve_document_by_id(id)
+async def get_document_by_id(id: str, clerk_user_id: str = Depends(is_authenticated)):
+    document = await retrieve_document_by_id(id, clerk_user_id)
     if isinstance(document, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

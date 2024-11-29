@@ -1,5 +1,10 @@
 import traceback
-from app.utils import utc_to_local, MessageException, Logger
+from app.utils import (
+    MessageException,
+    Logger,
+    utc_to_local,
+    cohort_permission
+)
 from fastapi import status
 from app.core.database import mongo_client, mongo_db
 from bson.objectid import ObjectId
@@ -9,6 +14,7 @@ from app.api.v1.controllers.exam_problem import (
 from app.api.v1.controllers.problem import (
     retrieve_problems_by_ids
 )
+from app.api.v1.controllers.cohort_permission import is_contest_permission
 
 
 logger = Logger("controllers/exam", log_file="exam.log")
@@ -80,7 +86,7 @@ async def retrieve_exams() -> list:
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_exam(id: str) -> dict:
+async def retrieve_exam(id: str, clerk_user_id: str) -> dict | MessageException:
     """
     Retrieve a exam with a matching ID
     :param id: str
@@ -91,6 +97,9 @@ async def retrieve_exam(id: str) -> dict:
         if not exam:
             raise MessageException("Exam not found", 
                                    status.HTTP_404_NOT_FOUND)
+        if not is_contest_permission(exam["contest_id"], clerk_user_id):
+            raise MessageException("You are not allowed to access this exam",
+                                   status.HTTP_403_FORBIDDEN)
         return exam_helper(exam)
     except:
         logger.error(f"{traceback.format_exc()}")
@@ -105,24 +114,10 @@ async def retrieve_exam_detail(id: str, clerk_user_id: str) -> dict | MessageExc
     :return: dict
     """
     try:
-        exam = await retrieve_exam(id)
+        exam = await retrieve_exam(id, clerk_user_id)
         if isinstance(exam, MessageException):
             return exam
         
-        contest_info = await contest_collection.find_one({"_id": ObjectId(exam["contest_id"])})
-        if not contest_info:
-            return MessageException("Contest not found", 
-                                    status.HTTP_404_NOT_FOUND)
-        
-        user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
-        if not user_info:
-            return MessageException("User not found", 
-                                    status.HTTP_404_NOT_FOUND)
-        
-        if user_info["cohort"] not in contest_info["cohorts"]:
-            return MessageException("You are not allowed to access this exam",
-                                    status.HTTP_400_BAD_REQUEST)
-
         exam_problems = await retrieve_by_exam_id(exam["id"])
         if isinstance(exam_problems, MessageException):
             return exam_problems

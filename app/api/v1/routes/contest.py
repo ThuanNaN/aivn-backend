@@ -1,6 +1,10 @@
 from typing import List
 from datetime import datetime, UTC
-from app.utils import Logger, MessageException
+from app.utils import (
+    MessageException,
+    Logger, 
+    cohort_permission
+)
 from slugify import slugify
 from fastapi import (
     APIRouter, Depends, 
@@ -109,13 +113,12 @@ async def create_exam_problem(exam_id: str,
 
 
 @router.post("/exam/{exam_id}/submit",
-             dependencies=[Depends(is_authenticated)],
              description="Submit problems to a contest")
 async def create_submission(exam_id: str,
                             submission_data: SubmissionSchema,
                             clerk_user_id: str = Depends(is_authenticated)):
     # Check the exam still open (is active)
-    exam_info = await retrieve_exam(exam_id)
+    exam_info = await retrieve_exam(exam_id, clerk_user_id)
     if isinstance(exam_info, MessageException):
         raise HTTPException(
             status_code=exam_info.status_code,
@@ -127,7 +130,7 @@ async def create_submission(exam_id: str,
             detail="The exam is not active."
         )
     # Check the contest still open (is active)
-    contest_info = await retrieve_contest(exam_info["contest_id"])
+    contest_info = await retrieve_contest(exam_info["contest_id"], clerk_user_id)
     if isinstance(contest_info, MessageException):
         raise HTTPException(
             status_code=contest_info.status_code,
@@ -147,10 +150,10 @@ async def create_submission(exam_id: str,
             detail=user_info.message
         )
     
-    if user_info["cohort"] not in contest_info["cohorts"]:
+    if not cohort_permission(user_info["cohort"], contest_info["cohorts"]):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You are not allowed to submit this contest."
+            detail="You are not allowed to submit this exam.",
+            status_code=status.HTTP_403_FORBIDDEN
         )
     
     submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
@@ -266,7 +269,8 @@ async def create_submission(exam_id: str,
     
 
 @router.get("/contests",
-            dependencies=[Depends(is_authenticated)],
+            dependencies=[Depends(is_admin)],
+            tags=["Admin"],
             description="Retrieve all contests")
 async def get_contests():
     contests = await retrieve_contests()
@@ -280,10 +284,9 @@ async def get_contests():
 
 
 @router.get("/contest/instruction/{slug}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a contest instruction with a matching slug")
-async def get_contest_instruction(slug: str):
-    contest = await retrieve_contest_by_slug(slug)
+async def get_contest_instruction(slug: str, clerk_user_id: str = Depends(is_authenticated)):
+    contest = await retrieve_contest_by_slug(slug, clerk_user_id)
     if isinstance(contest, MessageException):
         return HTTPException(
             status_code=contest.status_code,
@@ -300,35 +303,32 @@ async def get_contest_instruction(slug: str):
 
 
 @router.get("/available",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve all available contests")
 async def get_available_contests(clerk_user_id: str = Depends(is_authenticated)):
     contests = await retrieve_available_contests(clerk_user_id)
     if isinstance(contests, MessageException):
-        return ErrorResponseModel(error=str(contests),
+        return ErrorResponseModel(error=contests.message,
                                   message="Error when retrieve contests.",
-                                  code=status.HTTP_404_NOT_FOUND)
+                                  code=contests.status_code)
     return ListResponseModel(data=contests,
                              message="Contests retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 
 @router.get("/{id}",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a contest with a matching ID")
-async def get_contest(id: str):
-    contest = await retrieve_contest(id)
+async def get_contest(id: str, clerk_user_id: str = Depends(is_authenticated)):
+    contest = await retrieve_contest(id, clerk_user_id)
     if isinstance(contest, MessageException):
-        return ErrorResponseModel(error=str(contest),
+        return ErrorResponseModel(error=contest.message,
                                   message="An error occurred.",
-                                  code=status.HTTP_404_NOT_FOUND)
+                                  code=contest.status_code)
     return DictResponseModel(data=contest,
                              message="Contest retrieved successfully.",
                              code=status.HTTP_200_OK)
 
 
 @router.get("/{id}/details",
-            dependencies=[Depends(is_authenticated)],
             description="Retrieve a contest with a matching ID and its details")
 async def get_contest_detail(id: str, clerk_user_id: str = Depends(is_authenticated)):
     contest_details = await retrieve_contest_detail(id, clerk_user_id)
