@@ -1,7 +1,7 @@
 from app.core.database import mongo_db
 import asyncio
 from tqdm.asyncio import tqdm
-from app.utils.generate import generate_id
+from app.utils import generate_id
 
 try:
     certificate_collection = mongo_db["certificate"]

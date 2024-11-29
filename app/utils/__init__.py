@@ -1,4 +1,4 @@
 from .exception import *
 from .time import *
-from .generate import *
+from .general import *
 from .logger import *
