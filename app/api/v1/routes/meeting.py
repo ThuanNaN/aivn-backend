@@ -266,11 +266,13 @@ async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
             status_code=results.status_code,
             detail=results.message
         )
-    upcoming_data = {
-        **meeting_helper(results[0]),
-        "documents": [document_helper(document) for document in results[0]["documents"]]
+    upcoming_data = {}
+    if results:
+        upcoming_data = {
+            **meeting_helper(results[0]),
+            "documents": [document_helper(document) for document in results[0]["documents"]]
 
-    }
+        }
     return DictResponseModel(
         data=upcoming_data,
         message="Upcoming meetings retrieved successfully",
