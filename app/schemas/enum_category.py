@@ -15,8 +15,7 @@ class CertificateEnum(Enum):
     """
 
     FOUNDATION = "foundation"
-    INSIGHT = "insight"
-    FINAL = "final"
+    BASIC_DL = "basic_deep_learning"
 
     @classmethod
     def get_list(cls) -> list[str]:
