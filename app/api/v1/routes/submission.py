@@ -301,6 +301,7 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
                         clerk_user_id=clerk_user_id,
                         submission_id=submission["id"],
                         result_score=f"{submission['total_score']}/{submission['max_score']}",
+                        template=submission["contest_info"]["certificate_template"],
                         created_at=datetime.now(UTC)
                     ).model_dump()
                     new_certificate = await add_certificate(certificate_data)
