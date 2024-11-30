@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 class WhiteListSchema(BaseModel):
     nickname: str
     email: str
-    cohort: int
+    cohort: int = 2024
 
     @field_validator('email')
     def email_must_be_lower(cls, v):
