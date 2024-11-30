@@ -103,12 +103,8 @@ async def retrieve_certificate_by_validation_id(validation_id: str) -> dict:
         certificate = await certificate_collection.find_one(
             {"validation_id": validation_id}
         )
-        if not certificate:
-            raise MessageException("Certificate not found", 
-                                   status.HTTP_404_NOT_FOUND)
-        return certificate_helper(certificate)
-    except MessageException as e:
-        return e
+        if certificate:
+            return certificate_helper(certificate)
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when retrieve certificate",

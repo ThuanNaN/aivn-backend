@@ -35,8 +35,7 @@ from app.api.v1.controllers.certificate import (
 )
 from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
-from app.utils import generate_id
-from app.utils.logger import Logger
+from app.utils import generate_id, Logger
 
 router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
