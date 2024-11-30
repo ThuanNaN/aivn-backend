@@ -121,10 +121,15 @@ async def retrieve_document_by_id(id: str, clerk_user_id: str) -> dict:
         if not document:
             raise MessageException("Document not found", 
                                    status.HTTP_404_NOT_FOUND)
-        if not is_meeting_permission(document["meeting_id"], clerk_user_id):
+        permission = await is_meeting_permission(document["meeting_id"], clerk_user_id)
+        if isinstance(permission, MessageException):
+            raise permission
+        if not permission:
             raise MessageException("You are not allowed to access this document",
                                    status.HTTP_403_FORBIDDEN)
         return document_helper(document)
+    except MessageException as e:
+        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Retrieve document failed",

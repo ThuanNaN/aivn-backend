@@ -97,10 +97,15 @@ async def retrieve_exam(id: str, clerk_user_id: str) -> dict | MessageException:
         if not exam:
             raise MessageException("Exam not found", 
                                    status.HTTP_404_NOT_FOUND)
-        if not is_contest_permission(exam["contest_id"], clerk_user_id):
+        permission = await is_contest_permission(exam["contest_id"], clerk_user_id)
+        if isinstance(permission, MessageException):
+            return permission
+        if not permission:
             raise MessageException("You are not allowed to access this exam",
                                    status.HTTP_403_FORBIDDEN)
         return exam_helper(exam)
+    except MessageException as e:
+        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when retrieve exam",

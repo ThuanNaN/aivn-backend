@@ -112,7 +112,7 @@ async def retrieve_available_contests(clerk_user_id: str) -> list | MessageExcep
         return MessageException("Error when retrieve contests",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# TODO: fix
+
 async def retrieve_contest(id: str, clerk_user_id: str) -> dict:
     """
     Retrieve a contest with a matching ID
