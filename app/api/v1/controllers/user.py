@@ -112,13 +112,8 @@ async def retrieve_user(clerk_user_id: str) -> dict:
     """
     try:
         user = await user_collection.find_one({"clerk_user_id": clerk_user_id})
-        if not user:
-            raise MessageException("User not found", 
-                                   status.HTTP_404_NOT_FOUND)
-        return user_helper(user)
-    
-    except MessageException as e:
-        return e
+        if user:
+            return user_helper(user)
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when retrieve user",

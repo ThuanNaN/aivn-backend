@@ -163,10 +163,8 @@ async def retrieve_whitelist_by_email(email: str) -> dict | MessageException:
     """
     try:
         whitelist = await whitelist_collection.find_one({"email": email})
-        if not whitelist:
-            raise MessageException("Whitelist not found", 
-                                   status.HTTP_404_NOT_FOUND)
-        return whitelist_helper(whitelist)
+        if whitelist:
+            return whitelist_helper(whitelist)
     except MessageException as e:
         return e
     except:
