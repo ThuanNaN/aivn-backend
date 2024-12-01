@@ -114,6 +114,11 @@ async def get_me(clerk_user_id: str = Depends(is_authenticated)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
     return DictResponseModel(data=user,
                              message="User retrieved successfully.",
                              code=status.HTTP_200_OK)
