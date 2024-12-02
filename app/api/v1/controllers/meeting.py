@@ -203,7 +203,13 @@ async def retrieve_upcoming_meeting_by_pipeline(pipeline: list) -> dict | Messag
     """
     try:
         upcoming_meeting = await meeting_collection.aggregate(pipeline).to_list(length=None)
-        return upcoming_meeting if upcoming_meeting else {}
+        if upcoming_meeting:
+            return upcoming_meeting
+        else:
+            return MessageException("No upcoming meeting found", 
+                                    status.HTTP_404_NOT_FOUND)
+    except MessageException as e:
+        return e
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("An error occurred when retrieve upcoming meeting",
