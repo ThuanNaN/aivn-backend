@@ -16,3 +16,4 @@ wget==3.2
 pandas==2.2.2
 pytz==2024.2
 python-slugify==8.0.4
+prometheus-fastapi-instrumentator==7.0.0

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
+from prometheus_fastapi_instrumentator import Instrumentator
 
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
@@ -20,3 +21,8 @@ def create_application() -> FastAPI:
     return app
 
 app = create_application()
+instrumentator = Instrumentator().instrument(app)
+
+@app.on_event("startup")
+async def _startup():
+    instrumentator.expose(app)
