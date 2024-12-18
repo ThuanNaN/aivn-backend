@@ -1,5 +1,5 @@
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
 
 class MeetingSchema(BaseModel):
@@ -11,7 +11,13 @@ class MeetingSchema(BaseModel):
     end_time: str # isoformat
     document_data: list[dict] | None = None
     join_link: str | None = None
-    cohorts: List[int] | None = [2020]
+    cohorts: List[int] | None = [2024]
+
+    @field_validator("cohorts", mode="before")
+    def validate_cohorts(cls, v):
+        if v is None or v == []:
+            return [2024]
+        return v
     
     model_config = {
         "json_schema_extra": {
@@ -42,7 +48,7 @@ class MeetingSchemaDB(BaseModel):
     title: str
     description: str
     lecturer: str
-    cohorts: List[int] = [2020]
+    cohorts: List[int] = [2024]
     date: datetime
     start_time: datetime
     end_time: datetime
