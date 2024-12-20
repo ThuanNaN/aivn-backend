@@ -2,7 +2,7 @@ services:
     mongodb:
         image: mongo:7.0
         container_name: aivietnam-mongodb
-        restart: on-failure
+        restart: always
         env_file:
           - .env
         healthcheck:
@@ -28,7 +28,7 @@ services:
             network: host
         image: aivietnam-backend:latest 
         container_name: aivietnam-backend
-        restart: on-failure
+        restart: always
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"] 
             interval: 30s          
