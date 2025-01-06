@@ -3,7 +3,6 @@ services:
         build:
             context: .
             network: host
-        image: aivietnam-backend:latest 
         container_name: aivietnam-backend
         restart: always
         healthcheck:
