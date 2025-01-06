@@ -16,6 +16,7 @@ class CertificateEnum(Enum):
 
     FOUNDATION = "foundation"
     BASIC_DL = "basic_deep_learning"
+    DEEP_NN = "deep_neural_network"
 
     @classmethod
     def get_list(cls) -> list[str]:
