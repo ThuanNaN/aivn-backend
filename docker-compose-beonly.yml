@@ -1,0 +1,24 @@
+services:
+    backend:
+        build:
+            context: .
+            network: host
+        image: aivietnam-backend:latest 
+        container_name: aivietnam-backend
+        restart: always
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"] 
+            interval: 30s          
+            timeout: 10s           
+            retries: 3         
+            start_period: 10s 
+        env_file:
+          - .env
+        ports:
+            - 8000:8000
+        extra_hosts:
+            - "localhost:0.0.0.0"
+        volumes:
+            - ./app/logs/:/src/app/logs/
+        networks:
+            - aivietnam-network
