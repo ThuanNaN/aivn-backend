@@ -70,6 +70,7 @@ async def get_users(
             {"email": {"$regex": search, "$options": "i"}},
             {"username": {"$regex": search, "$options": "i"}},
             {"role": {"$regex": search, "$options": "i"}},
+            {"attend_id": {"$regex": search, "$options": "i"}},
         ]
 
     if role is not None:
