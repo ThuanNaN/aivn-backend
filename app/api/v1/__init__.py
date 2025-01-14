@@ -13,6 +13,7 @@ from app.api.v1.routes.code import router as code_router
 from app.api.v1.routes.submission import router as submission_router
 from app.api.v1.routes.retake import router as retake_router
 from app.api.v1.routes.verify import router as verify_router
+from app.api.v1.routes.shortener import router as shortener_router
 from app.core.security import (
     is_authenticated,
     is_aio,
@@ -21,6 +22,8 @@ from app.core.security import (
 router = APIRouter()
 
 # Health Check
+
+
 @router.get("/health")
 async def health_check():
     return {"status": "ok"}
@@ -48,7 +51,7 @@ router.include_router(retake_router,
 
 router.include_router(whitelist_router,
                       dependencies=[Depends(is_admin)],
-                      prefix="/whitelist", 
+                      prefix="/whitelist",
                       tags=["Whitelist"])
 
 
@@ -102,3 +105,7 @@ router.include_router(document_router,
                       dependencies=AIO_DEPENDENCIES,
                       prefix="/document",
                       tags=["Document"])
+router.include_router(shortener_router,
+                      dependencies=AIO_DEPENDENCIES,
+                      prefix="/shortener",
+                      tags=["Shortener"])
