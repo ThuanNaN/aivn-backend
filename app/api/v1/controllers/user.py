@@ -1,7 +1,7 @@
 import traceback
-import os
 import requests
 from fastapi import status
+from app.core.config import settings
 from app.utils import utc_to_local, MessageException, Logger
 from requests.exceptions import HTTPError, Timeout
 from app.core.database import mongo_client, mongo_db
@@ -235,7 +235,7 @@ async def retrieve_user_clerk(clerk_user_id: str) -> dict:
     """
     try:
         CLERK_URL = f"https://api.clerk.com/v1/users/{clerk_user_id}"
-        CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
+        CLERK_SECRET_KEY = settings.CLERK_SECRET_KEY
         headers = {
             'Authorization': f'Bearer {CLERK_SECRET_KEY}',
             'Content-Type': 'application/json'
