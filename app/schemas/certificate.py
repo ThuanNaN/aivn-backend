@@ -23,9 +23,4 @@ class CertificateSchema(BaseModel):
     
 class CertificateDB(CertificateSchema):
     validation_id: str
-    created_at: datetime
-
-
-class UpdateCertificateDB(BaseModel):
-    result_score: str
-    created_at: datetime
+    created_at: str
