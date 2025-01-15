@@ -395,7 +395,7 @@ async def update_contest_data(id: str,
                               creator_id=Depends(is_authenticated)):
     contest_slug = slugify(contest.title)
     # Check meeting_slug is unique
-    is_unique = await contest_slug_is_unique(contest_slug)
+    is_unique = await contest_slug_is_unique(contest_slug, is_update=True)
     if isinstance(is_unique, Exception):
         raise HTTPException(
             status_code=is_unique.status_code,

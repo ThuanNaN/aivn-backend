@@ -121,7 +121,10 @@ async def retrieve_document_by_id(id: str, clerk_user_id: str) -> dict:
         if not document:
             raise MessageException("Document not found", 
                                    status.HTTP_404_NOT_FOUND)
-        permission = await is_meeting_permission(document["meeting_id"], clerk_user_id)
+        query_params = {
+            "_id": document["meeting_id"],
+        }
+        permission = await is_meeting_permission(query_params, clerk_user_id)
         if isinstance(permission, MessageException):
             raise permission
         if not permission:
