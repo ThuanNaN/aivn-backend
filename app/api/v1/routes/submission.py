@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import datetime, UTC
 import pandas as pd
 from io import StringIO
 from fastapi import (
@@ -29,13 +28,10 @@ from app.api.v1.controllers.submission import (
     delete_submission,
 )
 from app.api.v1.controllers.certificate import (
-    add_certificate,
     retrieve_certificate_by_submission_id,
-    retrieve_certificate_by_validation_id
 )
-from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
-from app.utils import generate_id, Logger
+from app.utils import Logger
 
 router = APIRouter()
 logger = Logger("routes/submission", log_file="submission.log")
@@ -278,39 +274,14 @@ async def get_submissions_by_user(clerk_user_id: str = Depends(is_authenticated)
             submission["certificate_info"] = None
             if submission["contest_info"]["certificate_template"] is not None:
                 certificate = await retrieve_certificate_by_submission_id(submission["id"])
-
                 # Not exist certificate
                 if isinstance(certificate, Exception):
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="An error occurred while retrieving certificate."
                     )
-
                 if certificate is not None:
                     submission["certificate_info"] = certificate
-
-                elif submission['max_score'] > 0 and submission['total_score'] / submission['max_score'] >= 0.5:
-                    validation_id = generate_id()
-                    # Check if validation_id is exist
-                    while await retrieve_certificate_by_validation_id(validation_id):
-                        validation_id = generate_id()
-
-                    # Create a new certificate
-                    certificate_data = CertificateDB(
-                        validation_id=validation_id,
-                        clerk_user_id=clerk_user_id,
-                        submission_id=submission["id"],
-                        result_score=f"{submission['total_score']}/{submission['max_score']}",
-                        template=submission["contest_info"]["certificate_template"],
-                        created_at=datetime.now(UTC)
-                    ).model_dump()
-                    new_certificate = await add_certificate(certificate_data)
-                    if isinstance(new_certificate, Exception):
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="An error occurred while creating certificate."
-                        )
-                    submission["certificate_info"] = new_certificate
 
     else:
         submissions_outputs = []
