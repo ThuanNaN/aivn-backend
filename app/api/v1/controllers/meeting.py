@@ -148,7 +148,7 @@ async def retrieve_meeting_by_slug(slug: str, clerk_user_id: str) -> dict | Mess
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def meeting_slug_is_unique(slug: str) -> bool | MessageException:
+async def meeting_slug_is_unique(slug: str, is_update = False) -> bool | MessageException:
     """
     Check if the slug is unique
     :param slug: str
@@ -156,7 +156,7 @@ async def meeting_slug_is_unique(slug: str) -> bool | MessageException:
     """
     try:
         meeting = await meeting_collection.find_one({"slug": slug})
-        if meeting:
+        if meeting and not is_update:
             return MessageException("The title already exists.",
                                     status.HTTP_400_BAD_REQUEST)
         return True
