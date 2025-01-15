@@ -13,12 +13,14 @@ from app.utils import (
     local_to_utc,
     utc_to_local
 )
+from slugify import slugify
 from app.core.security import is_admin, is_authenticated
 from app.api.v1.controllers.meeting import (
     meeting_helper,
     add_meeting,
     retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
+    meeting_slug_is_unique,
     retrieve_upcoming_meeting_by_pipeline,
     update_meeting,
     delete_meeting
@@ -49,7 +51,6 @@ from app.schemas.response import (
     ListResponseModel
 )
 
-
 router = APIRouter()
 logger = Logger("routes/meeting", log_file="meeting.log")
 
@@ -60,6 +61,16 @@ logger = Logger("routes/meeting", log_file="meeting.log")
              description="Add a new meeting")
 async def create_meeting(meeting_data: MeetingSchema,
                          creator_id: str = Depends(is_authenticated)):
+    meeting_slug = slugify(meeting_data.title)
+
+    # Check meeting_slug is unique
+    is_unique = await meeting_slug_is_unique(meeting_slug)
+    if isinstance(is_unique, Exception):
+        raise HTTPException(
+            status_code=is_unique.status_code,
+            detail=str(is_unique)
+        )
+
     meeting_db = MeetingSchemaDB(
         title=meeting_data.title,
         description=meeting_data.description,
@@ -70,6 +81,7 @@ async def create_meeting(meeting_data: MeetingSchema,
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
         join_link=meeting_data.join_link,
+        slug=meeting_slug,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     )
@@ -345,6 +357,14 @@ async def update_meeting_data(id: str,
             )
 
     # Update meeting
+    meeting_slug = slugify(meeting_data.title)
+    # Check meeting_slug is unique
+    is_unique = await meeting_slug_is_unique(meeting_slug)
+    if isinstance(is_unique, Exception):
+        raise HTTPException(
+            status_code=is_unique.status_code,
+            detail=str(is_unique)
+        )
     meeting_db = UpdateMeetingSchemaDB(
         title=meeting_data.title,
         description=meeting_data.description,
@@ -355,6 +375,7 @@ async def update_meeting_data(id: str,
         end_time=datetime.fromisoformat(meeting_data.end_time),
         creator_id=creator_id,
         join_link=meeting_data.join_link,
+        slug=meeting_slug,
         record=meeting_data.record,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
