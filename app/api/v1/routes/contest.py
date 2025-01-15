@@ -18,7 +18,8 @@ from app.api.v1.controllers.contest import (
     update_contest,
     delete_contest,
     retrieve_available_contests,
-    retrieve_contest_by_slug
+    retrieve_contest_by_slug,
+    contest_slug_is_unique
 )
 from app.api.v1.controllers.exam import (
     retrieve_exam
@@ -71,10 +72,18 @@ logger = Logger("routes/contest", log_file="contest.log")
              description="Create a new contest")
 async def create_contest(contest: ContestSchema, 
                          creator_id=Depends(is_authenticated)):
+    contest_slug = slugify(contest.title)
+    # Check meeting_slug is unique
+    is_unique = await contest_slug_is_unique(contest_slug)
+    if isinstance(is_unique, Exception):
+        raise HTTPException(
+            status_code=is_unique.status_code,
+            detail=str(is_unique)
+        )
     contest_dict = ContestSchemaDB(
         **contest.model_dump(), 
         creator_id=creator_id,
-        slug=slugify(contest.title),
+        slug=contest_slug,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     ).model_dump()
@@ -348,10 +357,18 @@ async def get_contest_detail(id: str, clerk_user_id: str = Depends(is_authentica
 async def update_contest_data(id: str, 
                               contest: UpdateContestSchema,
                               creator_id=Depends(is_authenticated)):
+    contest_slug = slugify(contest.title)
+    # Check meeting_slug is unique
+    is_unique = await contest_slug_is_unique(contest_slug)
+    if isinstance(is_unique, Exception):
+        raise HTTPException(
+            status_code=is_unique.status_code,
+            detail=str(is_unique)
+        )
     contest_dict = UpdateContestSchemaDB(
         **contest.model_dump(),
         creator_id=creator_id,
-        slug=slugify(contest.title),
+        slug=contest_slug,
         updated_at = datetime.now(UTC)
     ).model_dump()
     updated_contest = await update_contest(id, contest_dict)
