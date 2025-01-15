@@ -5,6 +5,7 @@ from datetime import datetime
 class MeetingSchema(BaseModel):
     title: str
     description: str
+    notification: str
     lecturer: str
     date: str  # isoformat
     start_time: str # isoformat
@@ -25,6 +26,7 @@ class MeetingSchema(BaseModel):
                 {
                     "title": "Pytorch Basics",
                     "description": "This is a basic course about Pytorch",
+                    "notification": "This meeting is mandatory",
                     "lecturer": "Dr.Dinh Vinh",
                     "cohorts": [2024],
                     "date": "2024-10-08T01:45:21.527550",
@@ -47,6 +49,7 @@ class MeetingSchema(BaseModel):
 class MeetingSchemaDB(BaseModel):
     title: str
     description: str
+    notification: str
     lecturer: str
     cohorts: List[int] = [2024]
     date: datetime
@@ -63,6 +66,7 @@ class MeetingSchemaDB(BaseModel):
 class UpdateMeetingSchema(BaseModel):
     title: str | None = None
     description: str | None = None
+    notification: str | None = None
     lecturer: str | None = None
     cohorts: List[int] | None = None
     date: str | None = None
@@ -78,6 +82,7 @@ class UpdateMeetingSchema(BaseModel):
                 {
                     "title": "Pytorch Basics",
                     "description": "This is a basic course about Pytorch",
+                    "notification": "This meeting is mandatory",
                     "lecturer": "Dr.Quang Vinh",
                     "cohorts": [2024, 2025],
                     "date": "2024-10-08T01:45:21.527550",
@@ -99,6 +104,7 @@ class UpdateMeetingSchema(BaseModel):
 class UpdateMeetingSchemaDB(BaseModel):
     title: str | None = None
     description: str | None = None
+    notification: str | None = None
     lecturer: str | None = None
     cohorts: List[int] | None = None
     date: datetime | None = None
