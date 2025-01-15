@@ -165,7 +165,7 @@ async def retrieve_contest_by_slug(slug: str,
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def contest_slug_is_unique(slug: str) -> bool | MessageException:
+async def contest_slug_is_unique(slug: str, is_update = False) -> bool | MessageException:
     """
     Check if the slug is unique
     :param slug: str
@@ -173,7 +173,7 @@ async def contest_slug_is_unique(slug: str) -> bool | MessageException:
     """
     try:
         contest = await contest_collection.find_one({"slug": slug})
-        if contest:
+        if contest and not is_update:
             return MessageException("The title already exists.",
                                     status.HTTP_400_BAD_REQUEST)
         return True

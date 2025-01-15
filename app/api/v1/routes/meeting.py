@@ -360,7 +360,7 @@ async def update_meeting_data(id: str,
     # Update meeting
     meeting_slug = slugify(meeting_data.title)
     # Check meeting_slug is unique
-    is_unique = await meeting_slug_is_unique(meeting_slug)
+    is_unique = await meeting_slug_is_unique(meeting_slug, is_update=True)
     if isinstance(is_unique, Exception):
         raise HTTPException(
             status_code=is_unique.status_code,
