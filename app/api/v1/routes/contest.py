@@ -3,7 +3,8 @@ from datetime import datetime, UTC
 from app.utils import (
     MessageException,
     Logger, 
-    cohort_permission
+    cohort_permission,
+    generate_id
 )
 from slugify import slugify
 from fastapi import (
@@ -39,6 +40,9 @@ from app.api.v1.controllers.submission import (
     update_submission,
     retrieve_submission_by_id_user_retake
 )
+from app.api.v1.controllers.certificate import (
+    retrieve_certificate_by_validation_id
+)
 from app.api.v1.controllers.user import retrieve_user
 from app.schemas.submission import (
     SubmittedProblem,
@@ -60,7 +64,11 @@ from app.schemas.response import (
     DictResponseModel,
     ErrorResponseModel
 )
+from app.schemas.certificate import CertificateDB
 from app.core.security import is_admin, is_authenticated
+import inngest
+from app.inngest.client import inngest_client
+
 
 router = APIRouter()
 logger = Logger("routes/contest", log_file="contest.log")
@@ -259,11 +267,39 @@ async def create_submission(exam_id: str,
         created_at=datetime.now(UTC)
     ).model_dump()
 
-    updated_submission = await update_submission(pseudo_submission["id"], upsert_submission)
+    updated_submission = await update_submission(pseudo_submission["id"], 
+                                                 upsert_submission)
     if isinstance(updated_submission, MessageException):
         raise HTTPException(
             status_code=updated_submission.status_code,
             detail=updated_submission.message
+        )
+    
+    if (contest_info["certificate_template"] is not None 
+    and MAX_SCORE > 0 
+    and TOTAL_SCORE / MAX_SCORE >= 0.5):
+        validation_id = generate_id()
+        # Check if validation_id is exist
+        while await retrieve_certificate_by_validation_id(validation_id):
+            validation_id = generate_id()
+
+        # Create a new certificate
+        certificate_data = CertificateDB(
+            validation_id=validation_id,
+            clerk_user_id=clerk_user_id,
+            submission_id=pseudo_submission["id"],
+            result_score=f"{TOTAL_SCORE}/{MAX_SCORE}",
+            template=contest_info["certificate_template"],
+            created_at=datetime.now(UTC).isoformat()
+        ).model_dump()
+
+        # Send event to inngest
+        await inngest_client.send(
+            inngest.Event(
+                name="contest/certificate",
+                id=f"certificate-{validation_id}",
+                data=certificate_data
+            )
         )
 
     return DictResponseModel(

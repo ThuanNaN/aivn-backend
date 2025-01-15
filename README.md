@@ -93,3 +93,19 @@ rs.reconfig({ _id: "rs0", members: [{ _id: 0, host: "aivietnam-mongodb:27017" }]
 ```bash
 docker compose restart
 ```
+
+### Inngest Dev Server
+
+- [Inngest Docs](https://www.inngest.com/docs/getting-started/python-quick-start#add-inngest)
+
+#### 1. Start FastAPI app with `dev mode`
+
+```bash
+(INNGEST_DEV=1 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)
+```
+
+#### 2. Start Inngest Dev Server
+
+```bash
+docker run -p 8288:8288 inngest/inngest inngest dev -u http://host.docker.internal:8000/api/inngest --no-discovery
+```
