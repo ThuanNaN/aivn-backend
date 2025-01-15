@@ -165,6 +165,26 @@ async def retrieve_contest_by_slug(slug: str,
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+async def contest_slug_is_unique(slug: str) -> bool | MessageException:
+    """
+    Check if the slug is unique
+    :param slug: str
+    :return: bool
+    """
+    try:
+        contest = await contest_collection.find_one({"slug": slug})
+        if contest:
+            return MessageException("The title already exists.",
+                                    status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
+        return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when check slug",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
     """
     Retrieve a contest with a matching contest_id (id),
