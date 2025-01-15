@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from datetime import datetime
 from .enum_category import CertificateEnum
 
 class CertificateSchema(BaseModel):
