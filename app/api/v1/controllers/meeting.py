@@ -2,8 +2,7 @@ import traceback
 from app.utils import (
     MessageException,
     utc_to_local, 
-    is_past,
-    cohort_permission
+    is_past
 )
 from fastapi import status
 from app.utils.logger import Logger
@@ -28,8 +27,9 @@ def meeting_helper(meeting: dict) -> dict:
         "id": str(meeting["_id"]),
         "title": meeting["title"],
         "description": meeting["description"],
+        "notification": meeting["notification"],
         "lecturer": meeting["lecturer"],
-        "cohorts": meeting["cohorts"],  
+        "cohorts": meeting["cohorts"],
         "date": utc_to_local(meeting["date"]),
         "start_time": utc_to_local(meeting["start_time"]),
         "end_time": utc_to_local(meeting["end_time"]),
