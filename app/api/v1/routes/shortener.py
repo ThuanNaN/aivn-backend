@@ -26,9 +26,10 @@ logger = Logger("routes/shortener", log_file="shotener.log")
              dependencies=[Depends(is_admin)],
              tags=["Admin"],
              description="Add a new short url")
-async def create_short_url(shorten_data: ShortenerSchema):
+async def create_short_url(shorten_data: ShortenerSchema, clerk_user_id=Depends(is_authenticated)):
     shorten_dict = ShortenerSchemaDB(
         **shorten_data.model_dump(),
+        creator_id=clerk_user_id,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC)
     ).model_dump()
