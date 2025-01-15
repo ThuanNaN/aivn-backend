@@ -54,6 +54,7 @@ class MeetingSchemaDB(BaseModel):
     end_time: datetime
     creator_id: str
     join_link: str | None = None
+    slug: str
     record: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -105,6 +106,7 @@ class UpdateMeetingSchemaDB(BaseModel):
     end_time: datetime | None = None
     creator_id: str
     join_link: str | None = None
+    slug: str | None = None
     record: str | None = None
     created_at: datetime
     updated_at: datetime

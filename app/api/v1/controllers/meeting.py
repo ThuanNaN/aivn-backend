@@ -36,6 +36,8 @@ def meeting_helper(meeting: dict) -> dict:
         "creator_id": str(meeting["creator_id"]),
         "join_link": meeting["join_link"],
         "record": meeting["record"],
+        # TODO: add slug to all meetings
+        "slug": meeting["slug"] if "slug" in meeting else "",
         "created_at": utc_to_local(meeting["created_at"]),
         "updated_at": utc_to_local(meeting["updated_at"])
     }
@@ -109,6 +111,46 @@ async def retrieve_meeting_by_id(id: str, clerk_user_id: str) -> dict | MessageE
     except:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("An error occurred when retrieve meeting", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def retrieve_meeting_by_slug(slug: str) -> dict | MessageException:
+    """
+    Retrieve a meeting by meeting slug
+    :param slug: str
+    :return: dict
+    """
+    try:
+        meeting = await meeting_collection.find_one({"slug": slug})
+        if not meeting:
+            raise MessageException("Meeting not found", 
+                                   status.HTTP_404_NOT_FOUND)
+        return meeting_helper(meeting)
+    except MessageException as e:
+        return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("An error occurred when retrieve meeting", 
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def meeting_slug_is_unique(slug: str) -> bool | MessageException:
+    """
+    Check if the slug is unique
+    :param slug: str
+    :return: bool
+    """
+    try:
+        meeting = await meeting_collection.find_one({"slug": slug})
+        if meeting:
+            return MessageException("The title already exists.",
+                                    status.HTTP_400_BAD_REQUEST)
+        return True
+    except MessageException as e:
+        return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("An error occurred when check slug", 
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
