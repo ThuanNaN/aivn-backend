@@ -53,9 +53,9 @@ async def is_contest_permission(id: str | ObjectId,
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def is_meeting_permission(id: str | ObjectId, 
+async def is_meeting_permission(query_params: dict,
                                 clerk_user_id: str,
-                                return_item: bool = False 
+                                return_item: bool = False
                                 ) -> bool | tuple | MessageException:
     """
     Check if the user has permission to access the meeting
@@ -69,9 +69,7 @@ async def is_meeting_permission(id: str | ObjectId,
         if not user_info:
             raise MessageException("User not found",
                                    status.HTTP_404_NOT_FOUND)
-        if not isinstance(id, ObjectId):
-            id = ObjectId(id)
-        meeting = await meeting_collection.find_one({"_id": id})
+        meeting = await meeting_collection.find_one(query_params)
         if not meeting:
             raise MessageException("Meeting not found",
                                    status.HTTP_404_NOT_FOUND)

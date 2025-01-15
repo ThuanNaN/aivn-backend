@@ -98,7 +98,12 @@ async def retrieve_meeting_by_id(id: str, clerk_user_id: str) -> dict | MessageE
     :return: dict
     """
     try:
-        meeting_permission = await is_meeting_permission(id, clerk_user_id, return_item=True)
+        query_params = {
+            "_id": ObjectId(id),
+        }
+        meeting_permission = await is_meeting_permission(query_params, 
+                                                         clerk_user_id, 
+                                                         return_item=True)
         if isinstance(meeting_permission, MessageException):
             return meeting_permission
         meeting, permission = meeting_permission
@@ -114,17 +119,26 @@ async def retrieve_meeting_by_id(id: str, clerk_user_id: str) -> dict | MessageE
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_meeting_by_slug(slug: str) -> dict | MessageException:
+async def retrieve_meeting_by_slug(slug: str, clerk_user_id: str) -> dict | MessageException:
     """
     Retrieve a meeting by meeting slug
     :param slug: str
     :return: dict
     """
     try:
-        meeting = await meeting_collection.find_one({"slug": slug})
-        if not meeting:
-            raise MessageException("Meeting not found", 
-                                   status.HTTP_404_NOT_FOUND)
+        query_params = {
+            "slug": slug
+        }
+        meeting_permission = await is_meeting_permission(query_params,
+                                                         clerk_user_id, 
+                                                         return_item=True)
+        if isinstance(meeting_permission, MessageException):
+            return meeting_permission
+        
+        meeting, permission = meeting_permission
+        if not permission:
+            raise MessageException("You are not allowed to access this meeting", 
+                                   status.HTTP_403_FORBIDDEN)
         return meeting_helper(meeting)
     except MessageException as e:
         return e
