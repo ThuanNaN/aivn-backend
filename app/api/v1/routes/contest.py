@@ -298,7 +298,13 @@ async def create_submission(exam_id: str,
             inngest.Event(
                 name="contest/certificate",
                 id=f"certificate-{validation_id}",
-                data=certificate_data
+                data={
+                    "user_info": {
+                        "fullname": user_info["fullname"],
+                        "email": user_info["email"]
+                    },
+                    "certificate_info": certificate_data
+                }
             )
         )
 

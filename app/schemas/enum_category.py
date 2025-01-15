@@ -9,6 +9,13 @@ class DifficultyEnum(Enum):
     def get_list(cls) -> list[str]:
         return [difficulty.value for difficulty in cls]
 
+
+certificate_map = {
+    "foundation": "Math, Programming, and Data Science",
+    "basic_deep_learning": "Basic Deep Learning",
+    "deep_neural_network": "Deep Neural Networks"
+}
+
 class CertificateEnum(Enum):
     """
     Enum class for Certificate Template
@@ -21,3 +28,8 @@ class CertificateEnum(Enum):
     @classmethod
     def get_list(cls) -> list[str]:
         return [certificate_type.value for certificate_type in cls]
+    
+    @classmethod
+    def get_certificate_name(cls, certificate_type: str) -> str:
+        return certificate_map.get(certificate_type)
+
