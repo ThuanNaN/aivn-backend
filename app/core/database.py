@@ -16,6 +16,7 @@ try:
     logger.info("Connected to MongoDB")
 except Exception as e:
     logger.error(f"An error occurred while trying to connect to MongoDB: {e}")
+    exit(1)
 
 
 try:
