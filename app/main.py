@@ -4,6 +4,9 @@ from app.core.middleware import LogProcessAndTime
 from app.core.config import settings
 from app.api.v1 import router as v1_router
 from prometheus_fastapi_instrumentator import Instrumentator
+import inngest.fast_api
+from app.inngest.client import inngest_client
+from app.inngest.functions import inngest_functions
 
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
@@ -26,3 +29,6 @@ instrumentator = Instrumentator().instrument(app)
 @app.on_event("startup")
 async def _startup():
     instrumentator.expose(app)
+
+# Serve the Inngest endpoint
+inngest.fast_api.serve(app, inngest_client, inngest_functions)
