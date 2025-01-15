@@ -327,11 +327,17 @@ async def get_meeting_by_slug(slug: str, clerk_user_id: str = Depends(is_authent
             status_code=meeting_data.status_code,
             detail=meeting_data.message
         )
-    documents = [document_helper(document) for document in meeting_data["documents"]]
+    
+    documents = await retrieve_document_by_meeting_id(meeting_data["id"])
+    if isinstance(documents, MessageException):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(documents)
+        )
     meeting_data["documents"] = documents
 
     return DictResponseModel(
-        data=meeting_helper(meeting_data[0]),
+        data=meeting_data,
         message="Meeting retrieved successfully",
         code=status.HTTP_200_OK
     )
