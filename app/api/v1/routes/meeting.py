@@ -20,6 +20,7 @@ from app.api.v1.controllers.meeting import (
     add_meeting,
     retrieve_meeting_by_pipeline,
     retrieve_meeting_by_id,
+    retrieve_meeting_by_slug,
     meeting_slug_is_unique,
     retrieve_upcoming_meeting_by_pipeline,
     update_meeting,
@@ -312,6 +313,25 @@ async def get_meeting_by_id(id: str, clerk_user_id: str = Depends(is_authenticat
 
     return DictResponseModel(
         data=meeting_data,
+        message="Meeting retrieved successfully",
+        code=status.HTTP_200_OK
+    )
+
+
+@router.get("/slug/{slug}",
+            description="Retrieve a meeting by meeting slug")
+async def get_meeting_by_slug(slug: str, clerk_user_id: str = Depends(is_authenticated)):
+    meeting_data = await retrieve_meeting_by_slug(slug, clerk_user_id)
+    if isinstance(meeting_data, MessageException):
+        raise HTTPException(
+            status_code=meeting_data.status_code,
+            detail=meeting_data.message
+        )
+    documents = [document_helper(document) for document in meeting_data["documents"]]
+    meeting_data["documents"] = documents
+
+    return DictResponseModel(
+        data=meeting_helper(meeting_data[0]),
         message="Meeting retrieved successfully",
         code=status.HTTP_200_OK
     )
