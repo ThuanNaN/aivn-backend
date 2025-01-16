@@ -12,9 +12,10 @@ def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
                   openapi_url=settings.OPENAPI_URL,
                   docs_url=settings.DOCS_URL)
+    allow_origins = [settings.FRONTEND_URL] if settings.ENV_TYPE == "production" else ["*"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.FRONTEND_URL,
+        allow_origins=allow_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
