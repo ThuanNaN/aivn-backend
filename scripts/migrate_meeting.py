@@ -2,6 +2,7 @@ from app.core.database import mongo_db
 import asyncio
 from tqdm.asyncio import tqdm
 from pymongo import UpdateOne
+from slugify import slugify
 
 try:
     meeting_collection = mongo_db["meetings"]
@@ -117,15 +118,17 @@ async def add_slug_field():
     operators = []
     with tqdm(total=len(all_meeting_data)) as pbar:
         for index, meeting_data in enumerate(all_meeting_data):
+            slug = slugify(meeting_data['title'])
             operators.append(UpdateOne(
                 {"_id": meeting_data["_id"]},
                 {"$set": {
-                    "slug": ""
+                    "slug": slugify("meeting_data['title']")
                 }}
             ))
             pbar.update(1)
     if operators:
         await meeting_collection.bulk_write(operators)
+
     print("Done")
 
 if __name__ == "__main__":
