@@ -122,7 +122,7 @@ async def add_slug_field():
             operators.append(UpdateOne(
                 {"_id": meeting_data["_id"]},
                 {"$set": {
-                    "slug": slugify("meeting_data['title']")
+                    "slug": slugify(meeting_data['title'])
                 }}
             ))
             pbar.update(1)
