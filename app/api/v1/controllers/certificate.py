@@ -34,6 +34,14 @@ async def add_certificate(certificate_data: dict) -> dict:
     :return: dict
     """
     try:
+        # Check the certificate is exist
+        certificate = await certificate_collection.find_one({
+            "submission_id": certificate_data["submission_id"],
+            "clerk_user_id": certificate_data["clerk_user_id"]
+        })
+        if certificate:
+            return certificate_helper(certificate)
+        
         certificate = await certificate_collection.insert_one(certificate_data)
         new_certificate = await certificate_collection.find_one({"_id": certificate.inserted_id})
         return certificate_helper(new_certificate)
