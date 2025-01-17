@@ -3,12 +3,14 @@ from app.utils import utc_to_local, MessageException, Logger
 from fastapi import status
 from app.core.database import mongo_client, mongo_db
 from bson.objectid import ObjectId
+from datetime import datetime, UTC
 
 
 logger = Logger("controllers/submission", log_file="submission.log")
 
 try:
     submission_collection = mongo_db["submissions"]
+    draft_submission_collection = mongo_db["draft-submissions"]
     retake_collection = mongo_db["retake"]
     timer_collection = mongo_db["timer"]
     certificate_collection = mongo_db["certificate"]
@@ -231,6 +233,53 @@ async def update_submission(id: str,
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when update submission",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+async def upsert_draft_submission(draft_submission_data: dict
+                                  ) -> dict | bool | MessageException:
+    """
+    Upsert a draft submission with a matching ID
+    :param draft_id: str
+    :param submission_data: dict
+    :return: dict
+    """
+    try:        
+        draft_submission_data["exam_id"] = ObjectId(draft_submission_data["exam_id"])
+        draft_submission_data["clerk_user_id"] = draft_submission_data["clerk_user_id"]
+        retake_id = draft_submission_data.get("retake_id", None)
+        if retake_id is not None:
+            draft_submission_data["retake_id"] = ObjectId(retake_id)
+
+        draft_submission = await draft_submission_collection.update_one(
+            {
+                "exam_id": draft_submission_data["exam_id"], 
+                "clerk_user_id": draft_submission_data["clerk_user_id"], 
+                "retake_id": draft_submission_data["retake_id"]
+            }, 
+            {
+                "$set": draft_submission_data,
+                "$setOnInsert": {"created_at": datetime.now(UTC)}
+            },
+            upsert=True
+        )
+        if draft_submission.upserted_id:
+            return {
+                "detail": "Draft submission created",
+            }
+        if draft_submission.modified_count == 0:
+            raise MessageException("Error when update draft submission",
+                                   status.HTTP_400_BAD_REQUEST)
+        return {
+            "detail": "Draft submission updated",
+        }
+    except MessageException as e:
+        return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        return MessageException("Error when update draft submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 async def delete_submission(id: str) -> bool:

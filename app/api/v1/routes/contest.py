@@ -11,6 +11,7 @@ from fastapi import (
     APIRouter, Depends, 
     status, HTTPException
 )
+from fastapi.responses import JSONResponse
 from app.api.v1.controllers.contest import (
     add_contest,
     retrieve_contests,
@@ -38,6 +39,7 @@ from app.api.v1.controllers.run_code import (
 )
 from app.api.v1.controllers.submission import (
     update_submission,
+    upsert_draft_submission,
     retrieve_submission_by_id_user_retake
 )
 from app.api.v1.controllers.certificate import (
@@ -318,6 +320,73 @@ async def create_submission(exam_id: str,
         message="Submission added successfully.",
         code=status.HTTP_201_CREATED)
     
+
+
+@router.put("/exam/{exam_id}/upsert",
+             description="Upsert the draft version of problems to a contest")
+async def upsert_submission(exam_id: str,
+                            submission_data: SubmissionSchema,
+                            clerk_user_id: str = Depends(is_authenticated)):
+    # Check the exam still open (is active)
+    exam_info = await retrieve_exam(exam_id, clerk_user_id)
+    if isinstance(exam_info, MessageException):
+        raise HTTPException(
+            status_code=exam_info.status_code,
+            detail=exam_info.message
+        )
+    if exam_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The exam is not active."
+        )
+    # Check the contest still open (is active)
+    contest_info = await retrieve_contest(exam_info["contest_id"], clerk_user_id)
+    if isinstance(contest_info, MessageException):
+        raise HTTPException(
+            status_code=contest_info.status_code,
+            detail=contest_info.message
+        )
+    if contest_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The contest is not active."
+        )
+    # Check the user is allowed to submit
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, MessageException):
+        raise HTTPException(
+            status_code=user_info.status_code,
+            detail=user_info.message
+        )
+    if not cohort_permission(user_info["cohort"], contest_info["cohorts"]):
+        raise HTTPException(
+            detail="You are not allowed to submit this exam.",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+    submitted_problems: List[SubmittedProblem] = submission_data.submitted_problems
+    if submitted_problems is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Submitted problems are required."
+        )
+    upsert_data = {
+        "exam_id": exam_id,
+        "clerk_user_id": clerk_user_id,
+        "retake_id": submission_data.retake_id,
+        "submitted_problems": [sub.model_dump() for sub in submitted_problems],
+        "updated_at": datetime.now(UTC)
+    }
+    upsert_data = await upsert_draft_submission(upsert_data)
+    if isinstance(upsert_data, MessageException):
+        raise HTTPException(
+            status_code=upsert_data.status_code,
+            detail=upsert_data.message
+        )
+    return JSONResponse(
+        content=upsert_data,
+        status_code=status.HTTP_200_OK
+    )
+
 
 @router.get("/contests",
             dependencies=[Depends(is_admin)],
