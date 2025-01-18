@@ -8,6 +8,7 @@ from app.api.v1.controllers.certificate import (
 )
 from app.schemas.enum_category import CertificateEnum
 from app.core.config import settings
+from app.utils import MessageException
 
 resend.api_key = settings.RESEND_API_KEY
 
@@ -30,6 +31,8 @@ async def create_certificate(ctx: inngest.Context,
         "step-create-certificate", 
         lambda: add_certificate(certificate_info)
     )
+    if isinstance(create_cer, MessageException):
+        raise create_cer
 
     # Send email to user for notification about certificate
     user_info = ctx.event.data["user_info"]
