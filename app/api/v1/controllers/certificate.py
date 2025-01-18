@@ -27,7 +27,7 @@ def certificate_helper(certificate) -> dict:
     }
 
 
-async def add_certificate(certificate_data: dict) -> dict:
+async def add_certificate(certificate_data: dict, error_dict=False) -> dict:
     """
     Create a new certificate
     :param certificate_data: dict
@@ -47,8 +47,14 @@ async def add_certificate(certificate_data: dict) -> dict:
         return certificate_helper(new_certificate)
     except:
         logger.error(f"{traceback.format_exc()}")
-        return MessageException("Error when add certificate", 
-                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+        msg = "Error when add certificate"
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        if error_dict:
+            return {
+                "message": msg,
+                "status_code": status_code
+            }
+        return MessageException(msg, status_code)
     
 
 async def retrieve_certificates() -> list[dict]:
