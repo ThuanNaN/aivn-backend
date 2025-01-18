@@ -8,6 +8,9 @@ from app.utils import (
 )
 from fastapi import status
 from bson.objectid import ObjectId
+import inngest
+from app.inngest.client import inngest_client
+
 
 logger = Logger("controllers/timer", log_file="timer.log")
 
@@ -46,7 +49,7 @@ def ObjectId_helper(timer: dict) -> dict:
     return timer
 
 
-async def add_timer(timer_data: dict) -> dict | MessageException:
+async def add_timer(timer_data_input: dict) -> dict | MessageException:
     """
     Check some things before adding a timer:
     - Check if exam is active
@@ -69,7 +72,7 @@ async def add_timer(timer_data: dict) -> dict | MessageException:
     
     """
     try:
-        timer_data = ObjectId_helper(timer_data)
+        timer_data = ObjectId_helper(timer_data_input)
         exam_id = timer_data["exam_id"]
         retake_id = timer_data["retake_id"]
         clerk_user_id = timer_data["clerk_user_id"]
@@ -124,20 +127,40 @@ async def add_timer(timer_data: dict) -> dict | MessageException:
         inserted_timer = await timer_collection.insert_one(timer_data)
         new_timer = await timer_collection.find_one({"_id": inserted_timer.inserted_id})
 
-
-        # Add a pseudo submission
-        pseudo_submission_data = {
-            "exam_id": exam_id,
-            "clerk_user_id": clerk_user_id,
-            "retake_id": retake_id,
-            "submitted_problems": None,
-            "total_score": 0,
-            "max_score": 0,
-            "total_problems": 0,
-            "total_problems_passed": 0,
-            "created_at": datetime.now(UTC)
-        }
-        await submission_collection.insert_one(pseudo_submission_data)
+        str_exam_id = str(exam_info['_id'])
+        str_retake_id = str(timer_data_input["retake_id"]) if timer_data_input["retake_id"] else None
+        # Send event to inngest
+        await inngest_client.send(
+            inngest.Event(
+                name="contest/submission",
+                id=f"submission-{str_exam_id}-{clerk_user_id}",
+                data={
+                    "submission_info": {
+                        "exam_id": str_exam_id,
+                        "clerk_user_id": clerk_user_id,
+                        "retake_id": str_retake_id,
+                        "submitted_problems": None,
+                        "total_score": 0,
+                        "max_score": 0,
+                        "total_problems": 0,
+                        "total_problems_passed": 0,
+                        "created_at": datetime.now(UTC).isoformat()
+                    },
+                    "exam_info": {
+                        "id": str_exam_id,
+                        "duration": exam_info["duration"],
+                    },
+                    "contest_info": {
+                        "id": str(contest_info["_id"]),
+                        "certificate_template": contest_info["certificate_template"]
+                    },
+                    "user_info": {
+                        "fullname": user_info["fullname"] if "fullname" in user_info else user_info["username"],
+                        "email": user_info["email"]
+                    }
+                }
+            )
+        )
 
         return timer_helper(new_timer)
     except MessageException as e:

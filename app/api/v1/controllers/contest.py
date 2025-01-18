@@ -1,3 +1,4 @@
+from typing import List
 import traceback
 from app.utils import (
     MessageException,
@@ -18,6 +19,16 @@ from app.api.v1.controllers.exam_problem import (
 )
 from app.api.v1.controllers.retake import (
     retrieve_retakes_by_user_exam_id
+)
+from app.api.v1.controllers.run_code import (
+    run_testcases
+)
+from app.api.v1.controllers.problem import (
+    retrieve_problem
+)
+from app.schemas.submission import (
+    SubmittedProblem,
+    SubmittedResult,
 )
 
 logger = Logger("controllers/contest", log_file="contest.log")
@@ -296,3 +307,103 @@ async def delete_contest(id: str) -> bool:
         logger.error(f"{traceback.format_exc()}")
         return MessageException("Error when delete contest",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def submission_result(submitted_problems: List[SubmittedProblem], error_dict: bool = False):
+    try:
+        TOTAL_SCORE = 0
+        MAX_SCORE = 0
+        TOTAL_PASSED = 0
+        if submitted_problems is None:
+            submitted_results = None
+        else:
+            submitted_results = []
+            for submitted_problem in submitted_problems:
+                problem_id = submitted_problem.problem_id
+                problem_info = await retrieve_problem(problem_id, full_return=True)
+                if isinstance(problem_info, MessageException):
+                    if error_dict:
+                        return {
+                            "status_code": problem_info.status_code,
+                            "message": problem_info.message
+                        }
+                    return problem_info
+                MAX_SCORE += problem_info["problem_score"]
+                submitted_code = submitted_problem.submitted_code
+                public_results, private_results = None, None
+                if submitted_code is not None:
+                    admin_template = problem_info.get("admin_template", "")
+                    public_testcases = problem_info.get("public_testcases", [])
+                    private_testcases = problem_info.get("private_testcases", [])
+
+                    public_results, is_pass_public = await run_testcases(
+                        admin_template,
+                        submitted_code,
+                        public_testcases
+                    )
+                    private_results, is_pass_private = await run_testcases(
+                        admin_template,
+                        submitted_code,
+                        private_testcases
+                    )
+                    is_pass_problem = is_pass_public and is_pass_private
+                    if is_pass_problem:
+                        TOTAL_SCORE += problem_info["problem_score"]
+                        TOTAL_PASSED += 1 
+
+                submitted_choice = submitted_problem.submitted_choice
+                if submitted_choice is not None:
+                    choice_answers = submitted_choice.split(",")  # -> ["id_1", "id_2"]
+                    true_answers_id = [str(choice["choice_id"])
+                                    for choice in problem_info["choices"]
+                                    if choice["is_correct"]]
+
+                    if len(choice_answers) != len(true_answers_id):
+                        is_pass_problem = False
+                    else:
+                        is_pass_problem = sorted(
+                            choice_answers) == sorted(true_answers_id)
+                    
+                    if is_pass_problem:
+                        TOTAL_SCORE += problem_info["problem_score"]
+                        TOTAL_PASSED += 1
+
+                for choice in problem_info["choices"]:
+                    choice["choice_id"] = str(choice["choice_id"])
+                
+                submitted_results.append(
+                    SubmittedResult(
+                        problem_id=problem_id,
+                        submitted_code=submitted_code,
+                        submitted_choice=submitted_choice,
+                        title=problem_info["title"],
+                        description=problem_info["description"],
+                        public_testcases_results=public_results,
+                        private_testcases_results=private_results,
+                        choice_results=problem_info["choices"],
+                        is_pass_problem=is_pass_problem
+                    ).model_dump()
+                )
+    except MessageException as e:
+        if error_dict:
+            return {
+                "status_code": e.status_code,
+                "message": e.message
+            }
+        return e
+    except:
+        logger.error(f"Error when compute the result of the submission: {e}")
+        if error_dict:
+            return {
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error when compute the result of the submission."
+            }
+        return MessageException("Error when compute the result of the submission.",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return {
+            "submitted_results": submitted_results,
+            "total_score": TOTAL_SCORE,
+            "max_score": MAX_SCORE,
+            "total_passed": TOTAL_PASSED
+        }

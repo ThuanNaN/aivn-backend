@@ -35,6 +35,18 @@ def submission_helper(submission) -> dict:
         "created_at": utc_to_local(submission["created_at"]),
     }
 
+def draft_submission_helper(submission) -> dict:
+    retake_id = submission.get("retake_id", None)
+    retake_id = str(retake_id) if retake_id else None
+    return {
+        "id": str(submission["_id"]),
+        "exam_id": str(submission["exam_id"]),
+        "clerk_user_id": submission["clerk_user_id"],
+        "retake_id": retake_id,
+        "submitted_problems": submission["submitted_problems"],
+        "updated_at": utc_to_local(submission["created_at"]),
+    }
+
 
 def ObjectId_helper(submission: dict) -> dict:
     retake_id = submission.get("retake_id", None)
@@ -56,7 +68,7 @@ def update_helper(submission: dict) -> dict:
     return submission
 
 
-async def add_submission(submission_data: dict) -> dict:
+async def add_submission(submission_data: dict, error_dict=False) -> dict:
     """
     Create a new submission in the database
     :param submission_data: dict
@@ -71,8 +83,14 @@ async def add_submission(submission_data: dict) -> dict:
         return submission_helper(new_submission)
     except:
         logger.error(f"{traceback.format_exc()}")
-        return MessageException("Error when add submission",
-                                status.HTTP_500_INTERNAL_SERVER_ERROR)
+        msg = "Error when add submission"
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        if error_dict:
+            return {
+                "message": msg,
+                "status_code": status_code
+            }
+        return MessageException(msg, status_code)
 
 
 async def retrieve_submissions() -> list:
@@ -171,7 +189,8 @@ async def retrieve_submission_by_exam_user_id(exam_id: str,
 async def retrieve_submission_by_id_user_retake(exam_id: str,
                                                 retake_id: str | None,
                                                 clerk_user_id: str,
-                                                check_none: bool = True
+                                                check_none: bool = True,
+                                                error_dict: bool = False
                                                 ) -> bool | dict | MessageException:
     """
     Retrieve a submission by exam ID, retake ID and user ID
@@ -192,21 +211,37 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
             }
         )
         if not submission:
+            if error_dict:
+                return {
+                    "message": "Submission not found",
+                    "status_code": status.HTTP_404_NOT_FOUND
+                }
             raise MessageException("Submission not found",
                                    status.HTTP_404_NOT_FOUND)
         if check_none and submission["submitted_problems"] is None:
             return False
         return submission_helper(submission)
     except MessageException as e:
+        if error_dict:
+            return {
+                "message": e.message,
+                "status_code": e.status_code
+            }
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
+        if error_dict:
+            return {
+                "message": "Error when retrieve submission",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+            }
         return MessageException("Error when retrieve submission",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def update_submission(id: str, 
-                            submission_data: dict
+                            submission_data: dict,
+                            error_dict: bool = False
                             ) -> dict | bool | MessageException:
     """
     Update a submission with a matching ID
@@ -216,6 +251,11 @@ async def update_submission(id: str,
     """
     try:
         if len(submission_data) < 1:
+            if error_dict:
+                return {
+                    "message": "No data to update",
+                    "status_code": status.HTTP_400_BAD_REQUEST
+                }
             raise MessageException("No data to update", 
                                    status.HTTP_400_BAD_REQUEST)
 
@@ -224,13 +264,28 @@ async def update_submission(id: str,
             {"_id": ObjectId(id)}, {"$set": submission_data}
         )
         if updated_submission.modified_count == 0:
+            if error_dict:
+                return {
+                    "message": "Error when update submission",
+                    "status_code": status.HTTP_400_BAD_REQUEST
+                }
             raise MessageException("Error when update submission",
                                    status.HTTP_400_BAD_REQUEST)
         return True
     except MessageException as e:
+        if error_dict:
+            return {
+                "message": e.message,
+                "status_code": e.status_code
+            }
         return e
     except:
         logger.error(f"{traceback.format_exc()}")
+        if error_dict:
+            return {
+                "message": "Error when update submission",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+            }
         return MessageException("Error when update submission",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -280,6 +335,58 @@ async def upsert_draft_submission(draft_submission_data: dict
         return MessageException("Error when update draft submission",
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+async def retrieve_draft_submission(exam_id: str,
+                                    retake_id: str | None,
+                                    clerk_user_id: str,
+                                    check_none: bool = True,
+                                    error_dict: bool = False
+                                    ) -> bool | dict | MessageException:
+    """
+    Retrieve a submission by exam ID, retake ID and user ID
+    :param exam_id: str
+    :param retake_id: str
+    :param clerk_user_id: str
+    :return dict
+    """
+    try:
+        if retake_id is not None:
+            retake_id = ObjectId(retake_id)
+
+        submission = await draft_submission_collection.find_one(
+            {
+                "exam_id": ObjectId(exam_id),
+                "retake_id": retake_id,
+                "clerk_user_id": clerk_user_id
+            }
+        )
+        if not submission:
+            if error_dict:
+                return {
+                    "message": "Submission not found",
+                    "status_code": status.HTTP_404_NOT_FOUND
+                }
+            raise MessageException("Submission not found",
+                                   status.HTTP_404_NOT_FOUND)
+        if check_none and submission["submitted_problems"] is None:
+            return False # TODO check this logic is used for what
+        return draft_submission_helper(submission)
+    except MessageException as e:
+        if error_dict:
+            return {
+                "message": e.message,
+                "status_code": e.status_code
+            }
+        return e
+    except:
+        logger.error(f"{traceback.format_exc()}")
+        if error_dict:
+            return {
+                "message": "Error when retrieve submission",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+            }
+        return MessageException("Error when retrieve submission",
+                                status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 async def delete_submission(id: str) -> bool:
