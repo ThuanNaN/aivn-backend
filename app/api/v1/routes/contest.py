@@ -11,6 +11,7 @@ from fastapi import (
     APIRouter, Depends, 
     status, HTTPException
 )
+from fastapi.responses import JSONResponse
 from app.api.v1.controllers.contest import (
     add_contest,
     retrieve_contests,
@@ -20,24 +21,20 @@ from app.api.v1.controllers.contest import (
     delete_contest,
     retrieve_available_contests,
     retrieve_contest_by_slug,
-    contest_slug_is_unique
+    contest_slug_is_unique,
+    submission_result
 )
 from app.api.v1.controllers.exam import (
     retrieve_exam
-)
-from app.api.v1.controllers.problem import (
-    retrieve_problem
 )
 from app.api.v1.controllers.exam_problem import (
     add_exam_problem,
     retrieve_by_exam_problem_id,
     delete_exam_problem
 )
-from app.api.v1.controllers.run_code import (
-    run_testcases
-)
 from app.api.v1.controllers.submission import (
     update_submission,
+    upsert_draft_submission,
     retrieve_submission_by_id_user_retake
 )
 from app.api.v1.controllers.certificate import (
@@ -174,77 +171,12 @@ async def create_submission(exam_id: str,
         )
     
     submitted_problems: List[SubmittedProblem] | None = submission_data.submitted_problems
-
-    if submitted_problems is None:
-        submitted_results = None
-    else:
-        submitted_results = []
-        TOTAL_SCORE = 0
-        MAX_SCORE = 0
-        TOTAL_PASSED = 0
-        for submitted_problem in submitted_problems:
-            problem_id = submitted_problem.problem_id
-            problem_info = await retrieve_problem(problem_id, full_return=True)
-            if isinstance(problem_info, MessageException):
-                return HTTPException(
-                    status_code=problem_info.status_code,
-                    detail=problem_info.message
-                )
-            MAX_SCORE += problem_info["problem_score"]
-            submitted_code = submitted_problem.submitted_code
-            public_results, private_results = None, None
-            if submitted_code is not None:
-                admin_template = problem_info.get("admin_template", "")
-                public_testcases = problem_info.get("public_testcases", [])
-                private_testcases = problem_info.get("private_testcases", [])
-
-                public_results, is_pass_public = await run_testcases(
-                    admin_template,
-                    submitted_code,
-                    public_testcases
-                )
-
-                private_results, is_pass_private = await run_testcases(
-                    admin_template,
-                    submitted_code,
-                    private_testcases
-                )
-
-                is_pass_problem = is_pass_public and is_pass_private
-                if is_pass_problem:
-                    TOTAL_SCORE += problem_info["problem_score"]
-                    TOTAL_PASSED += 1 
-
-            submitted_choice = submitted_problem.submitted_choice
-            if submitted_choice is not None:
-                choice_answers = submitted_choice.split(",")  # -> ["id_1", "id_2"]
-                true_answers_id = [str(choice["choice_id"])
-                                for choice in problem_info["choices"]
-                                if choice["is_correct"]]
-
-                if len(choice_answers) != len(true_answers_id):
-                    is_pass_problem = False
-                else:
-                    is_pass_problem = sorted(
-                        choice_answers) == sorted(true_answers_id)
-                
-                if is_pass_problem:
-                    TOTAL_SCORE += problem_info["problem_score"]
-                    TOTAL_PASSED += 1
-
-            submitted_results.append(
-                SubmittedResult(
-                    problem_id=problem_id,
-                    submitted_code=submitted_code,
-                    submitted_choice=submitted_choice,
-                    title=problem_info["title"],
-                    description=problem_info["description"],
-                    public_testcases_results=public_results,
-                    private_testcases_results=private_results,
-                    choice_results=problem_info["choices"],
-                    is_pass_problem=is_pass_problem
-                )
-            )
+    exam_results = await submission_result(submitted_problems)
+    if isinstance(exam_results, MessageException):
+        raise HTTPException(
+            status_code=exam_results.status_code,
+            detail=exam_results.message
+        )
 
     # Upsert submission to database
     pseudo_submission = await retrieve_submission_by_id_user_retake(exam_id=exam_id,
@@ -259,11 +191,11 @@ async def create_submission(exam_id: str,
 
     upsert_submission = UpdateSubmissionDB(
         retake_id=submission_data.retake_id,
-        submitted_problems=submitted_results,
-        total_score=TOTAL_SCORE,
-        max_score=MAX_SCORE,
+        submitted_problems=[SubmittedResult(**prob) for prob in exam_results["submitted_results"]],
+        total_score=exam_results["total_score"],
+        max_score=exam_results["max_score"],
         total_problems=len(submitted_problems),
-        total_problems_passed=TOTAL_PASSED,
+        total_problems_passed=exam_results["total_passed"],
         created_at=datetime.now(UTC)
     ).model_dump()
 
@@ -276,8 +208,8 @@ async def create_submission(exam_id: str,
         )
     
     if (contest_info["certificate_template"] is not None 
-    and MAX_SCORE > 0 
-    and TOTAL_SCORE / MAX_SCORE >= 0.5):
+    and exam_results["max_score"] > 0 
+    and exam_results["total_score"] / exam_results["max_score"] >= 0.5):
         validation_id = generate_id()
         # Check if validation_id is exist
         while await retrieve_certificate_by_validation_id(validation_id):
@@ -288,7 +220,7 @@ async def create_submission(exam_id: str,
             validation_id=validation_id,
             clerk_user_id=clerk_user_id,
             submission_id=pseudo_submission["id"],
-            result_score=f"{TOTAL_SCORE}/{MAX_SCORE}",
+            result_score=f"{exam_results['total_score']}/{exam_results['max_score']}",
             template=contest_info["certificate_template"],
             created_at=datetime.now(UTC).isoformat()
         ).model_dump()
@@ -310,14 +242,81 @@ async def create_submission(exam_id: str,
 
     return DictResponseModel(
         data={
-            "total_score": TOTAL_SCORE,
-            "max_score": MAX_SCORE,
+            "total_score": exam_results["total_score"],
+            "max_score": exam_results["max_score"],
             "total_problems": len(submitted_problems),
-            "total_problems_passed": TOTAL_PASSED
+            "total_problems_passed": exam_results["total_passed"]
         },
         message="Submission added successfully.",
         code=status.HTTP_201_CREATED)
     
+
+
+@router.put("/exam/{exam_id}/upsert",
+             description="Upsert the draft version of problems to a contest")
+async def upsert_submission(exam_id: str,
+                            submission_data: SubmissionSchema,
+                            clerk_user_id: str = Depends(is_authenticated)):
+    # Check the exam still open (is active)
+    exam_info = await retrieve_exam(exam_id, clerk_user_id)
+    if isinstance(exam_info, MessageException):
+        raise HTTPException(
+            status_code=exam_info.status_code,
+            detail=exam_info.message
+        )
+    if exam_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The exam is not active."
+        )
+    # Check the contest still open (is active)
+    contest_info = await retrieve_contest(exam_info["contest_id"], clerk_user_id)
+    if isinstance(contest_info, MessageException):
+        raise HTTPException(
+            status_code=contest_info.status_code,
+            detail=contest_info.message
+        )
+    if contest_info["is_active"] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The contest is not active."
+        )
+    # Check the user is allowed to submit
+    user_info = await retrieve_user(clerk_user_id)
+    if isinstance(user_info, MessageException):
+        raise HTTPException(
+            status_code=user_info.status_code,
+            detail=user_info.message
+        )
+    if not cohort_permission(user_info["cohort"], contest_info["cohorts"]):
+        raise HTTPException(
+            detail="You are not allowed to submit this exam.",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+    submitted_problems: List[SubmittedProblem] = submission_data.submitted_problems
+    if submitted_problems is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Submitted problems are required."
+        )
+    upsert_data = {
+        "exam_id": exam_id,
+        "clerk_user_id": clerk_user_id,
+        "retake_id": submission_data.retake_id,
+        "submitted_problems": [sub.model_dump() for sub in submitted_problems],
+        "updated_at": datetime.now(UTC)
+    }
+    upsert_data = await upsert_draft_submission(upsert_data)
+    if isinstance(upsert_data, MessageException):
+        raise HTTPException(
+            status_code=upsert_data.status_code,
+            detail=upsert_data.message
+        )
+    return JSONResponse(
+        content=upsert_data,
+        status_code=status.HTTP_200_OK
+    )
+
 
 @router.get("/contests",
             dependencies=[Depends(is_admin)],
