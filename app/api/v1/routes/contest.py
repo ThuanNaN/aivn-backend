@@ -212,8 +212,11 @@ async def create_submission(exam_id: str,
     and exam_results["total_score"] / exam_results["max_score"] >= 0.5):
         validation_id = generate_id()
         # Check if validation_id is exist
+        start_time = datetime.now(UTC)
         while await retrieve_certificate_by_validation_id(validation_id):
             validation_id = generate_id()
+        end_time = datetime.now(UTC)
+        logger.info(f"Generate validation_id in {end_time - start_time}")
 
         # Create a new certificate
         certificate_data = CertificateDB(
@@ -225,7 +228,7 @@ async def create_submission(exam_id: str,
             created_at=datetime.now(UTC).isoformat()
         ).model_dump()
 
-        # Send event to inngest
+        # Send event create certificate and email to inngest
         await inngest_client.send(
             inngest.Event(
                 name="contest/certificate",
@@ -240,6 +243,25 @@ async def create_submission(exam_id: str,
             )
         )
 
+        # Send cancel timeout submit and delete draft submission event to inngest
+        await inngest_client.send([
+            inngest.Event(
+                name="exam/submited",
+                id=f"exam-submited-{pseudo_submission['id']}",
+                data={
+                    "submission_info": updated_submission,
+                }
+            ),
+            inngest.Event(
+                name="exam/delete-draft-submission",
+                id=f"delete-draft-{updated_submission['id']}",
+                data={
+                    "submission_info": updated_submission,
+                }
+            )
+        ])
+
+        
     return DictResponseModel(
         data={
             "total_score": exam_results["total_score"],
