@@ -69,6 +69,25 @@ def whitelist_helper(user) -> dict:
     }
 
 
+async def find_missing_attend_id(user_collection) -> str:
+    """
+    Find the smallest missing attend_id in the user collection
+    :param user_collection: collection
+    :return: str
+    """
+    cursor = user_collection.find({}, {"attend_id": 1})
+    attend_ids = set()  # Use a set for faster lookup
+
+    async for user in cursor:
+        attend_ids.add(user["attend_id"])
+
+    missing_attend_ids = "0".zfill(4)
+    while missing_attend_ids in attend_ids:
+        missing_attend_ids = str(int(missing_attend_ids) + 1).zfill(4)
+
+    return missing_attend_ids
+
+
 async def add_user(user_data: dict) -> dict:
     """
     Create a new user
@@ -76,8 +95,7 @@ async def add_user(user_data: dict) -> dict:
     :return: dict
     """
     try:
-        all_user = await user_collection.find().to_list(length=None)
-        attend_id = str(len(all_user)).zfill(4)
+        attend_id = await find_missing_attend_id(user_collection)
         user_data["attend_id"] = attend_id
         user = await user_collection.insert_one(user_data)
         new_user = await user_collection.find_one({"_id": user.inserted_id})
