@@ -78,13 +78,14 @@ async def add_contest(contest_data: dict) -> dict:
 
 async def retrieve_contests() -> list[dict]:
     """
-    Retrieve all contests in database
+    Retrieve all contests in database, and sort by created_at
     :return: list[dict]
     """
     try:
         contests = []
         async for contest in contest_collection.find():
             contests.append(contest_helper(contest))
+        contests.sort(key=lambda x: x["created_at"], reverse=True)
         return contests
     except:
         logger.error(f"{traceback.format_exc()}")
