@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import LogProcessAndTime
@@ -8,10 +9,20 @@ import inngest.fast_api
 from app.inngest.client import inngest_client
 from app.inngest import inngest_functions
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load something
+    yield
+    # Clean up
+    pass
+
+
 def create_application() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME,
                   openapi_url=settings.OPENAPI_URL,
-                  docs_url=settings.DOCS_URL)
+                  docs_url=settings.DOCS_URL,
+                  lifespan=lifespan)
     allow_origins = [settings.FRONTEND_URL] if settings.ENV_TYPE == "production" else ["*"]
     app.add_middleware(
         CORSMiddleware,
@@ -25,11 +36,5 @@ def create_application() -> FastAPI:
     return app
 
 app = create_application()
-instrumentator = Instrumentator().instrument(app)
-
-@app.on_event("startup")
-async def _startup():
-    instrumentator.expose(app)
-
-# Serve the Inngest endpoint
+Instrumentator().instrument(app).expose(app)
 inngest.fast_api.serve(app, inngest_client, inngest_functions)
