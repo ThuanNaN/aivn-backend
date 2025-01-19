@@ -7,7 +7,6 @@ from app.inngest.client import inngest_client
 from app.schemas.enum_category import CertificateEnum
 from app.core.config import settings
 from datetime import datetime, UTC, timedelta
-from app.core.database import mongo_db
 from app.utils import Logger, generate_id
 from fastapi import status
 from app.schemas.certificate import CertificateDB
@@ -26,25 +25,14 @@ from app.api.v1.controllers.submission import (
     add_submission,
     update_submission,
     retrieve_submission_by_id_user_retake,
-    retrieve_draft_submission
+    retrieve_draft_submission,
+    delete_draft_submission
 )
 from app.api.v1.controllers.certificate import (
     retrieve_certificate_by_validation_id
 )
 from app.api.v1.controllers.contest import submission_result
-
-
 logger = Logger("inngest/functions", log_file="inngest.log")
-
-try:
-    timer_collection = mongo_db["timer"]
-    submission_collection = mongo_db["submissions"]
-    user_collection = mongo_db["users"]
-    exam_collection = mongo_db["exams"]
-    contest_collection = mongo_db["contests"]
-except Exception as e:
-    logger.error(f"Error when connect to collection: {e}")
-    exit(1)
 
 
 resend.api_key = settings.RESEND_API_KEY
@@ -129,13 +117,15 @@ async def create_pseudo_submission(ctx: inngest.Context, step: inngest.Step) -> 
     if create_submission.get("status_code") == status.HTTP_500_INTERNAL_SERVER_ERROR:
         return "Error when create submission"
     
+
+    print("create_submission", create_submission["id"])
     await step.send_event(
         "check-timeout-submission",
         events=inngest.Event(
             name="exam/submit",
             id=create_submission["id"],
             data={
-                "submission_info": ctx.event.data["submission_info"],
+                "submission_info": create_submission,
                 "exam_info": ctx.event.data["exam_info"],
                 "contest_info": ctx.event.data["contest_info"],
                 "user_info": ctx.event.data["user_info"]
@@ -145,17 +135,17 @@ async def create_pseudo_submission(ctx: inngest.Context, step: inngest.Step) -> 
     return create_submission
 
 
-
 @inngest_client.create_function(
     fn_id="timeout-submit",
     retries=1,
     trigger=inngest.TriggerEvent(event="exam/submit"),
-    # cancel=inngest.Cancel(event="exam/submited",
-    #                       if_exp=
-    #                       )
+    cancel=[
+        inngest.Cancel(event="exam/submited", 
+                       if_exp="async.data['submission_info']['id'] == event.data['submission_info']['id']")
+    ]
 )
 async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
-    # Wait for the exam duration
+    # Step 0: Wait for the exam duration
     exam_info = ctx.event.data["exam_info"]
     await step.sleep(
         "wait-to-submit",
@@ -177,7 +167,7 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
                                                status.HTTP_404_NOT_FOUND]:
         return draft_submission.get("message")
     
-    # Compute the result of the submission
+    # Step 1: Compute the result of the submission
     submitted_problems: List[SubmittedProblem] = [SubmittedProblem(**sub) for sub 
                                                   in draft_submission["submitted_problems"]]
     exam_results = await step.run(
@@ -188,7 +178,7 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
                                           status.HTTP_404_NOT_FOUND]:
         return exam_results.get("message")
 
-    # Retrieve pseudo submission
+    # Step 2: Retrieve pseudo submission
     pseudo_submission = await step.run(
         "step-retrieve-pseudo-submission",
         lambda: retrieve_submission_by_id_user_retake(
@@ -200,7 +190,7 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
                                                 status.HTTP_404_NOT_FOUND]:
         return pseudo_submission.get("message")
     
-    # Update the submission
+    # Step 3: Update the submission
     upsert_submission_data = UpdateSubmissionDB(
         retake_id=submission_info["retake_id"],
         submitted_problems=[SubmittedResult(**prob) for prob in exam_results["submitted_results"]],
@@ -218,10 +208,10 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
             upsert_submission_data
         )
     )
-    if isinstance(upsert_submission, dict):
-        return upsert_submission.get("message")
+    if "message" in upsert_submission:
+        return upsert_submission["message"]
 
-    # Check if the user passed the exam
+    # Step 4: Check if the user passed the exam
     contest_info = ctx.event.data["contest_info"]
     user_info = ctx.event.data["user_info"]
 
@@ -230,8 +220,11 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
     and exam_results["total_score"] / exam_results["max_score"] >= 0.5):
         validation_id = generate_id()
         # Check if validation_id is exist
+        start_time = datetime.now(UTC)
         while await retrieve_certificate_by_validation_id(validation_id):
             validation_id = generate_id()
+        end_time = datetime.now(UTC)
+        logger.info(f"Generate validation_id in {end_time - start_time}")
 
         # Create a new certificate
         certificate_data = CertificateDB(
@@ -257,6 +250,41 @@ async def timeout_submit(ctx: inngest.Context, step: inngest.Step) -> dict:
                 }
             )
         )
+    
+    # Step 5: Delete the draft submission
+    await inngest_client.send(
+        inngest.Event(
+            name="exam/delete-draft-submission",
+            id=f"delete-draft-{submission_info['id']}",
+            data={
+                "submission_info": submission_info,
+            }
+        )
+    )
 
     upsert_submission_data["created_at"] = upsert_submission_data["created_at"].isoformat()
     return upsert_submission_data
+
+
+@inngest_client.create_function(
+    fn_id="delete-draft-submission",
+    retries=1,
+    trigger=inngest.TriggerEvent(event="exam/delete-draft-submission"),
+)
+async def remove_draft_submission(ctx: inngest.Context, step: inngest.Step) -> dict:
+    submission_info = ctx.event.data["submission_info"]
+    delete_draft_data = {
+        "exam_id": submission_info["exam_id"],
+        "retake_id": submission_info["retake_id"],
+        "clerk_user_id": submission_info["clerk_user_id"],
+        "error_dict": True
+    }
+    delete_draft = await step.run(
+        "step-delete-draft-submission",
+        lambda: delete_draft_submission(**delete_draft_data)
+    )
+    if delete_draft.get("status_code") in [status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                           status.HTTP_400_BAD_REQUEST]:
+        return delete_draft.get("message")
+    
+    return delete_draft
