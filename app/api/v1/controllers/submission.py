@@ -242,7 +242,7 @@ async def retrieve_submission_by_id_user_retake(exam_id: str,
 async def update_submission(id: str, 
                             submission_data: dict,
                             error_dict: bool = False
-                            ) -> dict | bool | MessageException:
+                            ) -> dict | MessageException:
     """
     Update a submission with a matching ID
     :param id: str
@@ -271,7 +271,8 @@ async def update_submission(id: str,
                 }
             raise MessageException("Error when update submission",
                                    status.HTTP_400_BAD_REQUEST)
-        return True
+        new_submission = await submission_collection.find_one({"_id": ObjectId(id)})
+        return submission_helper(new_submission)
     except MessageException as e:
         if error_dict:
             return {
@@ -421,3 +422,50 @@ async def delete_submission(id: str) -> bool:
                                     status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return True
+
+
+async def delete_draft_submission(exam_id: str,
+                                  retake_id: str | None,
+                                  clerk_user_id: str,
+                                  error_dict: bool = False
+                                  ) -> bool:
+        """
+        Delete a draft submission with a matching ID
+        :param exam_id: str
+        :param retake_id: str
+        :param clerk_user_id: str
+        :return: bool
+        """
+        try:
+            if retake_id is not None:
+                retake_id = ObjectId(retake_id)
+    
+            draft_submission = await draft_submission_collection.delete_one(
+                {
+                    "exam_id": ObjectId(exam_id),
+                    "retake_id": retake_id,
+                    "clerk_user_id": clerk_user_id
+                }
+            )
+            if draft_submission.deleted_count == 0:
+                raise MessageException("Error when delete draft submission",
+                                     status.HTTP_400_BAD_REQUEST)
+            return {
+                "detail": "Draft submission deleted",
+            }
+        except MessageException as e:
+            if error_dict:
+                return {
+                    "message": e.message,
+                    "status_code": e.status_code
+                }
+            return e
+        except:
+            logger.error(f"{traceback.format_exc()}")
+            if error_dict:
+                return {
+                    "message": "Error when delete draft submission",
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+                }
+            return MessageException("Error when delete draft submission",
+                                    status.HTTP_500_INTERNAL_SERVER_ERROR)
