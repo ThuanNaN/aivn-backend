@@ -1,7 +1,7 @@
 services:
     mongodb:
         image: mongo:7.0
-        container_name: aivietnam-mongodb
+        container_name: mongodb
         restart: always
         env_file:
           - .env
@@ -19,14 +19,10 @@ services:
         volumes:
             - mongo_db:/data/db
             - ./mongodb-keyfile:/data/configdb/mongodb-keyfile
-        networks:
-            - aivietnam-network
 
     backend:
-        build:
-            context: .
-            network: host
-        container_name: aivietnam-backend
+        image: thuannan/aivn-backend:latest
+        container_name: backend
         restart: always
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"] 
@@ -35,21 +31,25 @@ services:
             retries: 3         
             start_period: 10s 
         env_file:
-          - .env
+            - .env
+        environment:
+            - INNGEST_DEV=1
+            - INNGEST_BASE_URL=http://inngest:8288
         ports:
             - 8000:8000
-        extra_hosts:
-            - "localhost:0.0.0.0"
         depends_on:
             - mongodb
         volumes:
             - ./app/logs/:/src/app/logs/
-        networks:
-            - aivietnam-network
+
+    inngest:
+        image: inngest/inngest:latest
+        container_name: inngest
+        command: "inngest dev -u http://backend:8000/api/inngest"
+        ports:
+        - 8288:8288
+        depends_on:
+            - backend
 
 volumes:
     mongo_db:
-
-networks:
-    aivietnam-network:
-        driver: bridge
