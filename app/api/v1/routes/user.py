@@ -335,7 +335,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                         detail=str(updated_cohort)
                     )
             return ListResponseModel(data=[],
-                                     message="Upsert user successfully.",
+                                     message="Upsert user-admin successfully.",
                                      code=status.HTTP_200_OK)
         
         whitelist_info = await retrieve_whitelist_by_email(is_exist_user["email"])
@@ -348,8 +348,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             cur_cohort = whitelist_info["cohort"]
             if cur_role == "aio" and cur_cohort == is_exist_user["cohort"]:
                 return ListResponseModel(data=[],
-                                     message="Upsert user successfully.",
-                                     code=status.HTTP_200_OK)
+                                         message="Upsert user-aio successfully.",
+                                         code=status.HTTP_200_OK)
             
             update_role_data = UpdateUserRoleDB(
                 role="aio",
