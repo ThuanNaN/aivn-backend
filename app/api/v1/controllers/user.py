@@ -36,7 +36,14 @@ def user_helper(user) -> dict:
 
 
 def clerk_user_helper(user) -> dict:
-    email = user["email_addresses"][0]["email_address"]
+    if len(user["email_addresses"]) > 1:
+        primary_email_address_id = user["primary_email_address_id"]
+        for email_address in user["email_addresses"]:
+            if email_address["id"] == primary_email_address_id:
+                email = email_address["email_address"]
+                break
+    else:
+        email = user["email_addresses"][0]["email_address"]
     if user["username"] is None:
         if user["first_name"] is not None and user["last_name"] is not None:
             username = user["first_name"] + " " + user["last_name"]
