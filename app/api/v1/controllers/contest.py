@@ -100,15 +100,17 @@ async def retrieve_available_contests(clerk_user_id: str) -> list | MessageExcep
     """
     try:
         user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
+        feasible_cohort = user_info["feasible_cohort"]
+        cohort_matchs = [
+            { "cohorts": { "$exists": False } },
+            { "cohorts": None },
+            { "cohorts": { "$in": feasible_cohort } }
+        ]
         pipeline = [
             {
                 "$match": {
                     "is_active": True,
-                    "$or": [
-                        { "cohorts": { "$exists": False } },
-                        { "cohorts": None },
-                        { "cohorts": { "$lte": user_info["cohort"] } }
-                    ]
+                    "$or": cohort_matchs
                 }
             }
         ]
