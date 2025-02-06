@@ -26,6 +26,7 @@ def user_helper(user) -> dict:
         "username": user["username"],
         "role": user["role"],
         "cohort": user["cohort"],
+        "feasible_cohort": user["feasible_cohort"],
         "avatar": user["avatar"],
         "fullname": user["fullname"],
         "bio": user["bio"] if "bio" in user else "",

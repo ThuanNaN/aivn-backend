@@ -220,6 +220,7 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
         )
     current_role = user_data["role"]
     current_cohort = user_data["cohort"]
+    current_feasible_cohort = user_data["feasible_cohort"]
     if current_role == new_role:
         return ListResponseModel(data=[],
                                  message="User updated successfully.",
@@ -236,6 +237,7 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
 
         if new_role == "aio" and not is_whitelist:
             current_cohort = get_local_year()
+            current_feasible_cohort = [current_cohort]
             whitelist_data = WhiteListSchemaDB(
                 email=user_data["email"],
                 cohort=current_cohort,
@@ -251,7 +253,7 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
                 )
 
         if new_role == "user" and is_whitelist:
-            current_cohort = None
+            current_cohort = 0
             deleted_whitelist = await delete_whitelist_by_email(user_data["email"])
             if isinstance(deleted_whitelist, Exception):
                 raise HTTPException(
@@ -262,6 +264,7 @@ async def update_user_data(clerk_user_id: str, data: UpdateUserRole = Body(...))
     update_user_data = UpdateUserRoleDB(
         role=new_role,
         cohort=current_cohort,
+        feasible_cohort=current_feasible_cohort,
         updated_at=datetime.now(UTC)
     ).model_dump()
     updated = await update_user(clerk_user_id, update_user_data)
@@ -321,11 +324,14 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     # logged in before -> update role
     if is_exist_user:  
         cur_role = is_exist_user["role"]
+        cur_feasible_cohort = is_exist_user["feasible_cohort"]
         if cur_role == "admin":
             if is_exist_user["cohort"] != ADMIN_COHORT:
+                current_year = get_local_year()
                 update_cohort_data = UpdateUserRoleDB(
                     role=cur_role,
                     cohort=ADMIN_COHORT,
+                    feasible_cohort=list(range(2020, current_year+1)),
                     updated_at=datetime.now(UTC)
                 ).model_dump()
                 updated_cohort = await update_user(clerk_user_id, update_cohort_data)
@@ -344,19 +350,25 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Checking whitelist failed."
             )
+        
+        # Upsert cohort, is_auditor, role
         if whitelist_info:
-            cur_cohort = whitelist_info["cohort"]
-            if cur_role == "aio" and cur_cohort == is_exist_user["cohort"]:
+            whitelist_cohort = whitelist_info["cohort"]
+            is_auditor = whitelist_info["is_auditor"]
+            whitelist_feasible_cohort = [whitelist_cohort - 1, whitelist_cohort] if is_auditor else [whitelist_cohort]
+
+            if cur_role == "aio" and whitelist_cohort == is_exist_user["cohort"] and whitelist_feasible_cohort == cur_feasible_cohort:
                 return ListResponseModel(data=[],
                                          message="Upsert user-aio successfully.",
                                          code=status.HTTP_200_OK)
-            
+
             update_role_data = UpdateUserRoleDB(
                 role="aio",
-                cohort=whitelist_info["cohort"],
+                cohort=whitelist_cohort,
+                feasible_cohort=whitelist_feasible_cohort,
                 updated_at=datetime.now(UTC)
-            )
-            updated_role = await update_user(clerk_user_id, update_role_data.model_dump())
+            ).model_dump()
+            updated_role = await update_user(clerk_user_id, update_role_data)
             if isinstance(updated_role, Exception):
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -385,10 +397,13 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Checking whitelist failed."
             )
-        in_whitelist = True if whitelist_info else False
-        if in_whitelist:
+        if whitelist_info:
             role = "aio"
             cohort = whitelist_info["cohort"]
+            if whitelist_info["is_auditor"]:
+                feasible_cohort = [cohort - 1, cohort]
+            else:
+                feasible_cohort = [cohort]
         # Create a new user
         new_user_data = UserSchemaDB(
             clerk_user_id=clerk_user_id,
@@ -396,6 +411,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             username=clerk_user_data["username"],
             role=role,
             cohort=cohort,
+            feasible_cohort=feasible_cohort,
             avatar=clerk_user_data["avatar"],
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC)
