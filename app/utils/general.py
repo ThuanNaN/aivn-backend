@@ -50,7 +50,7 @@ def convert_id_to_id(data):
 
 def cohort_permission(user_cohort: int | None,
                       cohorts: list[int] | None,
-                      auditor: bool = False
+                      is_auditor: bool = False
                       ) -> bool:
     """
     Check if user is allowed to access the resource based on cohort permissions.
@@ -59,7 +59,7 @@ def cohort_permission(user_cohort: int | None,
 
     user_cohort (int): The cohort of the user.
     cohorts (list): List of cohorts that are allowed to access the resource.
-    auditor (bool): If True, the user is an auditor and can access to previous cohorts resources.
+    is_auditor (bool): If True, the user is an auditor and can access to previous cohorts resources.
 
     Returns:
 
@@ -82,7 +82,7 @@ def cohort_permission(user_cohort: int | None,
         return True
     
     # Not Admin, not in cohorts
-    if auditor and (user_cohort - 1) in cohorts:
+    if is_auditor and (user_cohort - 1) in cohorts:
         return True
 
     return False
