@@ -6,6 +6,7 @@ class WhiteListSchema(BaseModel):
     nickname: str
     email: str
     cohort: int = 2024
+    auditor: bool = False
 
     @field_validator('email')
     def email_must_be_lower(cls, v):
@@ -19,6 +20,7 @@ class WhiteListSchema(BaseModel):
                 "nickname": "abc123",
                 "email": "abc123@gmail.com",
                 "cohort": "2024",
+                "auditor": False,
             }
         }
     }
@@ -31,12 +33,14 @@ class WhiteListSchemaDB(WhiteListSchema):
 class UpdateWhiteList(BaseModel):
     nickname: str | None = None
     cohort: int | None = None
+    auditor: bool | None = None
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "nickname": "Abc123",
                 "cohort": "2025",
+                "auditor": True,
             }
         }
     }
