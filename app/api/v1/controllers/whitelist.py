@@ -21,7 +21,7 @@ def whitelist_helper(user) -> dict:
         "email": user["email"],
         "nickname": user["nickname"],
         "cohort": user["cohort"],
-        "is_cohort": user["is_cohort"],
+        "is_auditor": user["is_auditor"],
         "created_at": utc_to_local(user["created_at"]),
         "updated_at": utc_to_local(user["updated_at"])
     }
