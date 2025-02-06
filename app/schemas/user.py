@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, List
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -35,10 +35,11 @@ class UserSchemaDB(UserSchema):
 
 class UpdateUserRole(BaseModel):
     role: Literal["user", "aio", "admin"] | None = None
-    cohort: int | None = 0
 
 
 class UpdateUserRoleDB(UpdateUserRole):
+    cohort: int | None = 0
+    feasible_cohort: List[int]
     updated_at : datetime
 
 

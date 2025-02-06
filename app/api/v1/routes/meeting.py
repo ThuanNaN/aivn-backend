@@ -159,6 +159,7 @@ async def add_attendees_to_meeting(id: str,
 @router.get("/meetings",
             description="Retrieve all meetings")
 async def get_meetings(
+    query_cohort: int = Query(None, description="Show cohort meetings"),
     time_from: str = Query(None, description="Meeting time from"),
     time_to: str = Query(None, description="Meeting time to"),
     clerk_user_id: str = Depends(is_authenticated)
@@ -169,6 +170,9 @@ async def get_meetings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(user_info)
         )
+    feasible_cohort = user_info["feasible_cohort"]
+
+    query_cohort = 2025
     
     if time_from is None or time_to is None:
         now_hcm = datetime.now(hcm_timezone)
@@ -178,6 +182,13 @@ async def get_meetings(
         time_from = local_to_utc(time_from, return_isoformat=False)
         time_to = local_to_utc(time_to, return_isoformat=False)
 
+    cohort_matchs = [
+        { "cohorts": { "$exists": False } },
+        { "cohorts": None },
+    ]
+    if query_cohort in feasible_cohort:
+        cohort_matchs.append({ "cohorts": query_cohort })
+
     pipeline = [
         {
             "$match": {
@@ -185,11 +196,7 @@ async def get_meetings(
                     "$gte": time_from,
                     "$lte": time_to
                 },
-                "$or": [
-                    { "cohorts": { "$exists": False } },
-                    { "cohorts": None },
-                    { "cohorts": { "$lte": user_info["cohort"] } }
-                ]
+                "$or": cohort_matchs
             }
         },
         {
@@ -240,6 +247,7 @@ async def get_meetings(
     )
 
 
+# TODO: How many upcoming meetings should be retrieved?
 @router.get("/upcoming",
             description="Retrieve upcoming meetings")
 async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
@@ -249,16 +257,14 @@ async def get_upcoming_meetings(clerk_user_id: str = Depends(is_authenticated)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(user_info)
         )
-
-    current_utc_time = datetime.now(UTC)
     pipeline = [
         {
             "$match": {
-                "date": {"$gte": current_utc_time},
+                "date": {"$gte": datetime.now(UTC)},
                 "$or": [
                     { "cohorts": { "$exists": False } },
                     { "cohorts": None },
-                    { "cohorts": { "$lte": user_info["cohort"] } }
+                    { "cohorts": { "$in": user_info["feasible_cohort"] } }
                 ]
             }
         },

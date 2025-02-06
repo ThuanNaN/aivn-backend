@@ -36,8 +36,7 @@ def meeting_helper(meeting: dict) -> dict:
         "creator_id": str(meeting["creator_id"]),
         "join_link": meeting["join_link"],
         "record": meeting["record"],
-        # TODO: add slug to all meetings
-        "slug": meeting["slug"] if "slug" in meeting else "",
+        "slug": meeting["slug"],
         "created_at": utc_to_local(meeting["created_at"]),
         "updated_at": utc_to_local(meeting["updated_at"])
     }

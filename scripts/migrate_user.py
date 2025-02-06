@@ -57,6 +57,33 @@ async def add_cohort_field():
 
     print("Done")
 
+
+async def add_feasible_cohort():
+    users = []
+    async for user in user_collection.find():
+        users.append(user)
+
+    print(f"Find {len(users)} users")
+    
+    operators = []
+    with tqdm(total=len(users)) as pbar:
+        for index, user in enumerate(users):
+            if "feasible_cohort" not in user:
+                operators.append(UpdateOne(
+                    {"_id": user["_id"]},
+                    {"$set": {
+                        "feasible_cohort": [user["cohort"]]
+                    }}
+                ))
+            pbar.update(1)
+    if operators:
+        update_results = await user_collection.bulk_write(operators)
+        print(update_results)
+
+    print("Done")
+
+
 if __name__ == "__main__":
     # asyncio.run(add_attend_id())
-    asyncio.run(add_cohort_field())
+    # asyncio.run(add_cohort_field())
+    asyncio.run(add_feasible_cohort())
