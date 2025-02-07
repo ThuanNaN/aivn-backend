@@ -171,8 +171,6 @@ async def get_meetings(
             detail=str(user_info)
         )
     feasible_cohort = user_info["feasible_cohort"]
-
-    query_cohort = 2025
     
     if time_from is None or time_to is None:
         now_hcm = datetime.now(hcm_timezone)
