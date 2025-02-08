@@ -327,7 +327,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         cur_feasible_cohort = is_exist_user["feasible_cohort"]
         if cur_role == "admin":
             current_year = get_local_year()
-            ADMIN_FEASIBLE_COHORT = list(range(2022, current_year+2))
+            ADMIN_FEASIBLE_COHORT = list(range(2022, current_year+1))
             if is_exist_user["cohort"] != ADMIN_COHORT or cur_feasible_cohort != ADMIN_FEASIBLE_COHORT:
                 update_cohort_data = UpdateUserRoleDB(
                     role=cur_role,
