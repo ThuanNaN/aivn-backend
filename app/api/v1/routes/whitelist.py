@@ -47,7 +47,7 @@ async def read_csv(file: UploadFile):
 async def get_whitelists(
     search: str | None = Query(None, description="Search by problem title or description"),
     cohort: int | None = Query(None, description="Filter by cohort"),
-    is_auditor: bool = Query(False, description="Filter by auditor"),
+    is_auditor: bool | None = Query(None, description="Filter by auditor"),
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100)
 ):
@@ -60,7 +60,7 @@ async def get_whitelists(
     if cohort is not None:
         match_stage["$match"]["cohort"] = cohort
 
-    if is_auditor:
+    if is_auditor is not None:
         match_stage["$match"]["is_auditor"] = is_auditor
         
     pipeline = [
