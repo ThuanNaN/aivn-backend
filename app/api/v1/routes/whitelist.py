@@ -196,7 +196,7 @@ async def export_whitelist_csv():
         )
     
     df = pd.DataFrame(whitelist_data)
-    df = df.loc[:, ["id", "email", "cohort", "nickname", "created_at", "updated_at"]]
+    df = df.loc[:, ["id", "email", "cohort", "is_auditor", "nickname", "created_at", "updated_at"]]
 
     output = StringIO()
     df.to_csv(output, index=False, encoding='ascii', errors='replace')
