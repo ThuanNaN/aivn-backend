@@ -8,7 +8,7 @@ class ContestSchema(BaseModel):
     description: str = "Description of the contest."
     instruction: str = "Details and instruction for the contest."
     is_active: bool = False
-    cohorts: List[int] | None = [2020]
+    cohorts: List[int] | None = [2024]
     certificate_template: str | None = None
     
     model_config = {
@@ -19,7 +19,7 @@ class ContestSchema(BaseModel):
                     "description": "Python contest for beginners.",
                     "instruction": "Details and instruction for the contest.",
                     "is_active": True,
-                    "cohorts": [2024],
+                    "cohorts": [2025],
                     "certificate_template": CertificateEnum.FOUNDATION.value
                 }
             ]
