@@ -55,12 +55,12 @@ chmod 600 ./mongodb-keyfile
 docker compose up -d
 
 # Add key to the container
-docker exec -it aivietnam-mongodb /bin/bash
+docker exec -it mongodb /bin/bash
 chown mongodb:mongodb /data/configdb/mongodb-keyfile
 ```
 
 ```bash
-docker exec -it aivietnam-mongodb mongosh --authenticationDatabase admin -u duongthuan1445 -p <passwd>
+docker exec -it mongodb mongosh --authenticationDatabase admin -u duongthuan1445 -p <passwd>
 ```
 
 ```js
