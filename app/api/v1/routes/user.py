@@ -386,6 +386,7 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
     # first time -> create new user in DB
     else:
         cohort = 0
+        feasible_cohort = [cohort]
         clerk_user_data = await retrieve_user_clerk(clerk_user_id)
         if isinstance(clerk_user_data, Exception):
             raise HTTPException(
