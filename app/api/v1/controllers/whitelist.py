@@ -34,6 +34,11 @@ async def add_whitelist(whitelist_data: dict) -> dict | MessageException:
     :return: dict
     """
     try:
+        # Check the email is already in the whitelist
+        email = whitelist_data["email"]
+        if await whitelist_collection.find_one({"email": email}):
+            raise MessageException("Email already in whitelist",
+                                   status.HTTP_400_BAD_REQUEST)
         whitelist = await whitelist_collection.insert_one(whitelist_data)
         new_whitelist = await whitelist_collection.find_one({"_id": whitelist.inserted_id})
         return whitelist_helper(new_whitelist)
