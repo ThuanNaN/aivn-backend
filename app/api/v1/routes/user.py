@@ -434,7 +434,8 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
                tags=["Admin"],
                description="Delete a user with a matching clerk_user_id")
 async def delete_user(clerk_user_id: str):
-    deleted = await delete_user_by_clerk_user_id(clerk_user_id)
+    # deleted = await delete_user_by_clerk_user_id(clerk_user_id)
+    deleted = await update_user(clerk_user_id, {"role": "user"})
     if isinstance(deleted, Exception):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
