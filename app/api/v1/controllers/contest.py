@@ -119,6 +119,8 @@ async def retrieve_available_contests(clerk_user_id: str) -> list | MessageExcep
         contests = []
         for contest in result:
             contest_detail = await retrieve_contest_detail(contest["_id"], clerk_user_id)
+            if isinstance(contest_detail, MessageException):
+                continue
             contests.append(contest_detail)
         return contests
     except:
@@ -199,7 +201,7 @@ async def contest_slug_is_unique(slug: str, is_update = False) -> bool | Message
                                 status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict:
+async def retrieve_contest_detail(id: str, clerk_user_id: str) -> dict | MessageException:
     """
     Retrieve a contest with a matching contest_id (id),
     including exams with available for clerk_user_id.
