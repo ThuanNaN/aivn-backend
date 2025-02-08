@@ -62,6 +62,14 @@ logger = Logger("routes/meeting", log_file="meeting.log")
              description="Add a new meeting")
 async def create_meeting(meeting_data: MeetingSchema,
                          creator_id: str = Depends(is_authenticated)):
+    # Check meeting time, if meeting time is in the past, return error
+    meeting_start_time = datetime.fromisoformat(meeting_data.start_time)
+    if meeting_start_time < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Meeting start time is in the past"
+        )
+
     meeting_slug = slugify(meeting_data.title)
 
     # Check meeting_slug is unique
