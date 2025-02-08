@@ -62,7 +62,7 @@ async def get_whitelists(
 
     if is_auditor:
         match_stage["$match"]["is_auditor"] = is_auditor
-
+        
     pipeline = [
         match_stage,
         {
