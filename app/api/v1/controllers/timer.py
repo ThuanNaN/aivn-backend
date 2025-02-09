@@ -97,10 +97,9 @@ async def add_timer(timer_data_input: dict) -> dict | MessageException:
         user_info = await user_collection.find_one({"clerk_user_id": clerk_user_id})
         if not user_info:
             raise MessageException("User not found", status.HTTP_404_NOT_FOUND)
-
+        user_cohort = user_info["cohort"]
         # limit permission by the main cohort of the user
-        feasible_cohort = [user_info["cohort"]]
-        if not is_cohort_permission(feasible_cohort, contest_info["cohorts"]):
+        if not is_cohort_permission(user_cohort, [user_cohort], contest_info["cohorts"]):
             raise MessageException("You are not allowed to access this exam",
                                    status.HTTP_403_FORBIDDEN)
 

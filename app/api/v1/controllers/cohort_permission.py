@@ -34,6 +34,8 @@ async def is_contest_permission(id: str | ObjectId,
         if not user_info:
             raise MessageException("User not found",
                                    status.HTTP_404_NOT_FOUND)
+        user_cohort = user_info["cohort"]
+
         if not isinstance(id, ObjectId):
             id = ObjectId(id)
         contest = await contest_collection.find_one({"_id": id})
@@ -41,8 +43,7 @@ async def is_contest_permission(id: str | ObjectId,
             raise MessageException("Contest not found",
                                    status.HTTP_404_NOT_FOUND)
         # limit permission by the main cohort of the user
-        feasible_cohort = [user_info["cohort"]]
-        if is_cohort_permission(feasible_cohort, contest["cohorts"]):
+        if is_cohort_permission(user_cohort, [user_cohort], contest["cohorts"]):
             permission = True
         if return_item:
             return contest, permission
@@ -71,11 +72,14 @@ async def is_meeting_permission(query_params: dict,
         if not user_info:
             raise MessageException("User not found",
                                    status.HTTP_404_NOT_FOUND)
+        user_cohort = user_info["cohort"]
+        feasible_cohort = user_info["feasible_cohort"]
+
         meeting = await meeting_collection.find_one(query_params)
         if not meeting:
             raise MessageException("Meeting not found",
                                    status.HTTP_404_NOT_FOUND)
-        if is_cohort_permission(user_info["feasible_cohort"], meeting["cohorts"]):
+        if is_cohort_permission(user_cohort, feasible_cohort, meeting["cohorts"]):
             permission = True
         if return_item:
             return meeting, permission

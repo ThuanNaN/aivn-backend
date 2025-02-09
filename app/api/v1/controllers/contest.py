@@ -170,9 +170,9 @@ async def retrieve_contest_by_slug(slug: str,
              raise MessageException("Contest not found", 
                                    status.HTTP_404_NOT_FOUND)
         
+        user_cohort = user_info["cohort"]
         # limit permission by the main cohort of the user
-        feasible_cohort = [user_info["cohort"]]
-        if not is_cohort_permission(feasible_cohort, contest["cohorts"]):
+        if not is_cohort_permission(user_cohort, [user_cohort], contest["cohorts"]):
             raise MessageException("You don't have permission to access this contest", 
                                    status.HTTP_403_FORBIDDEN)
         return contest_helper(contest)
