@@ -164,7 +164,9 @@ async def create_submission(exam_id: str,
             detail=user_info.message
         )
     
-    if not is_cohort_permission(user_info["feasible_cohort"], contest_info["cohorts"]):
+    # limit permission by the main cohort of the user
+    feasible_cohort = [user_info["cohort"]]
+    if not is_cohort_permission(feasible_cohort, contest_info["cohorts"]):
         raise HTTPException(
             detail="You are not allowed to submit this exam.",
             status_code=status.HTTP_403_FORBIDDEN
@@ -310,7 +312,9 @@ async def upsert_submission(exam_id: str,
             status_code=user_info.status_code,
             detail=user_info.message
         )
-    if not is_cohort_permission(user_info["feasible_cohort"], contest_info["cohorts"]):
+    # limit permission by the main cohort of the user
+    feasible_cohort = [user_info["cohort"]]
+    if not is_cohort_permission(feasible_cohort, contest_info["cohorts"]):
         raise HTTPException(
             detail="You are not allowed to submit this exam.",
             status_code=status.HTTP_403_FORBIDDEN

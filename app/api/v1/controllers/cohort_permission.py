@@ -1,12 +1,12 @@
 import traceback
+from fastapi import status
+from app.core.database import mongo_db
+from bson.objectid import ObjectId
+from app.utils.logger import Logger
 from app.utils import (
     MessageException,
     is_cohort_permission
 )
-from fastapi import status
-from app.core.database import mongo_db
-from app.utils.logger import Logger
-from bson.objectid import ObjectId
 
 logger = Logger("controllers/cohort_permission", log_file="cohort_permission.log")
 try:
@@ -40,7 +40,9 @@ async def is_contest_permission(id: str | ObjectId,
         if not contest:
             raise MessageException("Contest not found",
                                    status.HTTP_404_NOT_FOUND)
-        if is_cohort_permission(user_info["feasible_cohort"], contest["cohorts"]):
+        # limit permission by the main cohort of the user
+        feasible_cohort = [user_info["cohort"]]
+        if is_cohort_permission(feasible_cohort, contest["cohorts"]):
             permission = True
         if return_item:
             return contest, permission
