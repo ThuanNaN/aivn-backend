@@ -10,7 +10,7 @@ logger = Logger("controllers/submission", log_file="submission.log")
 
 try:
     submission_collection = mongo_db["submissions"]
-    draft_submission_collection = mongo_db["draft-submissions"]
+    draft_submission_collection = mongo_db["draft_submissions"]
     retake_collection = mongo_db["retake"]
     timer_collection = mongo_db["timer"]
     certificate_collection = mongo_db["certificate"]
