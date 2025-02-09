@@ -98,7 +98,7 @@ async def add_timer(timer_data_input: dict) -> dict | MessageException:
         if not user_info:
             raise MessageException("User not found", status.HTTP_404_NOT_FOUND)
 
-        if not is_cohort_permission(user_info["cohort"], contest_info["cohorts"]):
+        if not is_cohort_permission(user_info["feasible_cohort"], contest_info["cohorts"]):
             raise MessageException("You are not allowed to access this exam",
                                    status.HTTP_403_FORBIDDEN)
 

@@ -48,41 +48,32 @@ def convert_id_to_id(data):
         return data
     
 
-def is_cohort_permission(user_cohort: int | None,
-                      cohorts: list[int] | None,
-                      is_auditor: bool = False
-                      ) -> bool:
+def is_cohort_permission(feasible_cohort: list[int] | None,
+                         cohorts: list[int] | None,
+                         ) -> bool:
     """
     Check if user is allowed to access the resource based on cohort permissions.
 
     Args:
 
-    user_cohort (int): The cohort of the user.
+    feasible_cohort (list): List of cohorts that are allowed to access the resource.
     cohorts (list): List of cohorts that are allowed to access the resource.
-    is_auditor (bool): If True, the user is an auditor and can access to previous cohorts resources.
 
     Returns:
 
     bool: True if the user is allowed to access the resource, False otherwise.
     """
-
-    # Admin access
-    if user_cohort == 2100:
-        return True
+    is_permission = False
 
     # Public resources
     if cohorts is None:
-        return True
+        is_permission =  True
     
-    if user_cohort is None:
-        return False
+    if feasible_cohort is None:
+        is_permission = False
     
-    # User in cohort
-    if user_cohort in cohorts:
-        return True
+    # Intersection
+    if (set(feasible_cohort) & set(cohorts)):
+        is_permission = True
     
-    # Not Admin, not in cohorts
-    if is_auditor and (user_cohort - 1) in cohorts:
-        return True
-
-    return False
+    return is_permission
