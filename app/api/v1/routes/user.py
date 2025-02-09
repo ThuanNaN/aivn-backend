@@ -78,6 +78,7 @@ async def get_users(
 
     pipeline = [
         match_stage,
+        {"$sort": {"create_at": -1}},
         {
             "$facet": {
                 "users": [
@@ -93,7 +94,7 @@ async def get_users(
                         "$count": "count"
                     }
                 ]
-            }
+            },
         },
     ]
     users = await retrieve_user_by_pipeline(pipeline, page, per_page)

@@ -193,7 +193,7 @@ async def get_problems(
             }
         },
         {
-            "$sort": {"_id": 1}
+            "$sort": {"_id": -1}
         },
         match_stage,
         {
