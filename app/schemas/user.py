@@ -29,6 +29,7 @@ class UserSchema(BaseModel):
 
 
 class UserSchemaDB(UserSchema):
+    feasible_cohort: List[int]
     created_at : datetime
     updated_at : datetime
 
