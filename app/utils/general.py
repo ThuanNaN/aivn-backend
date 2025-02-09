@@ -48,7 +48,8 @@ def convert_id_to_id(data):
         return data
     
 
-def is_cohort_permission(feasible_cohort: list[int] | None,
+def is_cohort_permission(user_cohort: int,
+                         feasible_cohort: list[int] | None,
                          cohorts: list[int] | None,
                          ) -> bool:
     """
@@ -56,6 +57,7 @@ def is_cohort_permission(feasible_cohort: list[int] | None,
 
     Args:
 
+    user_cohort (int): Cohort of the user.
     feasible_cohort (list): List of cohorts that are allowed to access the resource.
     cohorts (list): List of cohorts that are allowed to access the resource.
 
@@ -63,6 +65,14 @@ def is_cohort_permission(feasible_cohort: list[int] | None,
 
     bool: True if the user is allowed to access the resource, False otherwise.
     """
+
+    if user_cohort is None:
+        return False
+    
+    # Admin cohort
+    if user_cohort == 2100:
+        return True
+
     is_permission = False
 
     # Public resources
