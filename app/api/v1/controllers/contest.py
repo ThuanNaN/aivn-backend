@@ -4,7 +4,7 @@ from app.utils import (
     MessageException,
     Logger,
     utc_to_local,
-    cohort_permission
+    is_cohort_permission
 )
 from fastapi import status
 from app.core.database import mongo_db
@@ -169,7 +169,7 @@ async def retrieve_contest_by_slug(slug: str,
         if not contest:
              raise MessageException("Contest not found", 
                                    status.HTTP_404_NOT_FOUND)
-        if not cohort_permission(user_info["cohort"], contest["cohorts"]):
+        if not is_cohort_permission(user_info["cohort"], contest["cohorts"]):
             raise MessageException("You don't have permission to access this contest", 
                                    status.HTTP_403_FORBIDDEN)
         return contest_helper(contest)

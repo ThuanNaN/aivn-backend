@@ -1,7 +1,7 @@
 import traceback
 from app.utils import (
     MessageException,
-    cohort_permission
+    is_cohort_permission
 )
 from fastapi import status
 from app.core.database import mongo_db
@@ -40,7 +40,7 @@ async def is_contest_permission(id: str | ObjectId,
         if not contest:
             raise MessageException("Contest not found",
                                    status.HTTP_404_NOT_FOUND)
-        if cohort_permission(user_info["cohort"], contest["cohorts"]):
+        if is_cohort_permission(user_info["cohort"], contest["cohorts"]):
             permission = True
         if return_item:
             return contest, permission
@@ -73,7 +73,7 @@ async def is_meeting_permission(query_params: dict,
         if not meeting:
             raise MessageException("Meeting not found",
                                    status.HTTP_404_NOT_FOUND)
-        if cohort_permission(user_info["cohort"], meeting["cohorts"]):
+        if is_cohort_permission(user_info["cohort"], meeting["cohorts"]):
             permission = True
         if return_item:
             return meeting, permission

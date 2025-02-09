@@ -48,7 +48,7 @@ def convert_id_to_id(data):
         return data
     
 
-def cohort_permission(user_cohort: int | None,
+def is_cohort_permission(user_cohort: int | None,
                       cohorts: list[int] | None,
                       is_auditor: bool = False
                       ) -> bool:

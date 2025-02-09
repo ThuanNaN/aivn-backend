@@ -2,8 +2,7 @@ import traceback
 from app.utils import (
     MessageException,
     Logger,
-    utc_to_local,
-    cohort_permission
+    utc_to_local
 )
 from fastapi import status
 from app.core.database import mongo_client, mongo_db
