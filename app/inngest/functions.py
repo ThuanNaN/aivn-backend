@@ -117,8 +117,6 @@ async def create_pseudo_submission(ctx: inngest.Context, step: inngest.Step) -> 
     if create_submission.get("status_code") == status.HTTP_500_INTERNAL_SERVER_ERROR:
         return "Error when create submission"
     
-
-    print("create_submission", create_submission["id"])
     await step.send_event(
         "check-timeout-submission",
         events=inngest.Event(
