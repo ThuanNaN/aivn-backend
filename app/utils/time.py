@@ -82,3 +82,14 @@ def is_past(datetime_input: str | datetime, tz: str = "utc") -> bool:
             datetime_input = hcm_timezone.localize(datetime_input)
         return datetime_input < datetime.now(hcm_timezone)
 
+
+def timestamp_to_utc(timestamp: int, milisecond: bool = True) -> datetime:
+    if milisecond:
+        timestamp = timestamp // 1000
+    return datetime.fromtimestamp(timestamp, utc_tz)
+
+
+def timestamp_to_local(timestamp: int, milisecond: bool = True) -> datetime:
+    if milisecond:
+        timestamp = timestamp // 1000
+    return datetime.fromtimestamp(timestamp, hcm_timezone)
