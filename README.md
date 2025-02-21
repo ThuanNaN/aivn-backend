@@ -109,3 +109,10 @@ docker compose restart
 ```bash
 docker run -p 8288:8288 inngest/inngest inngest dev -u http://host.docker.internal:8000/api/inngest --no-discovery
 ```
+
+### Build and push to Docker Hub
+
+```bash
+docker login -u thuannan
+docker buildx build --platform linux/amd64,linux/arm64 -t thuannan/aivn-backend:v0.1.7 -t thuannan/aivn-backend:latest --push .
+```
