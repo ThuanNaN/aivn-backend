@@ -326,7 +326,6 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         cur_role = is_exist_user["role"]
         cur_feasible_cohort = is_exist_user["feasible_cohort"]
         if cur_role == "admin":
-            current_year = get_local_year()
             if (is_exist_user["cohort"] != settings.ADMIN_COHORT or 
                 cur_feasible_cohort != settings.ADMIN_FEASIBLE_COHORT):
                 update_cohort_data = UpdateUserRoleDB(
@@ -358,7 +357,9 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
             is_auditor = whitelist_info["is_auditor"]
             whitelist_feasible_cohort = [whitelist_cohort - 1, whitelist_cohort] if is_auditor else [whitelist_cohort]
 
-            if cur_role == "aio" and whitelist_cohort == is_exist_user["cohort"] and whitelist_feasible_cohort == cur_feasible_cohort:
+            if (cur_role == "aio" and 
+                whitelist_cohort == is_exist_user["cohort"] and 
+                whitelist_feasible_cohort == cur_feasible_cohort):
                 return ListResponseModel(data=[],
                                          message="Upsert user-aio successfully.",
                                          code=status.HTTP_200_OK)
