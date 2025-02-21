@@ -13,6 +13,7 @@ from app.core.security import (
     is_authenticated,
     is_admin
 )
+from app.core.config import settings
 from app.api.v1.controllers.user import (
     add_user,
     retrieve_user_by_pipeline,
@@ -21,8 +22,7 @@ from app.api.v1.controllers.user import (
     retrieve_admin_users,
     retrieve_user_clerk,
     update_user,
-    upsert_admin_list,
-    delete_user_by_clerk_user_id
+    upsert_admin_list
 )
 from app.api.v1.controllers.whitelist import (
     add_whitelist,
@@ -46,7 +46,6 @@ from app.schemas.response import (
 
 router = APIRouter()
 logger = Logger("routes/user", log_file="user.log")
-ADMIN_COHORT = 2100
 
 async def read_csv(file: UploadFile):
     content = await file.read()
@@ -328,12 +327,12 @@ async def update_user_via_clerk(clerk_user_id: str = Depends(is_authenticated)):
         cur_feasible_cohort = is_exist_user["feasible_cohort"]
         if cur_role == "admin":
             current_year = get_local_year()
-            ADMIN_FEASIBLE_COHORT = list(range(2022, current_year+1))
-            if is_exist_user["cohort"] != ADMIN_COHORT or cur_feasible_cohort != ADMIN_FEASIBLE_COHORT:
+            if (is_exist_user["cohort"] != settings.ADMIN_COHORT or 
+                cur_feasible_cohort != settings.ADMIN_FEASIBLE_COHORT):
                 update_cohort_data = UpdateUserRoleDB(
                     role=cur_role,
-                    cohort=ADMIN_COHORT,
-                    feasible_cohort=ADMIN_FEASIBLE_COHORT,
+                    cohort=settings.ADMIN_COHORT,
+                    feasible_cohort=settings.ADMIN_FEASIBLE_COHORT,
                     updated_at=datetime.now(UTC)
                 ).model_dump()
                 updated_cohort = await update_user(clerk_user_id, update_cohort_data)

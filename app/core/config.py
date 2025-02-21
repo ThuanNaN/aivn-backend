@@ -1,7 +1,11 @@
 import os
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+from app.utils import get_local_year
+
 load_dotenv()
+FROM_YEAR = 2024
+CURRENT_YEAR = get_local_year()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "aivnlearning"
@@ -14,6 +18,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY")
     INNGEST_SIGNING_KEY: str = os.getenv("INNGEST_SIGNING_KEY")
     INNGEST_EVENT_KEY: str = os.getenv("INNGEST_EVENT_KEY")
-
+    ADMIN_COHORT: int = 2100
+    ADMIN_FEASIBLE_COHORT: list[int] = list(range(FROM_YEAR, CURRENT_YEAR+1))
 
 settings = Settings()
