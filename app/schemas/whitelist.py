@@ -1,5 +1,7 @@
 from datetime import datetime
+from email_validator import validate_email, EmailNotValidError
 from pydantic import BaseModel, field_validator
+from fastapi import HTTPException
 
 
 class WhiteListSchema(BaseModel):
@@ -9,10 +11,17 @@ class WhiteListSchema(BaseModel):
     is_auditor: bool = False
 
     @field_validator('email')
-    def email_must_be_lower(cls, v):
-        if v != v.lower():
-            raise ValueError('Email must be in lowercase')
-        return v
+    def email_must_not_have_space(cls, email):
+        if email != email.lower():
+            raise HTTPException(status_code=400, detail="Email must be lower case")
+        try:
+            emailinfo = validate_email(email, check_deliverability=False)
+            email = emailinfo.normalized
+        except EmailNotValidError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            return email
+
 
     model_config = {
         "json_schema_extra": {
